@@ -2,7 +2,7 @@
 # Multi-stage build with nginx for production serving
 
 # Stage 1: Build
-FROM node:18-alpine as builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # Stage 2: Production with nginx
-FROM nginx:alpine as production
+FROM nginx:alpine AS production
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

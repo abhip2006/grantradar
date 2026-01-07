@@ -82,7 +82,8 @@ def compute_profile_embedding(self, profile_id: str) -> dict[str, Any]:
                     "error": "Profile not found",
                 }
 
-            user_id = UUID(result.user_id)
+            # result.user_id may already be a UUID object from SQLAlchemy
+            user_id = result.user_id if isinstance(result.user_id, UUID) else UUID(result.user_id)
 
         # Generate embedding (force=True to always regenerate)
         embedding_result = builder.build_embedding(user_id, force=True)
@@ -217,7 +218,7 @@ def compute_profile_embeddings_batch(
             results = session.execute(
                 query, {"profile_ids": profile_ids}
             ).fetchall()
-            user_ids = [UUID(row.user_id) for row in results]
+            user_ids = [row.user_id if isinstance(row.user_id, UUID) else UUID(row.user_id) for row in results]
 
         # Generate embeddings in batch
         embeddings = builder.build_embeddings_batch(user_ids, force=True)

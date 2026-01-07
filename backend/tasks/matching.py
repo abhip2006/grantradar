@@ -414,8 +414,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                     profile_embedding,
                     research_areas,
                     methods,
-                    past_grants,
-                    institution
+                    past_grants
                 FROM lab_profiles
                 WHERE user_id = :user_id
                   AND profile_embedding IS NOT NULL
@@ -505,9 +504,9 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                         BatchMatchRequest,
                     )
 
-                    # Build GrantData object
+                    # Build GrantData object (embedding not needed - computed via SQL)
                     grant_data = GrantData(
-                        grant_id=UUID(grant_id),
+                        grant_id=grant_id if isinstance(grant_id, UUID) else UUID(grant_id),
                         title=grant.title,
                         description=grant.description or "",
                         funding_agency=grant.funding_agency,
@@ -516,7 +515,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                         eligibility_criteria=grant.eligibility_criteria or [],
                         categories=grant.categories or [],
                         keywords=[],
-                        embedding=grant.embedding,
+                        embedding=None,  # Similarity computed via SQL, not needed here
                     )
 
                     # Build UserProfile object
@@ -524,8 +523,8 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                         user_id=user_uuid,
                         research_areas=profile_result.research_areas or [],
                         methods=profile_result.methods or [],
-                        past_grants=profile_result.past_grants or [],
-                        institution=profile_result.institution,
+                        past_grants=[g.get("title", str(g)) if isinstance(g, dict) else str(g) for g in (profile_result.past_grants or [])],
+                        institution=None,  # Not in current schema
                         department=None,
                         keywords=[],
                     )

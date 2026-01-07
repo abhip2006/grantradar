@@ -118,9 +118,7 @@ class ProfileBuilder:
                 research_areas,
                 methods,
                 past_grants,
-                institution,
-                department,
-                keywords
+                publications
             FROM lab_profiles
             WHERE user_id = :user_id
         """)
@@ -131,14 +129,21 @@ class ProfileBuilder:
             logger.warning("user_profile_not_found", user_id=str(user_id))
             return None
 
+        # Extract keywords from publications if available
+        keywords = []
+        if result.publications:
+            for pub in result.publications:
+                if isinstance(pub, dict) and pub.get("keywords"):
+                    keywords.extend(pub["keywords"])
+
         return UserProfile(
             user_id=user_id,
             research_areas=result.research_areas or [],
             methods=result.methods or [],
-            past_grants=result.past_grants or [],
-            institution=result.institution,
-            department=result.department,
-            keywords=result.keywords or [],
+            past_grants=[g.get("title", str(g)) if isinstance(g, dict) else str(g) for g in (result.past_grants or [])],
+            institution=None,  # Not in current schema
+            department=None,   # Not in current schema
+            keywords=keywords,
         )
 
     def get_current_embedding_hash(
@@ -147,6 +152,9 @@ class ProfileBuilder:
         """
         Get the current embedding source text hash.
 
+        Note: source_text_hash column not in current schema, always returns None
+        (embeddings regenerated when force=True).
+
         Args:
             user_id: User identifier.
             session: Database session.
@@ -154,16 +162,8 @@ class ProfileBuilder:
         Returns:
             Current hash if exists, None otherwise.
         """
-        query = text("""
-            SELECT source_text_hash
-            FROM lab_profiles
-            WHERE user_id = :user_id
-        """)
-
-        result = session.execute(query, {"user_id": str(user_id)}).fetchone()
-
-        if result:
-            return result.source_text_hash
+        # source_text_hash column not in current schema
+        # This means needs_update() always returns True, forcing regeneration
         return None
 
     def needs_update(
@@ -341,10 +341,7 @@ class ProfileBuilder:
 
         query = text("""
             UPDATE lab_profiles
-            SET
-                profile_embedding = :embedding::vector,
-                source_text_hash = :source_text_hash,
-                embedding_updated_at = :updated_at
+            SET profile_embedding = :embedding::vector
             WHERE user_id = :user_id
         """)
 
@@ -353,8 +350,6 @@ class ProfileBuilder:
             {
                 "user_id": str(profile_embedding.user_id),
                 "embedding": embedding_str,
-                "source_text_hash": profile_embedding.source_text_hash,
-                "updated_at": profile_embedding.created_at,
             },
         )
 
@@ -378,7 +373,7 @@ class ProfileBuilder:
             # Get all user IDs
             query = text("SELECT user_id FROM lab_profiles")
             results = session.execute(query).fetchall()
-            user_ids = [UUID(row.user_id) for row in results]
+            user_ids = [row.user_id if isinstance(row.user_id, UUID) else UUID(row.user_id) for row in results]
             stats["total_users"] = len(user_ids)
 
         # Process in batches of 100
