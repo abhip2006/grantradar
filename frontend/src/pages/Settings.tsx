@@ -6,11 +6,14 @@ import {
   BellIcon,
   CreditCardIcon,
   CheckIcon,
+  ArrowDownTrayIcon,
+  CalendarDaysIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { userApi } from '../services/api';
-import type { NotificationPreferences } from '../types';
+import { userApi, calendarApi } from '../services/api';
+import { ProfileImport } from '../components/ProfileImport';
+import type { NotificationPreferences, ImportPreview } from '../types';
 
 const focusAreaOptions = [
   'Education',
@@ -31,6 +34,8 @@ const focusAreaOptions = [
 
 const tabs = [
   { name: 'Profile', icon: UserCircleIcon },
+  { name: 'Import', icon: ArrowDownTrayIcon },
+  { name: 'Calendar', icon: CalendarDaysIcon },
   { name: 'Notifications', icon: BellIcon },
   { name: 'Billing', icon: CreditCardIcon },
 ];
@@ -227,6 +232,106 @@ export function Settings() {
                     </div>
                   </div>
                 </form>
+              </TabPanel>
+
+              {/* Import Panel */}
+              <TabPanel className="p-6">
+                <ProfileImport
+                  onImportComplete={(data: ImportPreview) => {
+                    // Update profile form with imported data
+                    if (data.research_areas.length > 0) {
+                      setProfileForm((prev) => ({
+                        ...prev,
+                        focus_areas: [...new Set([...prev.focus_areas, ...data.research_areas.slice(0, 10)])],
+                      }));
+                    }
+                    showToast('Profile data imported. Review and save your changes in the Profile tab.', 'info');
+                  }}
+                />
+              </TabPanel>
+
+              {/* Calendar Panel */}
+              <TabPanel className="p-6">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-display font-medium text-[var(--gr-text-primary)] mb-2">
+                      Calendar Export
+                    </h3>
+                    <p className="text-sm text-[var(--gr-text-secondary)]">
+                      Export your saved grant deadlines to your calendar application
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const blob = await calendarApi.exportCalendar(true, 365);
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'grantradar_deadlines.ics';
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                          showToast('Calendar file downloaded', 'success');
+                        } catch {
+                          showToast('Failed to export calendar', 'error');
+                        }
+                      }}
+                      className="p-6 rounded-xl border border-[var(--gr-border-default)] hover:border-[var(--gr-amber-500)]/50 hover:bg-[var(--gr-amber-500)]/5 transition-all text-left"
+                    >
+                      <div className="p-3 rounded-xl bg-[var(--gr-cyan-500)]/10 w-fit mb-4">
+                        <ArrowDownTrayIcon className="h-6 w-6 text-[var(--gr-cyan-400)]" />
+                      </div>
+                      <h4 className="font-medium text-[var(--gr-text-primary)] mb-1">Export Saved Grants</h4>
+                      <p className="text-sm text-[var(--gr-text-tertiary)]">
+                        Download an ICS file with all your saved grant deadlines
+                      </p>
+                    </button>
+
+                    <button
+                      onClick={async () => {
+                        try {
+                          const blob = await calendarApi.exportCalendar(false, 90);
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'grantradar_all_deadlines.ics';
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                          showToast('Calendar file downloaded', 'success');
+                        } catch {
+                          showToast('Failed to export calendar', 'error');
+                        }
+                      }}
+                      className="p-6 rounded-xl border border-[var(--gr-border-default)] hover:border-[var(--gr-amber-500)]/50 hover:bg-[var(--gr-amber-500)]/5 transition-all text-left"
+                    >
+                      <div className="p-3 rounded-xl bg-[var(--gr-amber-500)]/10 w-fit mb-4">
+                        <CalendarDaysIcon className="h-6 w-6 text-[var(--gr-amber-400)]" />
+                      </div>
+                      <h4 className="font-medium text-[var(--gr-text-primary)] mb-1">Export All Matches</h4>
+                      <p className="text-sm text-[var(--gr-text-tertiary)]">
+                        Download deadlines for all matched grants (next 90 days)
+                      </p>
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-[var(--gr-bg-card)] border border-[var(--gr-border-subtle)]">
+                    <h4 className="text-sm font-medium text-[var(--gr-text-primary)] mb-2">
+                      How to use
+                    </h4>
+                    <ol className="text-sm text-[var(--gr-text-secondary)] space-y-1 list-decimal list-inside">
+                      <li>Download the .ics file using one of the buttons above</li>
+                      <li>Open the file with your calendar application (Google Calendar, Outlook, Apple Calendar)</li>
+                      <li>Import the events to add grant deadlines to your calendar</li>
+                      <li>Each deadline includes reminder alerts at 1 week and 1 day before</li>
+                    </ol>
+                  </div>
+                </div>
               </TabPanel>
 
               {/* Notifications Panel */}

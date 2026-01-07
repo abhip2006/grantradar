@@ -17,6 +17,7 @@ import { grantsApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { MatchScore } from '../components/MatchScore';
 import { GrantCard } from '../components/GrantCard';
+import { CalendarSync } from '../components/CalendarSync';
 import type { GrantMatch } from '../types';
 
 export function GrantDetail() {
@@ -193,9 +194,14 @@ export function GrantDetail() {
                   <p className="text-xs text-[var(--gr-text-tertiary)] uppercase tracking-wider font-medium mb-1">
                     Deadline
                   </p>
-                  <p className="text-sm font-semibold text-[var(--gr-text-primary)]">
+                  <p className="text-sm font-semibold text-[var(--gr-text-primary)] mb-2">
                     {formatDate(grant.deadline)}
                   </p>
+                  <CalendarSync
+                    grantId={grant.id}
+                    grantTitle={grant.title}
+                    hasDeadline={true}
+                  />
                 </div>
               </div>
             )}

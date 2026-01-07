@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import auth, contact, grants, matches, preferences, profile, stats
+from backend.api import auth, calendar, contact, grants, matches, preferences, profile, stats
 from backend.core.config import settings
 from backend.database import check_db_connection, close_db, init_db
 
@@ -258,6 +258,7 @@ async def readiness_check() -> dict[str, Any]:
 
 # Include all API routers
 app.include_router(auth.router)
+app.include_router(calendar.router)
 app.include_router(contact.router)
 app.include_router(grants.router)
 app.include_router(matches.router)

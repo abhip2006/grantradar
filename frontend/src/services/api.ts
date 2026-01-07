@@ -8,7 +8,9 @@ import type {
   DashboardStats,
   PaginatedResponse,
   NotificationPreferences,
-  Grant
+  Grant,
+  CalendarLinks,
+  ImportPreview
 } from '../types';
 
 // API base URL - connects to FastAPI backend
@@ -329,6 +331,51 @@ export const userApi = {
     prefs: Partial<NotificationPreferences>
   ): Promise<NotificationPreferences> => {
     const response = await api.patch<NotificationPreferences>('/users/me/notifications', prefs);
+    return response.data;
+  },
+};
+
+// Calendar API
+export const calendarApi = {
+  // Get calendar links for a grant
+  getCalendarLinks: async (grantId: string): Promise<CalendarLinks> => {
+    const response = await api.get<CalendarLinks>(`/calendar/grant/${grantId}/links`);
+    return response.data;
+  },
+
+  // Export saved grants as ICS file
+  exportCalendar: async (savedOnly: boolean = true, daysAhead: number = 365): Promise<Blob> => {
+    const response = await api.get('/calendar/export', {
+      params: { saved_only: savedOnly, days_ahead: daysAhead },
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Get ICS for a single grant
+  getGrantIcs: async (grantId: string): Promise<Blob> => {
+    const response = await api.get(`/calendar/grant/${grantId}/ics`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};
+
+// Profile Import API
+export const profileImportApi = {
+  // Import profile from ORCID
+  importFromOrcid: async (orcid: string): Promise<ImportPreview> => {
+    const response = await api.post<ImportPreview>('/profile/import/orcid', { orcid });
+    return response.data;
+  },
+
+  // Import profile from CV
+  importFromCv: async (file: File): Promise<ImportPreview> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<ImportPreview>('/profile/import/cv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
   },
 };

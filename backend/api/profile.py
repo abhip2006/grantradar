@@ -2,7 +2,10 @@
 Profile API Endpoints
 Manage user lab profiles and onboarding.
 """
-from fastapi import APIRouter, HTTPException, status
+from typing import Optional
+
+from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -191,4 +194,140 @@ async def complete_onboarding(
         orcid=profile.orcid,
         has_embedding=False,  # Will be computed async
         created_at=profile.created_at,
+    )
+
+
+# =============================================================================
+# Profile Import Endpoints
+# =============================================================================
+
+
+class ORCIDImportRequest(BaseModel):
+    """Request schema for ORCID import."""
+    orcid: str = Field(
+        ...,
+        description="ORCID identifier (e.g., 0000-0002-1825-0097 or https://orcid.org/0000-0002-1825-0097)"
+    )
+
+
+class ImportPreviewResponse(BaseModel):
+    """Response schema for import preview."""
+    name: Optional[str] = Field(None, description="Extracted name")
+    institution: Optional[str] = Field(None, description="Extracted institution")
+    research_areas: list[str] = Field(default_factory=list, description="Extracted research areas")
+    methods: list[str] = Field(default_factory=list, description="Extracted methods")
+    publications: list[dict] = Field(default_factory=list, description="Extracted publications")
+    past_grants: list[dict] = Field(default_factory=list, description="Extracted grants")
+    career_stage: Optional[str] = Field(None, description="Inferred career stage")
+    keywords: list[str] = Field(default_factory=list, description="Extracted keywords")
+    orcid: Optional[str] = Field(None, description="ORCID identifier")
+    source: str = Field(..., description="Import source (orcid or cv)")
+
+
+@router.post(
+    "/import/orcid",
+    response_model=ImportPreviewResponse,
+    summary="Import profile from ORCID",
+    description="Fetch and parse researcher data from ORCID public API."
+)
+async def import_from_orcid(
+    request: ORCIDImportRequest,
+    current_user: CurrentUser,
+) -> ImportPreviewResponse:
+    """
+    Import profile data from ORCID.
+
+    Fetches public profile data from ORCID and extracts:
+    - Research areas from keywords and publications
+    - Methods from publication analysis
+    - Publication history
+    - Grant/funding history
+
+    Returns a preview that can be used to populate onboarding.
+    No AI credits used - uses keyword matching only.
+    """
+    from backend.services.orcid import import_from_orcid as orcid_import
+
+    result = await orcid_import(request.orcid)
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Could not fetch ORCID profile. Check the ORCID ID and ensure the profile is public."
+        )
+
+    return ImportPreviewResponse(
+        name=result.get("name"),
+        institution=None,  # ORCID doesn't always have this
+        research_areas=result.get("research_areas", []),
+        methods=result.get("methods", []),
+        publications=result.get("publications", []),
+        past_grants=result.get("past_grants", []),
+        career_stage=None,  # Inferred from other data
+        keywords=result.get("keywords", []),
+        orcid=result.get("orcid"),
+        source="orcid",
+    )
+
+
+@router.post(
+    "/import/cv",
+    response_model=ImportPreviewResponse,
+    summary="Import profile from CV",
+    description="Upload and parse CV/resume PDF to extract profile data."
+)
+async def import_from_cv(
+    current_user: CurrentUser,
+    file: UploadFile = File(..., description="CV/resume PDF file"),
+) -> ImportPreviewResponse:
+    """
+    Import profile data from uploaded CV.
+
+    Parses PDF to extract:
+    - Name and contact info
+    - Research areas/interests
+    - Methods/techniques
+    - Publications list
+    - Grant history
+    - Career stage
+
+    Returns a preview that can be used to populate onboarding.
+    No AI credits used - uses regex pattern matching only.
+    """
+    # Validate file type
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are supported"
+        )
+
+    # Check file size (max 10MB)
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File too large. Maximum size is 10MB."
+        )
+
+    from backend.services.cv_parser import parse_cv
+
+    result = await parse_cv(content)
+
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Could not parse CV. Ensure the PDF contains extractable text."
+        )
+
+    return ImportPreviewResponse(
+        name=result.get("name"),
+        institution=result.get("institution"),
+        research_areas=result.get("research_areas", []),
+        methods=result.get("methods", []),
+        publications=result.get("publications", []),
+        past_grants=result.get("past_grants", []),
+        career_stage=result.get("career_stage"),
+        keywords=[],
+        orcid=None,
+        source="cv",
     )

@@ -146,3 +146,38 @@ export interface ApiError {
   detail?: string;
   status_code: number;
 }
+
+// Calendar types
+export interface CalendarLinks {
+  grant_id: string;
+  grant_title: string;
+  deadline: string;
+  google_calendar_url: string;
+  outlook_calendar_url: string;
+  ics_download_url: string;
+}
+
+// Profile import types
+export interface ImportPreview {
+  name?: string;
+  institution?: string;
+  research_areas: string[];
+  methods: string[];
+  publications: Array<{
+    title: string;
+    journal?: string;
+    year?: number;
+    type?: string;
+  }>;
+  past_grants: Array<{
+    title: string;
+    funder?: string;
+    amount?: string;
+    start_year?: number;
+    end_year?: number;
+  }>;
+  career_stage?: string;
+  keywords: string[];
+  orcid?: string;
+  source: 'orcid' | 'cv';
+}
