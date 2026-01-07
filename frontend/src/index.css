@@ -515,6 +515,56 @@ h1, h2, h3, h4, h5, h6, .heading {
   background: rgba(34, 197, 94, 0.02);
 }
 
+.grant-card-compare {
+  border-color: var(--gr-blue-400);
+  background: rgba(59, 130, 246, 0.02);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.grant-card-compare:hover {
+  border-color: var(--gr-blue-500);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   COMPARISON BAR
+   ───────────────────────────────────────────────────────────────────────────── */
+.compare-bar {
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   COMPARISON TABLE
+   ───────────────────────────────────────────────────────────────────────────── */
+.compare-table {
+  width: 100%;
+}
+
+.compare-table th,
+.compare-table td {
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-highlight {
+  background: var(--gr-yellow-50);
+  border: 1px solid var(--gr-yellow-200);
+  border-radius: var(--gr-radius-md);
+}
+
+.compare-best {
+  position: relative;
+}
+
+.compare-best::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--gr-yellow-400);
+  border-radius: var(--gr-radius-md);
+  pointer-events: none;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    SCROLLBAR STYLING
    ───────────────────────────────────────────────────────────────────────────── */

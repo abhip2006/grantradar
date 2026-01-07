@@ -23,6 +23,7 @@ export function Navbar() {
   const navigation = isAuthenticated
     ? [
         { name: 'Dashboard', href: '/dashboard' },
+        { name: 'Pipeline', href: '/pipeline' },
         { name: 'Saved', href: '/dashboard?filter=saved' },
       ]
     : [

@@ -10,7 +10,19 @@ import type {
   NotificationPreferences,
   Grant,
   CalendarLinks,
-  ImportPreview
+  ImportPreview,
+  CompareResponse,
+  SimilarGrantsResponse,
+  PipelineResponse,
+  PipelineItem,
+  PipelineItemCreate,
+  PipelineItemUpdate,
+  PipelineStats,
+  ApplicationStage,
+  SavedSearch,
+  SavedSearchCreate,
+  SavedSearchUpdate,
+  SavedSearchList
 } from '../types';
 
 // API base URL - connects to FastAPI backend
@@ -305,6 +317,28 @@ export const grantsApi = {
     const response = await api.get('/stats');
     return transformStats(response.data);
   },
+
+  // Compare multiple grants
+  compareGrants: async (grantIds: string[]): Promise<CompareResponse> => {
+    const response = await api.post<CompareResponse>('/grants/compare', {
+      grant_ids: grantIds,
+    });
+    return response.data;
+  },
+
+  // Get similar grants
+  getSimilarGrants: async (
+    grantId: string,
+    params: { limit?: number; min_score?: number } = {}
+  ): Promise<SimilarGrantsResponse> => {
+    const response = await api.get<SimilarGrantsResponse>(`/grants/${grantId}/similar`, {
+      params: {
+        limit: params.limit || 10,
+        min_score: params.min_score || 20,
+      },
+    });
+    return response.data;
+  },
 };
 
 // User/Profile API
@@ -377,6 +411,113 @@ export const profileImportApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
+  },
+};
+
+// Pipeline API - Application tracking through stages
+export const pipelineApi = {
+  // Get all pipeline items grouped by stage
+  getPipeline: async (): Promise<PipelineResponse> => {
+    const response = await api.get<PipelineResponse>('/pipeline');
+    return response.data;
+  },
+
+  // Get pipeline statistics
+  getStats: async (): Promise<PipelineStats> => {
+    const response = await api.get<PipelineStats>('/pipeline/stats');
+    return response.data;
+  },
+
+  // Add grant to pipeline
+  addToPipeline: async (data: PipelineItemCreate): Promise<PipelineItem> => {
+    const response = await api.post<PipelineItem>('/pipeline', data);
+    return response.data;
+  },
+
+  // Get single pipeline item
+  getItem: async (itemId: string): Promise<PipelineItem> => {
+    const response = await api.get<PipelineItem>(`/pipeline/${itemId}`);
+    return response.data;
+  },
+
+  // Update pipeline item
+  updateItem: async (itemId: string, data: PipelineItemUpdate): Promise<PipelineItem> => {
+    const response = await api.put<PipelineItem>(`/pipeline/${itemId}`, data);
+    return response.data;
+  },
+
+  // Move item to new stage
+  moveItem: async (itemId: string, stage: ApplicationStage): Promise<PipelineItem> => {
+    const response = await api.put<PipelineItem>(`/pipeline/${itemId}/move`, { stage });
+    return response.data;
+  },
+
+  // Remove from pipeline
+  removeFromPipeline: async (itemId: string): Promise<void> => {
+    await api.delete(`/pipeline/${itemId}`);
+  },
+
+  // Check if grant is in pipeline
+  getByGrantId: async (grantId: string): Promise<PipelineItem | null> => {
+    const response = await api.get<PipelineItem | null>(`/pipeline/grant/${grantId}`);
+    return response.data;
+  },
+};
+
+// Saved Searches API
+export const savedSearchesApi = {
+  // Get all saved searches
+  list: async (): Promise<SavedSearchList> => {
+    const response = await api.get<SavedSearchList>('/saved-searches');
+    return response.data;
+  },
+
+  // Get a single saved search
+  get: async (savedSearchId: string): Promise<SavedSearch> => {
+    const response = await api.get<SavedSearch>(`/saved-searches/${savedSearchId}`);
+    return response.data;
+  },
+
+  // Create a new saved search
+  create: async (data: SavedSearchCreate): Promise<SavedSearch> => {
+    const response = await api.post<SavedSearch>('/saved-searches', data);
+    return response.data;
+  },
+
+  // Update a saved search
+  update: async (savedSearchId: string, data: SavedSearchUpdate): Promise<SavedSearch> => {
+    const response = await api.put<SavedSearch>(`/saved-searches/${savedSearchId}`, data);
+    return response.data;
+  },
+
+  // Delete a saved search
+  delete: async (savedSearchId: string): Promise<void> => {
+    await api.delete(`/saved-searches/${savedSearchId}`);
+  },
+
+  // Apply saved search and get matching results
+  apply: async (
+    savedSearchId: string,
+    params: { page?: number; page_size?: number } = {}
+  ): Promise<PaginatedResponse<GrantMatch>> => {
+    const response = await api.post(`/saved-searches/${savedSearchId}/apply`, null, {
+      params: {
+        page: params.page || 1,
+        page_size: params.page_size || 20,
+      },
+    });
+
+    const data = response.data;
+    const matches = (data.matches || []).map(transformMatch);
+
+    return {
+      items: matches,
+      matches: matches,
+      total: data.total,
+      page: data.page,
+      page_size: data.page_size,
+      has_more: data.has_more,
+    };
   },
 };
 

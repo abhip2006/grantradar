@@ -157,6 +157,39 @@ export interface CalendarLinks {
   ics_download_url: string;
 }
 
+// Grant comparison types
+export interface ComparisonGrant {
+  id: string;
+  title: string;
+  agency?: string;
+  source: GrantSource;
+  amount_min?: number;
+  amount_max?: number;
+  deadline?: string;
+  url?: string;
+  categories?: string[];
+  eligibility?: Record<string, unknown>;
+  description?: string;
+  match_score?: number; // 0-1 scale
+}
+
+export interface CompareResponse {
+  grants: ComparisonGrant[];
+  comparison_id?: string;
+}
+
+// Similar grants types
+export interface SimilarGrant extends Grant {
+  similarity_score: number; // 0-100
+  similarity_reasons: string[];
+}
+
+export interface SimilarGrantsResponse {
+  similar_grants: SimilarGrant[];
+  source_grant_id: string;
+  total: number;
+}
+
 // Profile import types
 export interface ImportPreview {
   name?: string;
@@ -180,4 +213,103 @@ export interface ImportPreview {
   keywords: string[];
   orcid?: string;
   source: 'orcid' | 'cv';
+}
+
+// Pipeline types
+export type ApplicationStage = 'researching' | 'writing' | 'submitted' | 'awarded' | 'rejected';
+
+export interface PipelineGrantSummary {
+  id: string;
+  title: string;
+  agency?: string;
+  deadline?: string;
+  amount_min?: number;
+  amount_max?: number;
+  url?: string;
+}
+
+export interface PipelineItem {
+  id: string;
+  user_id: string;
+  grant_id: string;
+  match_id?: string;
+  stage: ApplicationStage;
+  notes?: string;
+  target_date?: string;
+  created_at: string;
+  updated_at: string;
+  grant: PipelineGrantSummary;
+  days_until_deadline?: number;
+  days_until_target?: number;
+}
+
+export interface PipelineStageGroup {
+  stage: ApplicationStage;
+  items: PipelineItem[];
+  count: number;
+}
+
+export interface PipelineResponse {
+  stages: PipelineStageGroup[];
+  total: number;
+}
+
+export interface PipelineStats {
+  total: number;
+  by_stage: Record<string, number>;
+  upcoming_deadlines: number;
+  past_deadlines: number;
+}
+
+export interface PipelineItemCreate {
+  grant_id: string;
+  match_id?: string;
+  stage?: ApplicationStage;
+  notes?: string;
+  target_date?: string;
+}
+
+export interface PipelineItemUpdate {
+  stage?: ApplicationStage;
+  notes?: string;
+  target_date?: string;
+}
+
+// Saved search types
+export interface SavedSearchFilters {
+  search_query?: string;
+  source?: string;
+  min_score?: number;
+  max_score?: number;
+  min_amount?: number;
+  max_amount?: number;
+  categories?: string[];
+  show_saved_only?: boolean;
+  active_only?: boolean;
+}
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  filters: SavedSearchFilters;
+  alert_enabled: boolean;
+  created_at: string;
+  last_alerted_at?: string;
+}
+
+export interface SavedSearchCreate {
+  name: string;
+  filters: SavedSearchFilters;
+  alert_enabled?: boolean;
+}
+
+export interface SavedSearchUpdate {
+  name?: string;
+  filters?: SavedSearchFilters;
+  alert_enabled?: boolean;
+}
+
+export interface SavedSearchList {
+  saved_searches: SavedSearch[];
+  total: number;
 }

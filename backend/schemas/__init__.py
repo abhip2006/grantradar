@@ -39,6 +39,13 @@ from backend.schemas.profile import (
     LabProfileUpdate,
     OnboardingData,
 )
+from backend.schemas.saved_searches import (
+    SavedSearchCreate,
+    SavedSearchFilters,
+    SavedSearchList,
+    SavedSearchResponse,
+    SavedSearchUpdate,
+)
 from backend.schemas.stats import DashboardStats
 
 __all__ = [
@@ -74,6 +81,12 @@ __all__ = [
     "LabProfileResponse",
     "LabProfileUpdate",
     "OnboardingData",
+    # Saved Searches
+    "SavedSearchCreate",
+    "SavedSearchFilters",
+    "SavedSearchList",
+    "SavedSearchResponse",
+    "SavedSearchUpdate",
     # Stats
     "DashboardStats",
 ]

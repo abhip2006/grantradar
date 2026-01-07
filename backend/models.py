@@ -2,6 +2,7 @@
 GrantRadar Database Models
 SQLAlchemy ORM models for the grant intelligence platform.
 """
+import enum
 import uuid
 from datetime import datetime
 from typing import Any, Optional
@@ -11,6 +12,7 @@ from sqlalchemy import (
     ARRAY,
     TIMESTAMP,
     Column,
+    Enum,
     Float,
     ForeignKey,
     Index,
@@ -21,6 +23,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class ApplicationStage(enum.Enum):
+    """Enum for grant application pipeline stages."""
+
+    RESEARCHING = "researching"
+    WRITING = "writing"
+    SUBMITTED = "submitted"
+    AWARDED = "awarded"
+    REJECTED = "rejected"
 
 
 class Base(DeclarativeBase):
@@ -134,6 +146,11 @@ class Grant(Base):
         back_populates="grant",
         cascade="all, delete-orphan",
     )
+    applications: Mapped[list["GrantApplication"]] = relationship(
+        "GrantApplication",
+        back_populates="grant",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_grants_posted_at_desc", posted_at.desc()),
@@ -243,6 +260,16 @@ class User(Base):
     )
     matches: Mapped[list["Match"]] = relationship(
         "Match",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    applications: Mapped[list["GrantApplication"]] = relationship(
+        "GrantApplication",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    saved_searches: Mapped[list["SavedSearch"]] = relationship(
+        "SavedSearch",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -410,6 +437,11 @@ class Match(Base):
         back_populates="match",
         cascade="all, delete-orphan",
     )
+    application: Mapped[Optional["GrantApplication"]] = relationship(
+        "GrantApplication",
+        back_populates="match",
+        uselist=False,
+    )
 
     __table_args__ = (
         Index("ix_matches_grant_id", grant_id),
@@ -480,3 +512,156 @@ class AlertSent(Base):
 
     def __repr__(self) -> str:
         return f"<AlertSent(id={self.id}, channel='{self.channel}')>"
+
+
+class GrantApplication(Base):
+    """
+    Grant application pipeline tracking.
+
+    Tracks grants through application stages from research to outcome.
+    Users can add notes, target dates, and move grants through the pipeline.
+    """
+
+    __tablename__ = "grant_applications"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the pipeline item",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the owning user",
+    )
+    grant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grants.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the grant being tracked",
+    )
+    match_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("matches.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Optional reference to the match that led to this application",
+    )
+    stage: Mapped[ApplicationStage] = mapped_column(
+        Enum(ApplicationStage),
+        nullable=False,
+        default=ApplicationStage.RESEARCHING,
+        doc="Current stage in the application pipeline",
+    )
+    notes: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="User notes about this application",
+    )
+    target_date: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="User's target submission date",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        doc="When the grant was added to pipeline",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        doc="When the pipeline item was last updated",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="applications",
+    )
+    grant: Mapped["Grant"] = relationship(
+        "Grant",
+        back_populates="applications",
+    )
+    match: Mapped[Optional["Match"]] = relationship(
+        "Match",
+        back_populates="application",
+    )
+
+    __table_args__ = (
+        Index("ix_grant_applications_user_id", user_id),
+        Index("ix_grant_applications_grant_id", grant_id),
+        Index("ix_grant_applications_stage", stage),
+        UniqueConstraint("user_id", "grant_id", name="uq_grant_applications_user_grant"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<GrantApplication(id={self.id}, stage='{self.stage.value}')>"
+
+
+class SavedSearch(Base):
+    """
+    Saved search filters for quick access and email alerts.
+
+    Users can save search/filter combinations with a name,
+    and optionally enable email alerts for new matching grants.
+    """
+
+    __tablename__ = "saved_searches"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the saved search",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the owning user",
+    )
+    name: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="User-defined name for this saved search",
+    )
+    filters: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        doc="Search filters as JSON (source, categories, amount range, etc.)",
+    )
+    alert_enabled: Mapped[bool] = mapped_column(
+        default=False,
+        doc="Enable email alerts for new grants matching this search",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=datetime.utcnow,
+        doc="When the saved search was created",
+    )
+    last_alerted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the last alert was sent for this search",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="saved_searches",
+    )
+
+    __table_args__ = (
+        Index("ix_saved_searches_user_id", user_id),
+        Index("ix_saved_searches_alert_enabled", alert_enabled),
+    )
+
+    def __repr__(self) -> str:
+        return f"<SavedSearch(id={self.id}, name='{self.name}')>"

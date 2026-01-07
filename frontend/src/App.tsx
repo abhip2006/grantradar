@@ -10,6 +10,8 @@ import { Landing } from './pages/Landing';
 import { Auth } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { GrantDetail } from './pages/GrantDetail';
+import { Compare } from './pages/Compare';
+import { Pipeline } from './pages/Pipeline';
 import { Settings } from './pages/Settings';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { Terms } from './pages/Terms';
@@ -75,6 +77,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/compare"
+                  element={
+                    <ProtectedRoute>
+                      <Compare />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/pipeline"
+                  element={
+                    <ProtectedRoute>
+                      <Pipeline />
                     </ProtectedRoute>
                   }
                 />

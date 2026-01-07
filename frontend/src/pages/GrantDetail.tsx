@@ -11,14 +11,15 @@ import {
   CheckCircleIcon,
   ClipboardDocumentListIcon,
   ArrowTopRightOnSquareIcon,
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
-import { grantsApi } from '../services/api';
+import { BookmarkIcon as BookmarkSolidIcon, RocketLaunchIcon as RocketLaunchSolidIcon } from '@heroicons/react/24/solid';
+import { grantsApi, pipelineApi } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { MatchScore } from '../components/MatchScore';
-import { GrantCard } from '../components/GrantCard';
 import { CalendarSync } from '../components/CalendarSync';
-import type { GrantMatch } from '../types';
+import { SimilarGrants } from '../components/SimilarGrants';
+import { StageBadge } from '../components/PipelineCard';
 
 export function GrantDetail() {
   const { id } = useParams<{ id: string }>();
@@ -33,8 +34,31 @@ export function GrantDetail() {
     enabled: !!id,
   });
 
-  // Similar grants - feature not implemented yet
-  const similarGrants = null as GrantMatch[] | null;
+  // Check if grant is in pipeline
+  const { data: pipelineItem, refetch: refetchPipeline } = useQuery({
+    queryKey: ['pipeline-item', match?.grant_id],
+    queryFn: () => pipelineApi.getByGrantId(match!.grant_id),
+    enabled: !!match?.grant_id,
+  });
+
+  // Add to pipeline mutation
+  const addToPipelineMutation = useMutation({
+    mutationFn: () =>
+      pipelineApi.addToPipeline({
+        grant_id: match!.grant_id,
+        match_id: match!.id,
+        stage: 'researching',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pipeline'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-item', match?.grant_id] });
+      refetchPipeline();
+      showToast('Added to pipeline', 'success');
+    },
+    onError: () => {
+      showToast('Failed to add to pipeline', 'error');
+    },
+  });
 
   // Update status mutation
   const updateStatusMutation = useMutation({
@@ -335,6 +359,24 @@ export function GrantDetail() {
                 </button>
               )}
 
+              {/* Pipeline tracking button */}
+              {pipelineItem ? (
+                <div className="flex items-center gap-2">
+                  <RocketLaunchSolidIcon className="h-5 w-5 text-[var(--gr-cyan-400)]" />
+                  <span className="text-sm text-[var(--gr-text-secondary)]">Tracking:</span>
+                  <StageBadge stage={pipelineItem.stage} />
+                </div>
+              ) : (
+                <button
+                  onClick={() => addToPipelineMutation.mutate()}
+                  disabled={addToPipelineMutation.isPending}
+                  className="btn-secondary"
+                >
+                  <RocketLaunchIcon className="h-5 w-5" />
+                  Track Application
+                </button>
+              )}
+
               {grant.url && (
                 <a
                   href={grant.url}
@@ -352,18 +394,7 @@ export function GrantDetail() {
         </div>
 
         {/* Similar grants */}
-        {similarGrants && similarGrants.length > 0 && (
-          <div className="mt-12 animate-fade-in-up stagger-2">
-            <h2 className="text-xl font-display font-medium text-[var(--gr-text-primary)] mb-6">
-              Similar Grants
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {similarGrants.slice(0, 4).map((similarMatch, index) => (
-                <GrantCard key={similarMatch.id} match={similarMatch} delay={index} />
-              ))}
-            </div>
-          </div>
-        )}
+        {grant.id && <SimilarGrants grantId={grant.id} limit={6} />}
       </div>
     </div>
   );

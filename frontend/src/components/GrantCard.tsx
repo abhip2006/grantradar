@@ -1,12 +1,14 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   CalendarIcon,
   CurrencyDollarIcon,
   BuildingLibraryIcon,
   BookmarkIcon,
   XMarkIcon,
+  SparklesIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import { BookmarkIcon as BookmarkSolidIcon, CheckIcon } from '@heroicons/react/24/solid';
 import { MatchScoreBadge } from './MatchScore';
 import type { GrantMatch } from '../types';
 
@@ -14,12 +16,28 @@ interface GrantCardProps {
   match: GrantMatch;
   onSave?: (matchId: string) => void;
   onDismiss?: (matchId: string) => void;
+  onFindSimilar?: (grantId: string) => void;
+  onToggleCompare?: (grantId: string) => void;
+  showFindSimilar?: boolean;
+  isSelectedForCompare?: boolean;
+  compareDisabled?: boolean;
   delay?: number;
 }
 
-export function GrantCard({ match, onSave, onDismiss, delay = 0 }: GrantCardProps) {
+export function GrantCard({
+  match,
+  onSave,
+  onDismiss,
+  onFindSimilar,
+  onToggleCompare,
+  showFindSimilar = false,
+  isSelectedForCompare = false,
+  compareDisabled = false,
+  delay = 0
+}: GrantCardProps) {
   const { grant, score, status } = match;
   const isSaved = status === 'saved';
+  const navigate = useNavigate();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -66,9 +84,45 @@ export function GrantCard({ match, onSave, onDismiss, delay = 0 }: GrantCardProp
 
   return (
     <div
-      className={`grant-card ${isSaved ? 'grant-card-saved' : ''} animate-fade-in-up`}
+      className={`grant-card ${isSaved ? 'grant-card-saved' : ''} ${isSelectedForCompare ? 'grant-card-compare' : ''} animate-fade-in-up`}
       style={{ animationDelay: `${delay * 0.05}s` }}
     >
+      {/* Compare checkbox */}
+      {onToggleCompare && (
+        <div className="absolute top-3 right-3 z-10">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!compareDisabled || isSelectedForCompare) {
+                onToggleCompare(grant.id);
+              }
+            }}
+            disabled={compareDisabled && !isSelectedForCompare}
+            className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+              isSelectedForCompare
+                ? 'bg-[var(--gr-blue-600)] text-white'
+                : compareDisabled
+                ? 'bg-[var(--gr-gray-100)] text-[var(--gr-text-muted)] cursor-not-allowed'
+                : 'bg-[var(--gr-bg-card)] border border-[var(--gr-border-default)] text-[var(--gr-text-tertiary)] hover:border-[var(--gr-blue-400)] hover:text-[var(--gr-blue-600)]'
+            }`}
+            title={
+              isSelectedForCompare
+                ? 'Remove from comparison'
+                : compareDisabled
+                ? 'Maximum 4 grants can be compared'
+                : 'Add to comparison'
+            }
+          >
+            {isSelectedForCompare ? (
+              <CheckIcon className="w-4 h-4" />
+            ) : (
+              <ScaleIcon className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )}
+
       <Link to={`/grants/${match.id}`} className="block">
         {/* Header with score */}
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -79,7 +133,7 @@ export function GrantCard({ match, onSave, onDismiss, delay = 0 }: GrantCardProp
               </span>
               <MatchScoreBadge score={score} />
             </div>
-            <h3 className="text-lg font-display font-medium text-[var(--gr-text-primary)] group-hover:text-[var(--gr-blue-600)] transition-colors line-clamp-2">
+            <h3 className="text-lg font-display font-medium text-[var(--gr-text-primary)] group-hover:text-[var(--gr-blue-600)] transition-colors line-clamp-2 pr-8">
               {grant.title}
             </h3>
           </div>
@@ -147,8 +201,25 @@ export function GrantCard({ match, onSave, onDismiss, delay = 0 }: GrantCardProp
       </Link>
 
       {/* Actions */}
-      {(onSave || onDismiss) && (
+      {(onSave || onDismiss || showFindSimilar) && (
         <div className="flex items-center justify-end gap-2 mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
+          {showFindSimilar && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                if (onFindSimilar) {
+                  onFindSimilar(grant.id);
+                } else {
+                  // Navigate to grant detail page which shows similar grants
+                  navigate(`/grants/${match.id}#similar`);
+                }
+              }}
+              className="btn-ghost text-[var(--gr-text-tertiary)] hover:text-[var(--gr-amber-400)]"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              <span>Find Similar</span>
+            </button>
+          )}
           {onDismiss && status !== 'dismissed' && (
             <button
               onClick={(e) => {

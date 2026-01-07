@@ -18,7 +18,9 @@ import { useToast } from '../contexts/ToastContext';
 import { Navbar } from '../components/Navbar';
 import { GrantCard } from '../components/GrantCard';
 import { WelcomeModal } from '../components/WelcomeModal';
-import type { GrantMatch, GrantSource, DashboardStats } from '../types';
+import { SavedSearches } from '../components/SavedSearches';
+import { CompareBar } from '../components/CompareBar';
+import type { GrantMatch, GrantSource, DashboardStats, SavedSearchFilters } from '../types';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    GRANTRADAR DASHBOARD
@@ -244,6 +246,32 @@ export function Dashboard() {
   const [selectedSource, setSelectedSource] = useState<GrantSource | 'all'>('all');
   const [showSavedOnly, setShowSavedOnly] = useState(searchParams.get('filter') === 'saved');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [minScore, setMinScore] = useState<number | undefined>(undefined);
+  const [compareSelection, setCompareSelection] = useState<Array<{ id: string; title: string }>>([]);
+
+  // Build current filters object for saved searches
+  const currentFilters: SavedSearchFilters = {
+    source: selectedSource !== 'all' ? selectedSource : undefined,
+    show_saved_only: showSavedOnly || undefined,
+    min_score: minScore,
+    search_query: searchQuery || undefined,
+  };
+
+  // Handler to apply a saved search's filters
+  const handleApplySavedSearch = useCallback((filters: SavedSearchFilters) => {
+    if (filters.source) {
+      setSelectedSource(filters.source as GrantSource | 'all');
+    } else {
+      setSelectedSource('all');
+    }
+    setShowSavedOnly(filters.show_saved_only || false);
+    setMinScore(filters.min_score);
+    if (filters.search_query) {
+      setSearchQuery(filters.search_query);
+    } else {
+      setSearchQuery('');
+    }
+  }, []);
 
   // Check if first-time user and show welcome modal
   useEffect(() => {
@@ -283,13 +311,14 @@ export function Dashboard() {
     isFetchingNextPage,
     isLoading: grantsLoading,
   } = useInfiniteQuery({
-    queryKey: ['grants', selectedSource, showSavedOnly],
+    queryKey: ['grants', selectedSource, showSavedOnly, minScore],
     queryFn: ({ pageParam = 1 }) =>
       grantsApi.getMatches({
         page: pageParam,
         per_page: 12,
         source: selectedSource === 'all' ? undefined : selectedSource,
         status: showSavedOnly ? 'saved' : undefined,
+        min_score: minScore,
       }),
     getNextPageParam: (lastPage) =>
       lastPage.has_more ? lastPage.page + 1 : undefined,
@@ -352,6 +381,36 @@ export function Dashboard() {
     },
     [updateStatusMutation]
   );
+
+  // Comparison handlers
+  const handleToggleCompare = useCallback(
+    (grantId: string) => {
+      setCompareSelection((prev) => {
+        const existing = prev.find((g) => g.id === grantId);
+        if (existing) {
+          return prev.filter((g) => g.id !== grantId);
+        }
+        if (prev.length >= 4) {
+          showToast('You can compare up to 4 grants at a time', 'warning');
+          return prev;
+        }
+        const match = matches.find((m) => m.grant.id === grantId);
+        if (match) {
+          return [...prev, { id: grantId, title: match.grant.title }];
+        }
+        return prev;
+      });
+    },
+    [matches, showToast]
+  );
+
+  const handleRemoveFromCompare = useCallback((grantId: string) => {
+    setCompareSelection((prev) => prev.filter((g) => g.id !== grantId));
+  }, []);
+
+  const handleClearCompare = useCallback(() => {
+    setCompareSelection([]);
+  }, []);
 
   // WebSocket subscription for real-time updates
   useEffect(() => {
@@ -437,6 +496,7 @@ export function Dashboard() {
 
             {/* Source Tabs */}
             <TabGroup
+              selectedIndex={sourceFilters.findIndex(f => f.value === selectedSource)}
               onChange={(index) => setSelectedSource(sourceFilters[index].value)}
             >
               <TabList className="flex p-1 bg-[var(--gr-bg-card)] rounded-xl border border-[var(--gr-border-subtle)]">
@@ -476,8 +536,8 @@ export function Dashboard() {
           </div>
 
           {/* Active Filters Indicator */}
-          {(selectedSource !== 'all' || showSavedOnly || searchQuery) && (
-            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
+          {(selectedSource !== 'all' || showSavedOnly || searchQuery || minScore) && (
+            <div className="flex items-center flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
               <FunnelIcon className="w-4 h-4 text-[var(--gr-text-tertiary)]" />
               <span className="text-sm text-[var(--gr-text-tertiary)]">Active filters:</span>
               {selectedSource !== 'all' && (
@@ -486,52 +546,91 @@ export function Dashboard() {
               {showSavedOnly && (
                 <span className="badge badge-emerald">Saved Only</span>
               )}
+              {minScore && (
+                <span className="badge badge-cyan">{minScore}%+ score</span>
+              )}
               {searchQuery && (
                 <span className="badge badge-slate">"{searchQuery}"</span>
               )}
+              <button
+                onClick={() => {
+                  setSelectedSource('all');
+                  setShowSavedOnly(false);
+                  setMinScore(undefined);
+                  setSearchQuery('');
+                }}
+                className="text-xs text-[var(--gr-text-tertiary)] hover:text-[var(--gr-danger)] ml-2"
+              >
+                Clear all
+              </button>
             </div>
           )}
         </div>
 
-        {/* Grants Grid */}
-        {grantsLoading ? (
-          <LoadingGrid />
-        ) : filteredMatches.length === 0 ? (
-          <EmptyState showSavedOnly={showSavedOnly} searchQuery={searchQuery} />
-        ) : (
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredMatches.map((match, index) => (
-                <GrantCard
-                  key={match.id}
-                  match={match}
-                  onSave={handleSave}
-                  onDismiss={handleDismiss}
-                  delay={index}
-                />
-              ))}
-            </div>
-
-            {/* Loading More Indicator */}
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-12">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" />
-                  <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.2s' }} />
-                  <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.4s' }} />
+        {/* Main Content with Saved Searches Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Grants Grid - Main Content */}
+          <div className="lg:col-span-3">
+            {grantsLoading ? (
+              <LoadingGrid />
+            ) : filteredMatches.length === 0 ? (
+              <EmptyState showSavedOnly={showSavedOnly} searchQuery={searchQuery} />
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredMatches.map((match, index) => (
+                    <GrantCard
+                      key={match.id}
+                      match={match}
+                      onSave={handleSave}
+                      onDismiss={handleDismiss}
+                      onToggleCompare={handleToggleCompare}
+                      isSelectedForCompare={compareSelection.some((g) => g.id === match.grant.id)}
+                      compareDisabled={compareSelection.length >= 4}
+                      delay={index}
+                    />
+                  ))}
                 </div>
-              </div>
-            )}
 
-            {/* End of List */}
-            {!hasNextPage && filteredMatches.length > 0 && (
-              <div className="text-center py-12 text-[var(--gr-text-tertiary)]">
-                You've seen all {filteredMatches.length} matching grants
-              </div>
+                {/* Loading More Indicator */}
+                {isFetchingNextPage && (
+                  <div className="flex justify-center py-12">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.2s' }} />
+                      <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.4s' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* End of List */}
+                {!hasNextPage && filteredMatches.length > 0 && (
+                  <div className="text-center py-12 text-[var(--gr-text-tertiary)]">
+                    You've seen all {filteredMatches.length} matching grants
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
+          </div>
+
+          {/* Saved Searches Sidebar */}
+          <div className="lg:col-span-1 order-first lg:order-last">
+            <div className="card p-4 sticky top-24">
+              <SavedSearches
+                currentFilters={currentFilters}
+                onApplySearch={handleApplySavedSearch}
+              />
+            </div>
+          </div>
+        </div>
       </main>
+
+      {/* Floating Compare Bar */}
+      <CompareBar
+        selectedGrants={compareSelection}
+        onRemove={handleRemoveFromCompare}
+        onClear={handleClearCompare}
+      />
     </div>
   );
 }
