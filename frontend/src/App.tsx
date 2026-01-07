@@ -1,0 +1,106 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { Layout, AuthLayout } from './components/Layout';
+import { ProtectedRoute } from './components/ProtectedRoute';
+
+// Pages
+import { Landing } from './pages/Landing';
+import { Auth } from './pages/Auth';
+import { Dashboard } from './pages/Dashboard';
+import { GrantDetail } from './pages/GrantDetail';
+import { Settings } from './pages/Settings';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { Terms } from './pages/Terms';
+import { Contact } from './pages/Contact';
+import { About } from './pages/About';
+import { FAQ } from './pages/FAQ';
+import { Pricing } from './pages/Pricing';
+
+// Create React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route element={<Layout />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/pricing" element={<Pricing />} />
+              </Route>
+
+              {/* Auth routes (no navbar) */}
+              <Route element={<AuthLayout />}>
+                <Route path="/auth" element={<Auth />} />
+              </Route>
+
+              {/* Protected routes */}
+              <Route element={<Layout />}>
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/grants/:id"
+                  element={
+                    <ProtectedRoute>
+                      <GrantDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
+
+              {/* 404 fallback */}
+              <Route
+                path="*"
+                element={
+                  <div className="min-h-screen flex items-center justify-center bg-[var(--gr-bg-primary)]">
+                    <div className="text-center">
+                      <h1 className="text-6xl font-display font-bold text-[var(--gr-amber-400)] mb-4">404</h1>
+                      <p className="text-[var(--gr-text-secondary)] mb-6">Page not found</p>
+                      <a href="/" className="btn-primary">
+                        Go Home
+                      </a>
+                    </div>
+                  </div>
+                }
+              />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ToastProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
