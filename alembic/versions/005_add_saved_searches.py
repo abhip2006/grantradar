@@ -1,7 +1,7 @@
 """Add saved_searches table
 
-Revision ID: 004
-Revises: 003
+Revision ID: 005
+Revises: 004
 Create Date: 2025-01-07
 
 Creates the saved_searches table for storing user's saved search filters
@@ -14,8 +14,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # Revision identifiers
-revision: str = "004"
-down_revision: Union[str, None] = "003"
+revision: str = "005"
+down_revision: Union[str, None] = "004"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
