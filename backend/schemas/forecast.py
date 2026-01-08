@@ -31,6 +31,12 @@ class ForecastGrant(BaseModel):
         None, ge=0, le=1, description="Match score with user profile"
     )
     reasoning: Optional[str] = Field(None, description="Why this grant is recommended")
+    fiscal_quarter: Optional[int] = Field(
+        None, ge=1, le=4, description="Federal fiscal quarter (1-4)"
+    )
+    is_federal_funder: bool = Field(
+        default=False, description="Whether this is a federal funding agency"
+    )
 
     class Config:
         from_attributes = True
@@ -96,3 +102,121 @@ class RecommendationsResponse(BaseModel):
     total: int = Field(..., description="Total recommendations")
     profile_complete: bool = Field(..., description="Whether user profile is complete")
     generated_at: datetime = Field(..., description="When recommendations were generated")
+
+
+# =============================================================================
+# Deadline History Schemas
+# =============================================================================
+
+
+class DeadlineHistoryRecord(BaseModel):
+    """Schema for a historical deadline record."""
+
+    id: UUID = Field(..., description="Record ID")
+    grant_id: Optional[UUID] = Field(None, description="Associated grant ID")
+    funder_name: str = Field(..., description="Funding agency name")
+    grant_title: Optional[str] = Field(None, description="Grant title")
+    deadline_date: datetime = Field(..., description="Historical deadline date")
+    open_date: Optional[datetime] = Field(None, description="Grant open date")
+    fiscal_year: Optional[int] = Field(None, description="Federal fiscal year")
+    amount_min: Optional[int] = Field(None, description="Minimum funding amount")
+    amount_max: Optional[int] = Field(None, description="Maximum funding amount")
+    categories: list[str] = Field(default_factory=list, description="Grant categories")
+    source: Optional[str] = Field(None, description="Data source")
+    created_at: datetime = Field(..., description="When record was created")
+
+    class Config:
+        from_attributes = True
+
+
+class DeadlineHistoryStatsResponse(BaseModel):
+    """Response schema for deadline history statistics."""
+
+    total_records: int = Field(..., description="Total historical records")
+    unique_funders: int = Field(..., description="Number of unique funders")
+    earliest_deadline: Optional[datetime] = Field(None, description="Earliest deadline date")
+    latest_deadline: Optional[datetime] = Field(None, description="Latest deadline date")
+    top_funders: list[dict] = Field(
+        default_factory=list, description="Top funders by record count"
+    )
+    generated_at: datetime = Field(..., description="When stats were generated")
+
+
+class DeadlineHistoryResponse(BaseModel):
+    """Response schema for deadline history list."""
+
+    records: list[DeadlineHistoryRecord] = Field(..., description="Historical records")
+    total: int = Field(..., description="Total matching records")
+    funder_name: Optional[str] = Field(None, description="Funder filter applied")
+
+
+class FunderPrediction(BaseModel):
+    """Schema for funder-specific deadline prediction."""
+
+    funder_name: str = Field(..., description="Funding agency name")
+    predicted_deadline: date = Field(..., description="Predicted next deadline")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence score")
+    typical_day_of_month: Optional[int] = Field(
+        None, ge=1, le=31, description="Typical day of month for deadlines"
+    )
+    typical_months: list[int] = Field(
+        default_factory=list, description="Months when deadlines typically occur"
+    )
+    based_on_records: int = Field(..., description="Number of records used for prediction")
+    avg_cycle_days: Optional[float] = Field(None, description="Average days between deadlines")
+    last_known_deadline: Optional[datetime] = Field(None, description="Most recent known deadline")
+    grant_titles: list[str] = Field(
+        default_factory=list, description="Sample grant titles"
+    )
+
+
+class FunderPredictionResponse(BaseModel):
+    """Response schema for funder prediction."""
+
+    prediction: FunderPrediction = Field(..., description="Prediction details")
+    generated_at: datetime = Field(..., description="When prediction was generated")
+
+
+# =============================================================================
+# ML Forecast Schemas
+# =============================================================================
+
+
+class MLPrediction(BaseModel):
+    """Schema for ML-based deadline prediction."""
+
+    funder_name: str = Field(..., description="Funding agency name")
+    predicted_date: date = Field(..., description="ML-predicted deadline date")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence score")
+    method: str = Field(..., description="Prediction method: 'ml' or 'rule_based'")
+    uncertainty_days: int = Field(..., ge=0, description="Uncertainty in days (+/-)")
+    lower_bound: Optional[date] = Field(None, description="Lower bound of prediction range")
+    upper_bound: Optional[date] = Field(None, description="Upper bound of prediction range")
+
+
+class MLPredictionResponse(BaseModel):
+    """Response schema for ML prediction."""
+
+    prediction: MLPrediction = Field(..., description="ML prediction details")
+    model_trained: bool = Field(..., description="Whether an ML model was used")
+    data_points: Optional[int] = Field(None, description="Training data points used")
+    generated_at: datetime = Field(..., description="When prediction was generated")
+
+
+class FiscalCalendarInfo(BaseModel):
+    """Schema for fiscal calendar information."""
+
+    current_fiscal_year: int = Field(..., description="Current federal fiscal year")
+    current_fiscal_quarter: int = Field(..., ge=1, le=4, description="Current fiscal quarter")
+    quarter_end_date: date = Field(..., description="Current quarter end date")
+    days_until_quarter_end: int = Field(..., description="Days until quarter ends")
+    is_year_end_period: bool = Field(..., description="Whether in fiscal year-end period")
+    is_year_start_period: bool = Field(..., description="Whether in fiscal year-start period")
+
+
+class FiscalCalendarResponse(BaseModel):
+    """Response schema for fiscal calendar info."""
+
+    fiscal_info: FiscalCalendarInfo = Field(..., description="Fiscal calendar details")
+    for_date: date = Field(..., description="Date this info applies to")
+    generated_at: datetime = Field(..., description="When info was generated")

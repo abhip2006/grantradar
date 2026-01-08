@@ -13,6 +13,10 @@ from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import Grant, LabProfile, User
+from backend.utils.fiscal_calendar import (
+    FiscalCalendar,
+    is_federal_funder,
+)
 
 
 MONTH_NAMES = [
@@ -34,6 +38,11 @@ class FunderPattern:
     last_deadline: Optional[date]
     source: Optional[str]
     sample_title: Optional[str]
+    historical_dates: list[date] = None  # Actual historical deadline dates
+
+    def __post_init__(self):
+        if self.historical_dates is None:
+            self.historical_dates = []
 
 
 @dataclass
@@ -52,6 +61,8 @@ class ForecastResult:
     last_seen_date: Optional[date]
     source: Optional[str]
     grant_id: Optional[UUID] = None
+    fiscal_quarter: Optional[int] = None  # Federal fiscal quarter (1-4)
+    is_federal_funder: bool = False  # Whether this is a federal funding agency
 
 
 @dataclass
@@ -114,45 +125,125 @@ def calculate_confidence(grant_count: int, years_span: int, consistency: float) 
     return round(min(confidence, 1.0), 2)
 
 
+def calculate_typical_day(
+    historical_dates: list[date],
+    target_month: int,
+) -> tuple[int, float]:
+    """
+    Calculate the typical day-of-month for deadlines based on historical data.
+
+    Args:
+        historical_dates: List of actual historical deadline dates
+        target_month: The month we're predicting for
+
+    Returns:
+        Tuple of (predicted_day, day_confidence)
+        - predicted_day: The most likely day of month (1-28/30/31)
+        - day_confidence: How consistent the day is (0-1)
+    """
+    if not historical_dates:
+        return 1, 0.0
+
+    # Get days from dates in the target month (if available)
+    month_days = [d.day for d in historical_dates if d.month == target_month]
+
+    # If no dates in target month, use all dates
+    if not month_days:
+        month_days = [d.day for d in historical_dates]
+
+    if not month_days:
+        return 1, 0.0
+
+    # Calculate mean and standard deviation
+    avg_day = sum(month_days) / len(month_days)
+
+    if len(month_days) == 1:
+        # Single data point - medium confidence
+        return round(avg_day), 0.5
+
+    # Calculate variance
+    variance = sum((d - avg_day) ** 2 for d in month_days) / len(month_days)
+    std_dev = variance ** 0.5
+
+    # Confidence based on consistency:
+    # std_dev of 0 = perfect consistency = 1.0 confidence
+    # std_dev of 15 (half month) = low consistency = ~0.0 confidence
+    day_confidence = max(0.0, 1.0 - (std_dev / 15.0))
+
+    # Round to nearest day, clamping to valid range
+    predicted_day = max(1, min(28, round(avg_day)))  # Use 28 as safe max
+
+    return predicted_day, round(day_confidence, 2)
+
+
 def predict_next_opening(
     typical_months: list[int],
+    historical_dates: list[date],
     last_deadline: Optional[date],
     lookahead_months: int = 6,
-) -> tuple[date, int]:
+) -> tuple[date, int, float]:
     """
     Predict when a grant will next open based on historical patterns.
 
+    Args:
+        typical_months: List of months when this funder typically has deadlines
+        historical_dates: Actual historical deadline dates for day-level accuracy
+        last_deadline: The most recent deadline date
+        lookahead_months: How many months ahead to look
+
     Returns:
-        Tuple of (predicted_date, deadline_month)
+        Tuple of (predicted_date, deadline_month, day_confidence)
+        - predicted_date: The predicted opening date with day-level accuracy
+        - deadline_month: The month of the predicted deadline
+        - day_confidence: Confidence in the day prediction (0-1)
     """
     today = date.today()
-    target_date = today + timedelta(days=lookahead_months * 30)
 
     if not typical_months:
         # No pattern - predict based on last deadline
         if last_deadline:
-            # Assume annual recurrence
-            next_date = date(today.year + 1, last_deadline.month, 1)
+            # Assume annual recurrence, use the actual day from last deadline
+            next_year = today.year + 1 if date(today.year, last_deadline.month, last_deadline.day) <= today else today.year
+            # Handle edge case for Feb 29
+            day = min(last_deadline.day, calendar.monthrange(next_year, last_deadline.month)[1])
+            next_date = date(next_year, last_deadline.month, day)
             if next_date <= today:
-                next_date = date(today.year + 2, last_deadline.month, 1)
-            return next_date, last_deadline.month
-        # Default to 3 months from now
+                next_year += 1
+                day = min(last_deadline.day, calendar.monthrange(next_year, last_deadline.month)[1])
+                next_date = date(next_year, last_deadline.month, day)
+            return next_date, last_deadline.month, 0.5  # Medium confidence for single-point prediction
+        # Default to 3 months from now, 1st of month
         future = today + timedelta(days=90)
-        return future, future.month
+        return date(future.year, future.month, 1), future.month, 0.0
 
     # Find the next month in the pattern
     for month_offset in range(lookahead_months + 12):
         check_month = ((today.month - 1 + month_offset) % 12) + 1
         check_year = today.year + ((today.month - 1 + month_offset) // 12)
-        check_date = date(check_year, check_month, 1)
 
-        if check_date > today and check_month in typical_months:
-            return check_date, check_month
+        if check_month in typical_months:
+            # Calculate the predicted day for this month
+            predicted_day, day_confidence = calculate_typical_day(historical_dates, check_month)
+
+            # Ensure the day is valid for this month
+            max_day = calendar.monthrange(check_year, check_month)[1]
+            predicted_day = min(predicted_day, max_day)
+
+            check_date = date(check_year, check_month, predicted_day)
+
+            if check_date > today:
+                return check_date, check_month, day_confidence
 
     # Fallback: use the most common month next year
     most_common_month = max(set(typical_months), key=typical_months.count)
     year = today.year if today.month < most_common_month else today.year + 1
-    return date(year, most_common_month, 1), most_common_month
+
+    # Still calculate day-level prediction for fallback
+    predicted_day, day_confidence = calculate_typical_day(historical_dates, most_common_month)
+    max_day = calendar.monthrange(year, most_common_month)[1]
+    predicted_day = min(predicted_day, max_day)
+
+    return date(year, most_common_month, predicted_day), most_common_month, day_confidence
 
 
 async def analyze_funder_patterns(
@@ -171,16 +262,17 @@ async def analyze_funder_patterns(
     cutoff_date = datetime.now() - timedelta(days=years_lookback * 365)
 
     # Query grants grouped by agency
+    # Note: We skip categories aggregation due to PostgreSQL array issues with nulls
     query = (
         select(
             Grant.agency,
             Grant.source,
             func.count(Grant.id).label("grant_count"),
             func.array_agg(extract("month", Grant.deadline)).label("deadline_months"),
+            func.array_agg(Grant.deadline).label("deadline_dates"),  # Collect actual dates
             func.avg(Grant.amount_min).label("avg_min"),
             func.avg(Grant.amount_max).label("avg_max"),
             func.max(Grant.deadline).label("last_deadline"),
-            func.array_agg(Grant.categories).label("all_categories"),
             func.max(Grant.title).label("sample_title"),
         )
         .where(
@@ -202,17 +294,18 @@ async def analyze_funder_patterns(
         # Extract months (filter out None values)
         months = [int(m) for m in (row.deadline_months or []) if m is not None]
 
-        # Flatten and count categories
-        all_cats = []
-        for cat_list in (row.all_categories or []):
-            if cat_list:
-                all_cats.extend(cat_list)
+        # Extract actual deadline dates (filter out None values and convert to date)
+        historical_dates = []
+        for d in (row.deadline_dates or []):
+            if d is not None:
+                if isinstance(d, datetime):
+                    historical_dates.append(d.date())
+                elif isinstance(d, date):
+                    historical_dates.append(d)
 
-        # Get top categories
-        cat_counts = defaultdict(int)
-        for cat in all_cats:
-            cat_counts[cat] += 1
-        top_cats = sorted(cat_counts.keys(), key=lambda x: cat_counts[x], reverse=True)[:5]
+        # Categories are not aggregated due to PostgreSQL array handling issues with nulls
+        # TODO: Could fetch categories separately if needed
+        top_cats: list[str] = []
 
         patterns.append(
             FunderPattern(
@@ -225,6 +318,7 @@ async def analyze_funder_patterns(
                 last_deadline=row.last_deadline.date() if row.last_deadline else None,
                 source=row.source,
                 sample_title=row.sample_title,
+                historical_dates=historical_dates,
             )
         )
 
@@ -253,23 +347,42 @@ async def get_upcoming_forecasts(
     target_date = today + timedelta(days=lookahead_months * 30)
 
     for pattern in patterns:
-        predicted_date, deadline_month = predict_next_opening(
+        predicted_date, deadline_month, day_confidence = predict_next_opening(
             pattern.typical_months,
+            pattern.historical_dates,
             pattern.last_deadline,
             lookahead_months,
         )
+
+        # Check if this is a federal funder for fiscal calendar awareness
+        funder_is_federal = is_federal_funder(pattern.funder_name)
+
+        # Apply fiscal calendar adjustment for federal funders
+        if funder_is_federal and pattern.historical_dates:
+            predicted_date = FiscalCalendar.adjust_prediction_for_fiscal_patterns(
+                predicted_date=predicted_date,
+                funder_name=pattern.funder_name,
+                historical_dates=pattern.historical_dates,
+            )
+            # Update deadline_month if the date was adjusted
+            deadline_month = predicted_date.month
 
         # Only include if within lookahead window
         if predicted_date > target_date:
             continue
 
-        # Calculate confidence
+        # Calculate confidence (incorporate day_confidence into overall confidence)
         unique_months = set(pattern.typical_months)
         consistency = len(unique_months) / max(len(pattern.typical_months), 1)
         years_span = 3  # From our lookback
-        confidence = calculate_confidence(pattern.grant_count, years_span, 1 - consistency)
+        base_confidence = calculate_confidence(pattern.grant_count, years_span, 1 - consistency)
+        # Blend base confidence with day confidence (day confidence is a bonus factor)
+        confidence = round(base_confidence * 0.8 + day_confidence * 0.2, 2)
 
         recurrence = calculate_recurrence_pattern(pattern.typical_months)
+
+        # Get fiscal quarter for the predicted date
+        fiscal_quarter = FiscalCalendar.get_fiscal_quarter(predicted_date)
 
         forecasts.append(
             ForecastResult(
@@ -284,6 +397,8 @@ async def get_upcoming_forecasts(
                 recurrence_pattern=recurrence,
                 last_seen_date=pattern.last_deadline,
                 source=pattern.source,
+                fiscal_quarter=fiscal_quarter,
+                is_federal_funder=funder_is_federal,
             )
         )
 
