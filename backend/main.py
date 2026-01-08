@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import alerts, analytics, auth, calendar, chat, compare, contact, deadlines, eligibility, forecast, funder_insights, grants, integrations, kanban, matches, pipeline, preferences, profile, reminders, research, saved_searches, similar, stats, templates
+from backend.api import alerts, analytics, auth, calendar, chat, checklists, compare, compliance, components, contact, deadlines, eligibility, filters, forecast, funder_insights, grants, insights, integrations, kanban, matches, pipeline, preferences, profile, reminders, research, reviews, saved_searches, similar, stats, team, templates, workflow_analytics
 from backend.core.config import settings
 from backend.database import check_db_connection, close_db, init_db
 
@@ -264,13 +264,18 @@ app.include_router(analytics.router)
 app.include_router(auth.router)
 app.include_router(calendar.router)
 app.include_router(chat.router)
+app.include_router(checklists.router)
 app.include_router(compare.router)
+app.include_router(compliance.router)
+app.include_router(components.router)
 app.include_router(contact.router)
 app.include_router(deadlines.router)
 app.include_router(eligibility.router)
+app.include_router(filters.router)
 app.include_router(forecast.router)
 app.include_router(funder_insights.router)
 app.include_router(grants.router)
+app.include_router(insights.router)
 app.include_router(integrations.router)
 app.include_router(kanban.router)
 app.include_router(matches.router)
@@ -279,10 +284,13 @@ app.include_router(preferences.router)
 app.include_router(profile.router)
 app.include_router(reminders.router)
 app.include_router(research.router)
+app.include_router(reviews.router)
 app.include_router(saved_searches.router)
 app.include_router(similar.router)
 app.include_router(stats.router)
+app.include_router(team.router)
 app.include_router(templates.router)
+app.include_router(workflow_analytics.router)
 
 
 # =============================================================================
