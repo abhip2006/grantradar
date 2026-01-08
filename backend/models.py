@@ -10,6 +10,7 @@ from typing import Any, List, Optional
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
+    Boolean,
     TIMESTAMP,
     Column,
     Enum,
@@ -22,8 +23,121 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB, TSVECTOR as PG_TSVECTOR
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.types import CHAR, JSON, TEXT, TypeDecorator
+
+
+class GUID(TypeDecorator):
+    """
+    Platform-independent GUID type.
+
+    Uses PostgreSQL's UUID type when available, otherwise uses
+    CHAR(32) for SQLite compatibility in tests.
+    """
+
+    impl = CHAR
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(CHAR(32))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == "postgresql":
+            return value
+        else:
+            if isinstance(value, uuid.UUID):
+                return value.hex
+            else:
+                return uuid.UUID(value).hex
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == "postgresql":
+            return value
+        else:
+            if isinstance(value, uuid.UUID):
+                return value
+            else:
+                return uuid.UUID(value)
+
+
+class JSONB(TypeDecorator):
+    """
+    Platform-independent JSONB type.
+
+    Uses PostgreSQL's JSONB type when available, otherwise uses
+    standard JSON for SQLite compatibility in tests.
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PG_JSONB())
+        else:
+            return dialect.type_descriptor(JSON())
+
+
+class TSVECTOR(TypeDecorator):
+    """
+    Platform-independent TSVECTOR type.
+
+    Uses PostgreSQL's TSVECTOR type when available, otherwise uses
+    TEXT for SQLite compatibility in tests (full-text search won't work).
+    """
+
+    impl = TEXT
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(PG_TSVECTOR())
+        else:
+            return dialect.type_descriptor(TEXT())
+
+
+class StringArray(TypeDecorator):
+    """
+    Platform-independent array of strings type.
+
+    Uses PostgreSQL's StringArray() type when available, otherwise uses
+    JSON for SQLite compatibility in tests.
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            from sqlalchemy import ARRAY as PG_ARRAY
+            return dialect.type_descriptor(PG_StringArray())
+        else:
+            return dialect.type_descriptor(JSON())
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == "postgresql":
+            return value
+        # For SQLite, store as JSON
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == "postgresql":
+            return value
+        # For SQLite, value is already a list from JSON
+        return value
 
 
 class ApplicationStage(enum.Enum):
@@ -53,7 +167,7 @@ class Grant(Base):
     __tablename__ = "grants"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the grant",
@@ -115,7 +229,7 @@ class Grant(Base):
         doc="Eligibility criteria as structured JSON",
     )
     categories: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Research categories/tags",
     )
@@ -186,7 +300,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the user",
@@ -310,6 +424,17 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    custom_fields: Mapped[List["CustomFieldDefinition"]] = relationship(
+        "CustomFieldDefinition",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    lab_members: Mapped[List["LabMember"]] = relationship(
+        "LabMember",
+        foreign_keys="[LabMember.lab_owner_id]",
+        back_populates="lab_owner",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email='{self.email}')>"
@@ -326,24 +451,24 @@ class LabProfile(Base):
     __tablename__ = "lab_profiles"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the lab profile",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
     )
     research_areas: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Primary research areas/topics",
     )
     methods: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Research methodologies and techniques",
     )
@@ -378,7 +503,7 @@ class LabProfile(Base):
         doc="Department within institution",
     )
     keywords: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Research keywords for matching",
     )
@@ -431,19 +556,19 @@ class Match(Base):
     __tablename__ = "matches"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the match",
     )
     grant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("grants.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the matched grant",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the matched user",
@@ -469,12 +594,12 @@ class Match(Base):
         doc="AI-generated explanation for the match",
     )
     key_strengths: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Key strengths identified by LLM",
     )
     concerns: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Concerns identified by LLM",
     )
@@ -542,13 +667,13 @@ class AlertSent(Base):
     __tablename__ = "alerts_sent"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the alert",
     )
     match_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("matches.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the match that triggered this alert",
@@ -602,25 +727,25 @@ class GrantApplication(Base):
     __tablename__ = "grant_applications"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the pipeline item",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
     )
     grant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("grants.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the grant being tracked",
     )
     match_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("matches.id", ondelete="SET NULL"),
         nullable=True,
         doc="Optional reference to the match that led to this application",
@@ -654,6 +779,27 @@ class GrantApplication(Base):
         onupdate=datetime.utcnow,
         doc="When the pipeline item was last updated",
     )
+    # Kanban board columns
+    position: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        doc="Position in kanban column for ordering",
+    )
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        default="medium",
+        doc="Priority level: 'low', 'medium', 'high'",
+    )
+    color: Mapped[Optional[str]] = mapped_column(
+        String(7),
+        nullable=True,
+        doc="Hex color code for card display",
+    )
+    archived: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        doc="Whether the application is archived",
+    )
 
     # Relationships
     user: Mapped["User"] = relationship(
@@ -667,6 +813,31 @@ class GrantApplication(Base):
     match: Mapped[Optional["Match"]] = relationship(
         "Match",
         back_populates="application",
+    )
+    subtasks: Mapped[List["ApplicationSubtask"]] = relationship(
+        "ApplicationSubtask",
+        back_populates="application",
+        cascade="all, delete-orphan",
+    )
+    activities: Mapped[List["ApplicationActivity"]] = relationship(
+        "ApplicationActivity",
+        back_populates="application",
+        cascade="all, delete-orphan",
+    )
+    attachments: Mapped[List["ApplicationAttachment"]] = relationship(
+        "ApplicationAttachment",
+        back_populates="application",
+        cascade="all, delete-orphan",
+    )
+    custom_field_values: Mapped[List["CustomFieldValue"]] = relationship(
+        "CustomFieldValue",
+        back_populates="application",
+        cascade="all, delete-orphan",
+    )
+    assignees: Mapped[List["ApplicationAssignee"]] = relationship(
+        "ApplicationAssignee",
+        back_populates="application",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (
@@ -691,13 +862,13 @@ class SavedSearch(Base):
     __tablename__ = "saved_searches"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the saved search",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
@@ -755,19 +926,19 @@ class Deadline(Base):
     __tablename__ = "deadlines"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the deadline",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
     )
     grant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("grants.id", ondelete="SET NULL"),
         nullable=True,
         doc="Optional reference to an existing grant",
@@ -877,13 +1048,13 @@ class CalendarIntegration(Base):
     __tablename__ = "calendar_integrations"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the calendar integration",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
@@ -963,13 +1134,13 @@ class ReminderSchedule(Base):
     __tablename__ = "reminder_schedules"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the reminder schedule",
     )
     deadline_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("deadlines.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the deadline",
@@ -1027,7 +1198,7 @@ class TemplateCategory(Base):
     __tablename__ = "template_categories"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the category",
@@ -1082,19 +1253,19 @@ class Template(Base):
     __tablename__ = "templates"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the template",
     )
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         doc="Owner user ID (null for system templates)",
     )
     category_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("template_categories.id", ondelete="SET NULL"),
         nullable=True,
         doc="Template category reference",
@@ -1180,13 +1351,13 @@ class FundingAlertPreference(Base):
     __tablename__ = "funding_alert_preferences"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the preference record",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
@@ -1221,7 +1392,7 @@ class FundingAlertPreference(Base):
         doc="Include AI-generated personalized insights",
     )
     preferred_funders: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="List of preferred funder names to prioritize",
     )
@@ -1272,13 +1443,13 @@ class GrantDeadlineHistory(Base):
     __tablename__ = "grant_deadline_history"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the historical record",
     )
     grant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("grants.id", ondelete="SET NULL"),
         nullable=True,
         doc="Optional reference to matching grant in system (null for historical records)",
@@ -1286,7 +1457,6 @@ class GrantDeadlineHistory(Base):
     funder_name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        index=True,
         doc="Name of the funding organization",
     )
     grant_title: Mapped[str] = mapped_column(
@@ -1297,7 +1467,6 @@ class GrantDeadlineHistory(Base):
     deadline_date: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,
-        index=True,
         doc="Application deadline date",
     )
     open_date: Mapped[Optional[datetime]] = mapped_column(
@@ -1326,7 +1495,7 @@ class GrantDeadlineHistory(Base):
         doc="Maximum funding amount in USD",
     )
     categories: Mapped[Optional[list[str]]] = mapped_column(
-        ARRAY(Text),
+        StringArray(),
         nullable=True,
         doc="Research categories/tags associated with the grant",
     )
@@ -1374,13 +1543,13 @@ class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the chat session",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
@@ -1397,7 +1566,7 @@ class ChatSession(Base):
         doc="Session type (eligibility, general, etc.)",
     )
     context_grant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("grants.id", ondelete="SET NULL"),
         nullable=True,
         doc="Optional reference to grant being discussed",
@@ -1454,13 +1623,13 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the message",
     )
     session_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("chat_sessions.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the chat session",
@@ -1510,13 +1679,13 @@ class ResearchSession(Base):
     __tablename__ = "research_sessions"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         primary_key=True,
         default=uuid.uuid4,
         doc="Unique identifier for the research session",
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         doc="Reference to the owning user",
@@ -1577,3 +1746,509 @@ class ResearchSession(Base):
 
     def __repr__(self) -> str:
         return f"<ResearchSession(id={self.id}, status='{self.status}')>"
+
+
+# ============================================================================
+# Kanban Board Models
+# ============================================================================
+
+
+class ApplicationSubtask(Base):
+    """
+    Subtask/checklist item for a grant application.
+
+    Allows breaking down application work into smaller trackable items
+    with due dates, completion status, and position ordering.
+    """
+
+    __tablename__ = "application_subtasks"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the subtask",
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grant_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the parent application",
+    )
+    title: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+        doc="Subtask title",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Detailed description of the subtask",
+    )
+    is_completed: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Whether the subtask is completed",
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the subtask was completed",
+    )
+    completed_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("users.id"),
+        nullable=True,
+        doc="User who completed the subtask",
+    )
+    due_date: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Due date for the subtask",
+    )
+    position: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+        doc="Position for ordering subtasks",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        doc="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        doc="Record last update timestamp",
+    )
+
+    # Relationships
+    application: Mapped["GrantApplication"] = relationship(
+        "GrantApplication",
+        back_populates="subtasks",
+    )
+    completer: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[completed_by],
+    )
+
+    __table_args__ = (
+        Index("ix_subtasks_application_id", application_id),
+        Index("ix_subtasks_position", application_id, position),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApplicationSubtask(id={self.id}, title='{self.title[:30]}...')>"
+
+
+class ApplicationActivity(Base):
+    """
+    Activity log entry for grant application.
+
+    Tracks all changes and actions performed on an application
+    for audit trail and activity feed display.
+    """
+
+    __tablename__ = "application_activities"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the activity",
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grant_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the application",
+    )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("users.id"),
+        nullable=True,
+        doc="User who performed the action (null for system actions)",
+    )
+    action: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        doc="Action type (e.g., 'created', 'status_changed', 'note_added')",
+    )
+    details: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Additional details about the action",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        doc="When the activity occurred",
+    )
+
+    # Relationships
+    application: Mapped["GrantApplication"] = relationship(
+        "GrantApplication",
+        back_populates="activities",
+    )
+    user: Mapped[Optional["User"]] = relationship("User")
+
+    __table_args__ = (
+        Index("ix_activities_application_id", application_id),
+        Index("ix_activities_created_at", created_at.desc()),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApplicationActivity(id={self.id}, action='{self.action}')>"
+
+
+class ApplicationAttachment(Base):
+    """
+    File attachment for grant application.
+
+    Stores metadata for files uploaded to an application,
+    including documents, templates, and supporting materials.
+    """
+
+    __tablename__ = "application_attachments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the attachment",
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grant_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the application",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id"),
+        nullable=False,
+        doc="User who uploaded the file",
+    )
+    filename: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+        doc="Original filename",
+    )
+    file_type: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
+        doc="MIME type or file extension",
+    )
+    file_size: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="File size in bytes",
+    )
+    storage_path: Mapped[str] = mapped_column(
+        String(1000),
+        nullable=False,
+        doc="Path to file in storage system",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Description of the attachment",
+    )
+    category: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Category of attachment (e.g., 'budget', 'letter', 'draft')",
+    )
+    template_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("templates.id"),
+        nullable=True,
+        doc="Reference to template if generated from one",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        doc="Upload timestamp",
+    )
+
+    # Relationships
+    application: Mapped["GrantApplication"] = relationship(
+        "GrantApplication",
+        back_populates="attachments",
+    )
+    user: Mapped["User"] = relationship("User")
+    template: Mapped[Optional["Template"]] = relationship("Template")
+
+    __table_args__ = (Index("ix_attachments_application_id", application_id),)
+
+    def __repr__(self) -> str:
+        return f"<ApplicationAttachment(id={self.id}, filename='{self.filename}')>"
+
+
+class CustomFieldDefinition(Base):
+    """
+    User-defined custom field for applications.
+
+    Allows users to create custom fields to track additional
+    information on their grant applications.
+    """
+
+    __tablename__ = "custom_field_definitions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the field definition",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Owner of the custom field",
+    )
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        doc="Field name",
+    )
+    field_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        doc="Field type (e.g., 'text', 'number', 'date', 'select')",
+    )
+    options: Mapped[Optional[list]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Options for select/multi-select fields",
+    )
+    is_required: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        doc="Whether field is required",
+    )
+    show_in_card: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        doc="Whether to show field on kanban card",
+    )
+    position: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        doc="Display order position",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        doc="Record creation timestamp",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_user_field_name"),
+        Index("ix_custom_field_definitions_user_id", user_id),
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="custom_fields",
+    )
+    values: Mapped[List["CustomFieldValue"]] = relationship(
+        "CustomFieldValue",
+        back_populates="field",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<CustomFieldDefinition(id={self.id}, name='{self.name}')>"
+
+
+class CustomFieldValue(Base):
+    """
+    Value of a custom field for a specific application.
+
+    Stores the actual values entered for custom fields
+    on individual applications.
+    """
+
+    __tablename__ = "custom_field_values"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the value",
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grant_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the application",
+    )
+    field_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("custom_field_definitions.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the field definition",
+    )
+    value: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        doc="Field value as JSON",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        doc="Last update timestamp",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("application_id", "field_id", name="uq_app_field"),
+        Index("ix_custom_field_values_application_id", application_id),
+        Index("ix_custom_field_values_field_id", field_id),
+    )
+
+    # Relationships
+    application: Mapped["GrantApplication"] = relationship(
+        "GrantApplication",
+        back_populates="custom_field_values",
+    )
+    field: Mapped["CustomFieldDefinition"] = relationship(
+        "CustomFieldDefinition",
+        back_populates="values",
+    )
+
+    def __repr__(self) -> str:
+        return f"<CustomFieldValue(id={self.id}, field_id={self.field_id})>"
+
+
+class LabMember(Base):
+    """
+    Lab team member invited by a PI.
+
+    Tracks team members who can collaborate on grant applications
+    within a lab/research group.
+    """
+
+    __tablename__ = "lab_members"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the lab member record",
+    )
+    lab_owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="PI/lab owner who invited this member",
+    )
+    member_email: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        doc="Email address of the invited member",
+    )
+    member_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("users.id"),
+        nullable=True,
+        doc="User ID if member has registered",
+    )
+    role: Mapped[str] = mapped_column(
+        String(30),
+        default="member",
+        doc="Role in the lab (e.g., 'member', 'admin', 'viewer')",
+    )
+    invited_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        doc="When the invitation was sent",
+    )
+    accepted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the invitation was accepted",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("lab_owner_id", "member_email", name="uq_lab_member"),
+        Index("ix_lab_members_lab_owner_id", lab_owner_id),
+        Index("ix_lab_members_member_email", member_email),
+        Index("ix_lab_members_member_user_id", member_user_id),
+    )
+
+    # Relationships
+    lab_owner: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[lab_owner_id],
+        back_populates="lab_members",
+    )
+    member_user: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[member_user_id],
+    )
+
+    def __repr__(self) -> str:
+        return f"<LabMember(id={self.id}, email='{self.member_email}')>"
+
+
+class ApplicationAssignee(Base):
+    """
+    Assignment of team member to application.
+
+    Tracks which team members are assigned to work on
+    specific grant applications.
+    """
+
+    __tablename__ = "application_assignees"
+
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grant_applications.id", ondelete="CASCADE"),
+        primary_key=True,
+        doc="Reference to the application",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        doc="Reference to the assigned user",
+    )
+    assigned_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        doc="When the assignment was made",
+    )
+    assigned_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("users.id"),
+        nullable=True,
+        doc="User who made the assignment",
+    )
+
+    __table_args__ = (
+        Index("ix_assignees_application_id", application_id),
+        Index("ix_assignees_user_id", user_id),
+    )
+
+    # Relationships
+    application: Mapped["GrantApplication"] = relationship(
+        "GrantApplication",
+        back_populates="assignees",
+    )
+    user: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+    )
+    assigner: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[assigned_by],
+    )
+
+    def __repr__(self) -> str:
+        return f"<ApplicationAssignee(application_id={self.application_id}, user_id={self.user_id})>"

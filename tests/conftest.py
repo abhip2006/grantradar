@@ -15,7 +15,6 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from backend.models import Base, Grant, User, LabProfile, Match, AlertSent
 
@@ -37,10 +36,16 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 @pytest_asyncio.fixture(scope="function")
 async def async_engine():
     """Create an async SQLite engine for testing."""
+    import tempfile
+    import os
+
+    # Use a unique temp file for each test to ensure complete isolation
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+
     engine = create_async_engine(
-        "sqlite+aiosqlite:///:memory:",
+        f"sqlite+aiosqlite:///{db_path}",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
         echo=False,
     )
 
@@ -49,10 +54,13 @@ async def async_engine():
 
     yield engine
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
     await engine.dispose()
+
+    # Clean up the temp file
+    try:
+        os.unlink(db_path)
+    except OSError:
+        pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -74,10 +82,16 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture(scope="function")
 def sync_engine():
     """Create a sync SQLite engine for testing."""
+    import tempfile
+    import os
+
+    # Use a unique temp file for each test to ensure complete isolation
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+
     engine = create_engine(
-        "sqlite:///:memory:",
+        f"sqlite:///{db_path}",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
         echo=False,
     )
 
@@ -85,8 +99,13 @@ def sync_engine():
 
     yield engine
 
-    Base.metadata.drop_all(engine)
     engine.dispose()
+
+    # Clean up the temp file
+    try:
+        os.unlink(db_path)
+    except OSError:
+        pass
 
 
 @pytest.fixture(scope="function")

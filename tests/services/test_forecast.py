@@ -39,7 +39,7 @@ async def sample_user(async_session: AsyncSession):
     user = User(
         id=uuid.uuid4(),
         email="researcher@university.edu",
-        hashed_password="hashed_pw",
+        password_hash="hashed_pw",
     )
     async_session.add(user)
     await async_session.commit()
@@ -52,8 +52,8 @@ async def sample_profile(async_session: AsyncSession, sample_user):
     profile = LabProfile(
         id=uuid.uuid4(),
         user_id=sample_user.id,
-        lab_name="AI Research Lab",
         institution="Test University",
+        department="AI Research Lab",
         research_areas=["machine learning", "computer vision", "NLP"],
         methods=["deep learning", "neural networks"],
         career_stage="senior_researcher",
