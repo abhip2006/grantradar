@@ -36,6 +36,11 @@ import type {
   ForecastUpcomingResponse,
   SeasonalTrendResponse,
   RecommendationsResponse,
+  Deadline,
+  DeadlineCreate,
+  DeadlineUpdate,
+  DeadlineFilters,
+  DeadlineListResponse,
 } from '../types';
 
 // API base URL - connects to FastAPI backend
@@ -690,6 +695,52 @@ export const forecastApi = {
       params: {
         limit: params.limit || 10,
       },
+    });
+    return response.data;
+  },
+};
+
+// Deadlines API - Custom deadline management
+export const deadlinesApi = {
+  // Get all deadlines with optional filters
+  getDeadlines: async (params?: DeadlineFilters): Promise<DeadlineListResponse> => {
+    const response = await api.get<DeadlineListResponse>('/deadlines', { params });
+    return response.data;
+  },
+
+  // Get a single deadline by ID
+  getDeadline: async (id: string): Promise<Deadline> => {
+    const response = await api.get<Deadline>(`/deadlines/${id}`);
+    return response.data;
+  },
+
+  // Create a new deadline
+  createDeadline: async (data: DeadlineCreate): Promise<Deadline> => {
+    const response = await api.post<Deadline>('/deadlines', data);
+    return response.data;
+  },
+
+  // Update an existing deadline
+  updateDeadline: async (id: string, data: DeadlineUpdate): Promise<Deadline> => {
+    const response = await api.patch<Deadline>(`/deadlines/${id}`, data);
+    return response.data;
+  },
+
+  // Delete a deadline
+  deleteDeadline: async (id: string): Promise<void> => {
+    await api.delete(`/deadlines/${id}`);
+  },
+
+  // Create deadline from a saved grant
+  linkGrant: async (grantId: string): Promise<Deadline> => {
+    const response = await api.post<Deadline>('/deadlines/link-grant', { grant_id: grantId });
+    return response.data;
+  },
+
+  // Export deadlines as ICS calendar file
+  exportIcs: async (): Promise<Blob> => {
+    const response = await api.get('/deadlines/export.ics', {
+      responseType: 'blob',
     });
     return response.data;
   },

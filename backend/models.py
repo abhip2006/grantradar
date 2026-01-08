@@ -5,7 +5,7 @@ SQLAlchemy ORM models for the grant intelligence platform.
 import enum
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -241,6 +242,11 @@ class User(Base):
         default=False,
         doc="Enable Slack notifications for grant matches",
     )
+    slack_webhook_url: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Slack incoming webhook URL for notifications",
+    )
     digest_frequency: Mapped[str] = mapped_column(
         String(20),
         default="immediate",
@@ -270,6 +276,11 @@ class User(Base):
     )
     saved_searches: Mapped[list["SavedSearch"]] = relationship(
         "SavedSearch",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    deadlines: Mapped[List["Deadline"]] = relationship(
+        "Deadline",
         back_populates="user",
         cascade="all, delete-orphan",
     )
@@ -329,6 +340,26 @@ class LabProfile(Base):
         Text,
         nullable=True,
         doc="ORCID identifier for researcher",
+    )
+    institution: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Research institution/university",
+    )
+    department: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Department within institution",
+    )
+    keywords: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+        doc="Research keywords for matching",
+    )
+    source_text_hash: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        doc="SHA-256 hash of embedding source text for cache invalidation",
     )
     profile_embedding = mapped_column(
         Vector(1536),
@@ -396,10 +427,30 @@ class Match(Base):
         nullable=False,
         doc="Computed match score (0.0 to 1.0)",
     )
+    vector_similarity: Mapped[Optional[float]] = mapped_column(
+        Float,
+        nullable=True,
+        doc="Vector similarity score (0.0 to 1.0)",
+    )
+    llm_match_score: Mapped[Optional[float]] = mapped_column(
+        Float,
+        nullable=True,
+        doc="LLM-computed match score (0-100)",
+    )
     reasoning: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True,
         doc="AI-generated explanation for the match",
+    )
+    key_strengths: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+        doc="Key strengths identified by LLM",
+    )
+    concerns: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+        doc="Concerns identified by LLM",
     )
     predicted_success: Mapped[Optional[float]] = mapped_column(
         Float,
@@ -665,3 +716,120 @@ class SavedSearch(Base):
 
     def __repr__(self) -> str:
         return f"<SavedSearch(id={self.id}, name='{self.name}')>"
+
+
+class Deadline(Base):
+    """
+    User-created deadline for grant submissions.
+
+    Allows users to track grant deadlines with customizable details,
+    priority levels, and optional links to existing grants in the system.
+    """
+
+    __tablename__ = "deadlines"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the deadline",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the owning user",
+    )
+    grant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grants.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Optional reference to an existing grant",
+    )
+    title: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+        doc="Deadline title/name",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Detailed description of the deadline",
+    )
+    funder: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
+        doc="Funding organization name",
+    )
+    mechanism: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Grant mechanism type (e.g., R01, R21)",
+    )
+    sponsor_deadline: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        doc="Official sponsor submission deadline",
+    )
+    internal_deadline: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Internal institutional deadline (usually before sponsor deadline)",
+    )
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="active",
+        nullable=False,
+        doc="Deadline status: 'active', 'submitted', 'missed', 'cancelled'",
+    )
+    priority: Mapped[str] = mapped_column(
+        String(20),
+        default="medium",
+        nullable=False,
+        doc="Priority level: 'low', 'medium', 'high'",
+    )
+    url: Mapped[Optional[str]] = mapped_column(
+        String(1000),
+        nullable=True,
+        doc="URL to the grant opportunity",
+    )
+    notes: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Additional notes about the deadline",
+    )
+    color: Mapped[str] = mapped_column(
+        String(7),
+        default="#3B82F6",
+        nullable=False,
+        doc="Hex color code for calendar display",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Record last update timestamp",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="deadlines",
+    )
+    grant: Mapped[Optional["Grant"]] = relationship("Grant")
+
+    __table_args__ = (
+        Index("ix_deadlines_user_id", user_id),
+        Index("ix_deadlines_sponsor_deadline", sponsor_deadline),
+        Index("ix_deadlines_status", status),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Deadline(id={self.id}, title='{self.title[:50]}...')>"

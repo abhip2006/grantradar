@@ -69,6 +69,15 @@ from backend.schemas.analytics import (
     SuccessRateByStage,
     SuccessRatesResponse,
 )
+from backend.schemas.deadlines import (
+    DeadlineCreate,
+    DeadlineList,
+    DeadlinePriority,
+    DeadlineResponse,
+    DeadlineStatus,
+    DeadlineUpdate,
+    LinkGrantRequest,
+)
 
 __all__ = [
     # Auth
@@ -131,4 +140,12 @@ __all__ = [
     "SuccessRateByFunder",
     "SuccessRateByStage",
     "SuccessRatesResponse",
+    # Deadlines
+    "DeadlineCreate",
+    "DeadlineList",
+    "DeadlinePriority",
+    "DeadlineResponse",
+    "DeadlineStatus",
+    "DeadlineUpdate",
+    "LinkGrantRequest",
 ]

@@ -597,3 +597,61 @@ export interface RecommendationsResponse {
   profile_complete: boolean;
   generated_at: string;
 }
+
+// Deadline types
+export type DeadlineStatus = 'active' | 'completed' | 'archived';
+export type DeadlinePriority = 'low' | 'medium' | 'high' | 'critical';
+
+export interface Deadline {
+  id: string;
+  user_id: string;
+  grant_id?: string;
+  title: string;
+  description?: string;
+  funder?: string;
+  mechanism?: string;
+  sponsor_deadline: string;
+  internal_deadline?: string;
+  status: DeadlineStatus;
+  priority: DeadlinePriority;
+  url?: string;
+  notes?: string;
+  color: string;
+  days_until_deadline: number;
+  is_overdue: boolean;
+  grant?: Grant;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeadlineCreate {
+  title: string;
+  sponsor_deadline: string;
+  grant_id?: string;
+  description?: string;
+  funder?: string;
+  mechanism?: string;
+  internal_deadline?: string;
+  priority?: DeadlinePriority;
+  url?: string;
+  notes?: string;
+  color?: string;
+}
+
+export interface DeadlineUpdate extends Partial<DeadlineCreate> {
+  status?: DeadlineStatus;
+}
+
+export interface DeadlineFilters {
+  status?: DeadlineStatus;
+  from_date?: string;
+  to_date?: string;
+  funder?: string;
+  search?: string;
+  sort?: 'deadline_asc' | 'deadline_desc' | 'created_desc';
+}
+
+export interface DeadlineListResponse {
+  items: Deadline[];
+  total: number;
+}

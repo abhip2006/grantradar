@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import analytics, auth, calendar, compare, contact, forecast, funder_insights, grants, matches, pipeline, preferences, profile, saved_searches, similar, stats
+from backend.api import analytics, auth, calendar, compare, contact, deadlines, forecast, funder_insights, grants, matches, pipeline, preferences, profile, saved_searches, similar, stats
 from backend.core.config import settings
 from backend.database import check_db_connection, close_db, init_db
 
@@ -262,6 +262,7 @@ app.include_router(auth.router)
 app.include_router(calendar.router)
 app.include_router(compare.router)
 app.include_router(contact.router)
+app.include_router(deadlines.router)
 app.include_router(forecast.router)
 app.include_router(funder_insights.router)
 app.include_router(grants.router)
