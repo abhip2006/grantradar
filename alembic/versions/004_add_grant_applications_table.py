@@ -13,6 +13,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.dialects.postgresql import UUID
 
 # Revision identifiers
@@ -24,79 +25,50 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create grant_applications table and its indexes."""
-
-    # Create the application_stage enum type (with checkfirst to handle partial migrations)
-    # First create the enum type if it doesn't exist
     connection = op.get_bind()
-    result = connection.execute(
+
+    # Check if table already exists (handles partial migration state)
+    table_exists = connection.execute(
         sa.text(
-            "SELECT 1 FROM pg_type WHERE typname = 'applicationstage'"
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_name = 'grant_applications'"
         )
-    )
-    if result.fetchone() is None:
-        application_stage_enum = sa.Enum(
-            "researching",
-            "writing",
-            "submitted",
-            "awarded",
-            "rejected",
-            name="applicationstage",
+    ).fetchone()
+
+    if table_exists:
+        # Table already exists, migration was already applied
+        print("grant_applications table already exists, skipping migration")
+        return
+
+    # Create the enum type using raw SQL if it doesn't exist
+    enum_exists = connection.execute(
+        sa.text("SELECT 1 FROM pg_type WHERE typname = 'applicationstage'")
+    ).fetchone()
+
+    if not enum_exists:
+        connection.execute(
+            sa.text(
+                "CREATE TYPE applicationstage AS ENUM "
+                "('researching', 'writing', 'submitted', 'awarded', 'rejected')"
+            )
         )
-        application_stage_enum.create(connection, checkfirst=False)
 
-    # Reference the enum for use in the table (create_type=False prevents duplicate creation)
-    application_stage_enum = sa.Enum(
-        "researching",
-        "writing",
-        "submitted",
-        "awarded",
-        "rejected",
-        name="applicationstage",
-        create_type=False,
-    )
-
-    # Create grant_applications table
-    op.create_table(
-        "grant_applications",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True),
-        sa.Column(
-            "user_id",
-            UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "grant_id",
-            UUID(as_uuid=True),
-            sa.ForeignKey("grants.id", ondelete="CASCADE"),
-            nullable=False,
-        ),
-        sa.Column(
-            "match_id",
-            UUID(as_uuid=True),
-            sa.ForeignKey("matches.id", ondelete="SET NULL"),
-            nullable=True,
-        ),
-        sa.Column(
-            "stage",
-            application_stage_enum,
-            nullable=False,
-            server_default="researching",
-        ),
-        sa.Column("notes", sa.Text(), nullable=True),
-        sa.Column("target_date", sa.TIMESTAMP(timezone=True), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.TIMESTAMP(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
-        ),
-        sa.Column(
-            "updated_at",
-            sa.TIMESTAMP(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
-        ),
+    # Create grant_applications table using raw SQL to avoid SQLAlchemy's
+    # automatic enum type creation which causes "already exists" errors
+    connection.execute(
+        sa.text("""
+            CREATE TABLE grant_applications (
+                id UUID PRIMARY KEY,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                grant_id UUID NOT NULL REFERENCES grants(id) ON DELETE CASCADE,
+                match_id UUID REFERENCES matches(id) ON DELETE SET NULL,
+                stage applicationstage NOT NULL DEFAULT 'researching',
+                notes TEXT,
+                target_date TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )
+        """)
     )
 
     # Create indexes
