@@ -284,6 +284,16 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    calendar_integrations: Mapped[List["CalendarIntegration"]] = relationship(
+        "CalendarIntegration",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    templates: Mapped[List["Template"]] = relationship(
+        "Template",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email='{self.email}')>"
@@ -824,6 +834,11 @@ class Deadline(Base):
         back_populates="deadlines",
     )
     grant: Mapped[Optional["Grant"]] = relationship("Grant")
+    reminder_schedules: Mapped[List["ReminderSchedule"]] = relationship(
+        "ReminderSchedule",
+        back_populates="deadline",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_deadlines_user_id", user_id),
@@ -833,3 +848,409 @@ class Deadline(Base):
 
     def __repr__(self) -> str:
         return f"<Deadline(id={self.id}, title='{self.title[:50]}...')>"
+
+
+class CalendarIntegration(Base):
+    """
+    OAuth token storage for calendar sync providers.
+
+    Stores encrypted OAuth tokens for Google Calendar and Outlook
+    to enable automatic deadline syncing.
+    """
+
+    __tablename__ = "calendar_integrations"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the calendar integration",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the owning user",
+    )
+    provider: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        doc="Calendar provider: 'google' or 'outlook'",
+    )
+    access_token: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Encrypted OAuth access token",
+    )
+    refresh_token: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Encrypted OAuth refresh token",
+    )
+    token_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the access token expires",
+    )
+    calendar_id: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        doc="External calendar ID from provider",
+    )
+    sync_enabled: Mapped[bool] = mapped_column(
+        default=True,
+        doc="Whether calendar sync is enabled",
+    )
+    last_synced_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Last successful sync timestamp",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Record last update timestamp",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="calendar_integrations",
+    )
+
+    __table_args__ = (
+        Index("ix_calendar_integrations_user_id", user_id),
+        Index("ix_calendar_integrations_provider", provider),
+        UniqueConstraint("user_id", "provider", name="uq_calendar_integrations_user_provider"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<CalendarIntegration(id={self.id}, provider='{self.provider}')>"
+
+
+class ReminderSchedule(Base):
+    """
+    Scheduled reminders for user deadlines.
+
+    Allows users to configure multiple reminders (email, push, SMS)
+    for each deadline at different intervals.
+    """
+
+    __tablename__ = "reminder_schedules"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the reminder schedule",
+    )
+    deadline_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("deadlines.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the deadline",
+    )
+    reminder_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        doc="Reminder type: 'email', 'push', or 'sms'",
+    )
+    remind_before_minutes: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="Minutes before deadline to send reminder (e.g., 1440 for 1 day)",
+    )
+    is_sent: Mapped[bool] = mapped_column(
+        default=False,
+        doc="Whether the reminder has been sent",
+    )
+    sent_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the reminder was sent",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+
+    # Relationships
+    deadline: Mapped["Deadline"] = relationship(
+        "Deadline",
+        back_populates="reminder_schedules",
+    )
+
+    __table_args__ = (
+        Index("ix_reminder_schedules_deadline_id", deadline_id),
+        Index("ix_reminder_schedules_is_sent", is_sent),
+        Index("ix_reminder_schedules_reminder_type", reminder_type),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ReminderSchedule(id={self.id}, type='{self.reminder_type}', minutes={self.remind_before_minutes})>"
+
+
+class TemplateCategory(Base):
+    """
+    Categories for organizing document templates.
+
+    Provides logical grouping for templates like 'Abstract',
+    'Budget Justification', 'Specific Aims', etc.
+    """
+
+    __tablename__ = "template_categories"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the category",
+    )
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        unique=True,
+        doc="Category name",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Category description",
+    )
+    display_order: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        doc="Order for displaying categories",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+
+    # Relationships
+    templates: Mapped[List["Template"]] = relationship(
+        "Template",
+        back_populates="category",
+    )
+
+    __table_args__ = (
+        Index("ix_template_categories_name", name),
+        Index("ix_template_categories_display_order", display_order),
+    )
+
+    def __repr__(self) -> str:
+        return f"<TemplateCategory(id={self.id}, name='{self.name}')>"
+
+
+class Template(Base):
+    """
+    Reusable document templates for grant proposals.
+
+    Stores template content with variable placeholders that users
+    can fill in when generating documents. Supports both system
+    templates (read-only) and user-created templates.
+    """
+
+    __tablename__ = "templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the template",
+    )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        doc="Owner user ID (null for system templates)",
+    )
+    category_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("template_categories.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Template category reference",
+    )
+    title: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        doc="Template title",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Template description",
+    )
+    content: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Template content with placeholders",
+    )
+    variables: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=list,
+        doc="Variable definitions: [{name, type, description, default}]",
+    )
+    is_public: Mapped[bool] = mapped_column(
+        default=False,
+        doc="Whether template is publicly visible",
+    )
+    is_system: Mapped[bool] = mapped_column(
+        default=False,
+        doc="System templates are read-only",
+    )
+    usage_count: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        doc="Number of times template has been used",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Record last update timestamp",
+    )
+
+    # Relationships
+    user: Mapped[Optional["User"]] = relationship(
+        "User",
+        back_populates="templates",
+    )
+    category: Mapped[Optional["TemplateCategory"]] = relationship(
+        "TemplateCategory",
+        back_populates="templates",
+    )
+
+    __table_args__ = (
+        Index("ix_templates_user_id", user_id),
+        Index("ix_templates_category_id", category_id),
+        Index("ix_templates_is_public", is_public),
+        Index("ix_templates_is_system", is_system),
+        Index("ix_templates_title", title),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Template(id={self.id}, title='{self.title[:50]}...')>"
+
+
+class GrantDeadlineHistory(Base):
+    """
+    Historical record of grant deadlines for forecasting and analysis.
+
+    Stores historical deadline data from various funding sources to enable
+    prediction of future grant cycles and deadline patterns. This data is
+    used by the forecasting service to estimate when grants will reopen.
+    """
+
+    __tablename__ = "grant_deadline_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the historical record",
+    )
+    grant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grants.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Optional reference to matching grant in system (null for historical records)",
+    )
+    funder_name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        index=True,
+        doc="Name of the funding organization",
+    )
+    grant_title: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Title of the grant opportunity",
+    )
+    deadline_date: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        index=True,
+        doc="Application deadline date",
+    )
+    open_date: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Date when grant opened for applications",
+    )
+    announcement_date: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Date when grant was announced",
+    )
+    fiscal_year: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="Fiscal year of the grant cycle",
+    )
+    amount_min: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Minimum funding amount in USD",
+    )
+    amount_max: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Maximum funding amount in USD",
+    )
+    categories: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+        doc="Research categories/tags associated with the grant",
+    )
+    source: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        doc="Data source (e.g., 'grants.gov', 'nih', 'nsf')",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Record last update timestamp",
+    )
+
+    # Relationships
+    grant: Mapped[Optional["Grant"]] = relationship("Grant")
+
+    __table_args__ = (
+        Index("ix_grant_deadline_history_funder_name", funder_name),
+        Index("ix_grant_deadline_history_deadline_date", deadline_date),
+        Index("ix_grant_deadline_history_fiscal_year", fiscal_year),
+        Index("ix_grant_deadline_history_source", source),
+    )
+
+    def __repr__(self) -> str:
+        return f"<GrantDeadlineHistory(id={self.id}, funder='{self.funder_name}', deadline={self.deadline_date})>"

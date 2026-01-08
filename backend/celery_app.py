@@ -106,6 +106,7 @@ def create_celery_app() -> Celery:
             "backend.tasks.grants",
             "backend.tasks.matching",
             "backend.tasks.notifications",
+            "backend.tasks.deadline_reminders",
             "backend.tasks.polling",
             "backend.tasks.indexing",
             "backend.tasks.analytics",
@@ -203,6 +204,11 @@ def create_celery_app() -> Celery:
                 "task": "backend.tasks.notifications.send_deadline_reminders",
                 "schedule": timedelta(hours=1),
                 "options": {"queue": "critical"},
+            },
+            "check-user-deadline-reminders": {
+                "task": "backend.tasks.deadline_reminders.check_and_send_deadline_reminders",
+                "schedule": timedelta(minutes=5),
+                "options": {"queue": "normal"},
             },
             "analytics-compute": {
                 "task": "backend.tasks.analytics.compute_daily_analytics",

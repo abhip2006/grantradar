@@ -25,6 +25,8 @@ import { Calendar } from './pages/Calendar';
 import { Analytics } from './pages/Analytics';
 import { Forecast } from './pages/Forecast';
 import { Deadlines } from './pages/Deadlines';
+import { Integrations } from './pages/Integrations';
+import { Templates } from './pages/Templates';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -147,6 +149,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Forecast />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/integrations"
+                  element={
+                    <ProtectedRoute>
+                      <Integrations />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/templates"
+                  element={
+                    <ProtectedRoute>
+                      <Templates />
                     </ProtectedRoute>
                   }
                 />

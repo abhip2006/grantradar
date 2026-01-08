@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     stripe_publishable_key: Optional[str] = None
     stripe_webhook_secret: Optional[str] = None
 
+    # ===== Google Calendar OAuth =====
+    google_client_id: str = ""
+    google_client_secret: str = ""
+
     # ===== Email =====
     from_email: str = "alerts@grantradar.com"
     from_name: str = "GrantRadar"

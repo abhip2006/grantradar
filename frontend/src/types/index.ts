@@ -655,3 +655,126 @@ export interface DeadlineListResponse {
   items: Deadline[];
   total: number;
 }
+
+// ============================================
+// Calendar Integration Types
+// ============================================
+
+export type CalendarProvider = 'google' | 'outlook';
+
+export interface CalendarIntegration {
+  id: string;
+  user_id: string;
+  provider: CalendarProvider;
+  calendar_id: string;
+  sync_enabled: boolean;
+  last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CalendarIntegrationStatus {
+  google: {
+    connected: boolean;
+    calendar_id?: string;
+    sync_enabled?: boolean;
+    last_synced_at?: string;
+  };
+  outlook: {
+    connected: boolean;
+    calendar_id?: string;
+    sync_enabled?: boolean;
+    last_synced_at?: string;
+  };
+}
+
+export interface ReminderSchedule {
+  id: string;
+  deadline_id: string;
+  reminder_type: 'email' | 'push' | 'sms';
+  remind_before_minutes: number;
+  is_sent: boolean;
+  sent_at: string | null;
+}
+
+export interface ReminderSettings {
+  email_enabled: boolean;
+  sms_enabled: boolean;
+  default_reminders: number[]; // minutes before deadline
+}
+
+// ============================================
+// Document Template Types
+// ============================================
+
+export interface TemplateCategory {
+  id: string;
+  name: string;
+  description?: string;
+  display_order: number;
+  template_count?: number;
+}
+
+export interface TemplateVariable {
+  name: string;
+  type: 'text' | 'number' | 'date' | 'select';
+  description?: string;
+  default?: string;
+  options?: string[]; // for select type
+  required?: boolean;
+}
+
+export interface Template {
+  id: string;
+  user_id?: string;
+  category_id?: string;
+  category?: TemplateCategory;
+  title: string;
+  description?: string;
+  content: string;
+  variables: TemplateVariable[];
+  is_public: boolean;
+  is_system: boolean;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TemplateCreate {
+  category_id?: string;
+  title: string;
+  description?: string;
+  content: string;
+  variables?: TemplateVariable[];
+  is_public?: boolean;
+}
+
+export interface TemplateUpdate {
+  category_id?: string;
+  title?: string;
+  description?: string;
+  content?: string;
+  variables?: TemplateVariable[];
+  is_public?: boolean;
+}
+
+export interface TemplateListResponse {
+  items: Template[];
+  total: number;
+}
+
+export interface TemplateFilters {
+  category_id?: string;
+  search?: string;
+  is_public?: boolean;
+  is_system?: boolean;
+}
+
+export interface TemplateRenderRequest {
+  template_id: string;
+  variables: Record<string, string | number>;
+}
+
+export interface TemplateRenderResponse {
+  rendered_content: string;
+}

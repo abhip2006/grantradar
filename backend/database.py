@@ -2,8 +2,8 @@
 GrantRadar Database Connection Setup
 Provides async and sync database engines with connection pooling.
 """
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager, contextmanager
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -115,6 +115,28 @@ def get_sync_db() -> Session:
             db.close()
     """
     return SyncSessionLocal()
+
+
+@contextmanager
+def get_sync_session() -> Generator[Session, None, None]:
+    """
+    Context manager for synchronous database sessions.
+
+    Use this for Celery tasks that need automatic session management.
+
+    Usage:
+        with get_sync_session() as session:
+            grants = session.query(Grant).all()
+    """
+    session = SyncSessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 # =============================================================================

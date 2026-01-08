@@ -41,6 +41,16 @@ import type {
   DeadlineUpdate,
   DeadlineFilters,
   DeadlineListResponse,
+  CalendarProvider,
+  CalendarIntegration,
+  CalendarIntegrationStatus,
+  Template,
+  TemplateCreate,
+  TemplateUpdate,
+  TemplateFilters,
+  TemplateListResponse,
+  TemplateRenderResponse,
+  TemplateCategory,
 } from '../types';
 
 // API base URL - connects to FastAPI backend
@@ -742,6 +752,100 @@ export const deadlinesApi = {
     const response = await api.get('/deadlines/export.ics', {
       responseType: 'blob',
     });
+    return response.data;
+  },
+};
+
+// ============================================
+// Calendar Integration API
+// ============================================
+
+export const calendarIntegrationApi = {
+  // Get integration status for all providers
+  getStatus: async (): Promise<CalendarIntegrationStatus> => {
+    const response = await api.get<CalendarIntegrationStatus>('/integrations/calendar/status');
+    return response.data;
+  },
+
+  // Initiate OAuth flow - returns redirect URL
+  connectGoogle: async (): Promise<{ auth_url: string }> => {
+    const response = await api.post<{ auth_url: string }>('/integrations/calendar/google/connect');
+    return response.data;
+  },
+
+  // Handle OAuth callback
+  handleGoogleCallback: async (code: string, state: string): Promise<CalendarIntegration> => {
+    const response = await api.post<CalendarIntegration>('/integrations/calendar/google/callback', { code, state });
+    return response.data;
+  },
+
+  // Disconnect calendar
+  disconnect: async (provider: CalendarProvider): Promise<void> => {
+    await api.delete(`/integrations/calendar/${provider}`);
+  },
+
+  // Toggle sync
+  toggleSync: async (provider: CalendarProvider, enabled: boolean): Promise<CalendarIntegration> => {
+    const response = await api.patch<CalendarIntegration>(`/integrations/calendar/${provider}`, { sync_enabled: enabled });
+    return response.data;
+  },
+
+  // Force sync
+  syncNow: async (provider: CalendarProvider): Promise<{ synced_count: number }> => {
+    const response = await api.post<{ synced_count: number }>(`/integrations/calendar/${provider}/sync`);
+    return response.data;
+  },
+};
+
+// ============================================
+// Templates API
+// ============================================
+
+export const templatesApi = {
+  // List templates with filters
+  getTemplates: async (params?: TemplateFilters): Promise<TemplateListResponse> => {
+    const response = await api.get<TemplateListResponse>('/templates', { params });
+    return response.data;
+  },
+
+  // Get single template
+  getTemplate: async (id: string): Promise<Template> => {
+    const response = await api.get<Template>(`/templates/${id}`);
+    return response.data;
+  },
+
+  // Create template
+  createTemplate: async (data: TemplateCreate): Promise<Template> => {
+    const response = await api.post<Template>('/templates', data);
+    return response.data;
+  },
+
+  // Update template
+  updateTemplate: async (id: string, data: TemplateUpdate): Promise<Template> => {
+    const response = await api.patch<Template>(`/templates/${id}`, data);
+    return response.data;
+  },
+
+  // Delete template
+  deleteTemplate: async (id: string): Promise<void> => {
+    await api.delete(`/templates/${id}`);
+  },
+
+  // Duplicate template
+  duplicateTemplate: async (id: string): Promise<Template> => {
+    const response = await api.post<Template>(`/templates/${id}/duplicate`);
+    return response.data;
+  },
+
+  // Render template with variables
+  renderTemplate: async (id: string, variables: Record<string, string | number>): Promise<TemplateRenderResponse> => {
+    const response = await api.post<TemplateRenderResponse>(`/templates/${id}/render`, { variables });
+    return response.data;
+  },
+
+  // Get categories
+  getCategories: async (): Promise<TemplateCategory[]> => {
+    const response = await api.get<TemplateCategory[]>('/templates/categories');
     return response.data;
   },
 };

@@ -2,7 +2,7 @@
 GrantRadar API Routers
 FastAPI router modules for the grant intelligence platform.
 """
-from backend.api import auth, compare, grants, matches, preferences, profile, stats
+from backend.api import auth, compare, grants, matches, preferences, profile, reminders, stats, templates
 
 __all__ = [
     "auth",
@@ -11,5 +11,7 @@ __all__ = [
     "matches",
     "preferences",
     "profile",
+    "reminders",
     "stats",
+    "templates",
 ]

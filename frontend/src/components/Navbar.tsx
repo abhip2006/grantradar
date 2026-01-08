@@ -29,6 +29,8 @@ export function Navbar() {
         { name: 'Analytics', href: '/analytics' },
         { name: 'Calendar', href: '/calendar' },
         { name: 'Funders', href: '/funders' },
+        { name: 'Templates', href: '/templates' },
+        { name: 'Integrations', href: '/integrations' },
       ]
     : [
         { name: 'Features', href: '/#features' },

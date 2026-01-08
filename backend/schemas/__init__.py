@@ -78,6 +78,31 @@ from backend.schemas.deadlines import (
     DeadlineUpdate,
     LinkGrantRequest,
 )
+from backend.schemas.reminders import (
+    BulkReminderCreate,
+    ReminderScheduleCreate,
+    ReminderScheduleResponse,
+    ReminderSettingsResponse,
+    ReminderSettingsUpdate,
+)
+from backend.schemas.integrations import (
+    CalendarIntegrationResponse,
+    CalendarStatusResponse,
+    OAuthCallbackRequest,
+    ProviderStatus,
+    SyncResponse,
+    UpdateIntegrationRequest,
+)
+from backend.schemas.templates import (
+    TemplateCategoryResponse,
+    TemplateCreate,
+    TemplateListResponse,
+    TemplateRenderRequest,
+    TemplateRenderResponse,
+    TemplateResponse,
+    TemplateUpdate,
+    TemplateVariable,
+)
 
 __all__ = [
     # Auth
@@ -148,4 +173,26 @@ __all__ = [
     "DeadlineStatus",
     "DeadlineUpdate",
     "LinkGrantRequest",
+    # Reminders
+    "BulkReminderCreate",
+    "ReminderScheduleCreate",
+    "ReminderScheduleResponse",
+    "ReminderSettingsResponse",
+    "ReminderSettingsUpdate",
+    # Integrations
+    "CalendarIntegrationResponse",
+    "CalendarStatusResponse",
+    "OAuthCallbackRequest",
+    "ProviderStatus",
+    "SyncResponse",
+    "UpdateIntegrationRequest",
+    # Templates
+    "TemplateCategoryResponse",
+    "TemplateCreate",
+    "TemplateListResponse",
+    "TemplateRenderRequest",
+    "TemplateRenderResponse",
+    "TemplateResponse",
+    "TemplateUpdate",
+    "TemplateVariable",
 ]
