@@ -3,7 +3,7 @@ GrantRadar Alert Delivery Agent
 Consumes from 'matches:computed' stream and sends personalized alerts.
 """
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
@@ -17,7 +17,7 @@ from sqlalchemy import select
 from backend.core.config import settings
 from backend.core.events import MatchComputedEvent, PriorityLevel
 from backend.database import get_async_session
-from backend.models import Grant, User
+from backend.models import AlertSent, Grant, Match, User
 from agents.delivery.models import (
     AlertPayload,
     AlertPriority,
@@ -477,10 +477,215 @@ Return the email body only, no subject line or signature."""
 
         return statuses
 
+    async def _send_digest_email(
+        self, alerts: list[AlertPayload]
+    ) -> Optional[DeliveryStatus]:
+        """
+        Generate and send a digest email combining multiple grant alerts.
+
+        Args:
+            alerts: List of AlertPayload objects to include in digest
+
+        Returns:
+            DeliveryStatus if email was sent, None if no alerts or user info missing
+        """
+        if not alerts:
+            return None
+
+        # Get user info from first alert (all alerts are for same user)
+        user = alerts[0].user
+
+        # Sort alerts by match score descending
+        sorted_alerts = sorted(
+            alerts, key=lambda a: a.match.match_score, reverse=True
+        )
+
+        # Generate digest content
+        email_content = await self._generate_digest_email_content(user, sorted_alerts)
+
+        if not email_content:
+            self.logger.error(
+                "digest_email_generation_failed",
+                user_id=str(user.user_id),
+                alert_count=len(alerts),
+            )
+            return None
+
+        # Send via SendGrid
+        sendgrid = get_sendgrid_channel()
+        status = await sendgrid.send(email_content)
+
+        self.logger.info(
+            "digest_email_sent",
+            user_id=str(user.user_id),
+            alert_count=len(alerts),
+            status=status.status,
+        )
+
+        return status
+
+    async def _generate_digest_email_content(
+        self,
+        user: UserInfo,
+        alerts: list[AlertPayload],
+    ) -> Optional[EmailContent]:
+        """
+        Generate email content for a digest of multiple grants.
+
+        Args:
+            user: User to send digest to
+            alerts: Sorted list of alerts (highest score first)
+
+        Returns:
+            EmailContent for the digest email
+        """
+        if not alerts:
+            return None
+
+        # Generate subject line
+        if len(alerts) == 1:
+            subject = f"GrantRadar: New grant match ({int(alerts[0].match.match_score * 100)}%)"
+        else:
+            subject = f"GrantRadar: {len(alerts)} new grant matches for you"
+
+        # Build grant summaries for LLM
+        grant_summaries = []
+        for i, alert in enumerate(alerts[:10], 1):  # Limit to 10 grants
+            grant_summaries.append(
+                f"{i}. {alert.grant.title} ({alert.grant.funding_agency}) - "
+                f"{int(alert.match.match_score * 100)}% match"
+            )
+
+        # Generate personalized intro using Claude
+        intro_prompt = f"""Write a brief, friendly intro paragraph (2-3 sentences) for a grant digest email to {user.name}.
+They have {len(alerts)} new grant match{'es' if len(alerts) > 1 else ''}.
+Top matches: {'; '.join(grant_summaries[:3])}
+Keep it professional but warm. Don't list the grants, just intro the digest."""
+
+        try:
+            intro_response = self.anthropic_client.messages.create(
+                model=settings.llm_model,
+                max_tokens=200,
+                messages=[{"role": "user", "content": intro_prompt}],
+            )
+            intro_text = intro_response.content[0].text.strip()
+        except Exception as e:
+            self.logger.warning("digest_intro_generation_failed", error=str(e))
+            intro_text = f"Hi {user.name}, we found {len(alerts)} new grant{'s' if len(alerts) > 1 else ''} that match your research profile."
+
+        # Build HTML for each grant
+        grant_html_blocks = []
+        for alert in alerts[:10]:
+            deadline_str = (
+                alert.grant.deadline.strftime("%B %d, %Y")
+                if alert.grant.deadline
+                else "Open/Rolling"
+            )
+            amount_str = (
+                f"${alert.grant.amount_min:,.0f} - ${alert.grant.amount_max:,.0f}"
+                if alert.grant.amount_min and alert.grant.amount_max
+                else "Amount varies"
+            )
+
+            grant_html_blocks.append(f"""
+            <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                    <h3 style="margin: 0; color: #1f2937; font-size: 16px;">{alert.grant.title}</h3>
+                    <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">{int(alert.match.match_score * 100)}%</span>
+                </div>
+                <p style="color: #6b7280; margin: 4px 0; font-size: 14px;">{alert.grant.funding_agency} • {amount_str}</p>
+                <p style="color: #6b7280; margin: 4px 0; font-size: 14px;">Deadline: {deadline_str}</p>
+                <p style="color: #374151; margin: 8px 0 12px; font-size: 14px;">{alert.match.explanation or 'Strong alignment with your research profile.'}</p>
+                <a href="{alert.grant.url}" style="display: inline-block; background: #667eea; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px;">View Details →</a>
+            </div>
+            """)
+
+        grants_html = "\n".join(grant_html_blocks)
+
+        # Build full HTML email
+        body_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0; }}
+        .content {{ background: #fff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; }}
+        .footer {{ text-align: center; padding: 16px; color: #6b7280; font-size: 12px; background: #f9fafb; border-radius: 0 0 8px 8px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 24px;">Your Grant Digest</h1>
+            <p style="margin: 8px 0 0; opacity: 0.9;">{len(alerts)} new match{'es' if len(alerts) > 1 else ''} found</p>
+        </div>
+        <div class="content">
+            <p style="margin-top: 0;">{intro_text}</p>
+
+            <h2 style="font-size: 18px; margin: 24px 0 16px; color: #1f2937;">Your Matches</h2>
+
+            {grants_html}
+
+            {"<p style='color: #6b7280; font-style: italic;'>Showing top 10 matches. View all in your dashboard.</p>" if len(alerts) > 10 else ""}
+        </div>
+        <div class="footer">
+            <p>You're receiving this because you have grant alerts enabled with digest delivery.</p>
+            <p><a href="{settings.frontend_url}/settings/notifications" style="color: #667eea;">Manage notification preferences</a></p>
+            <p>GrantRadar - AI-Powered Grant Discovery</p>
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+        # Build plain text version
+        grant_text_blocks = []
+        for i, alert in enumerate(alerts[:10], 1):
+            deadline_str = (
+                alert.grant.deadline.strftime("%B %d, %Y")
+                if alert.grant.deadline
+                else "Open/Rolling"
+            )
+            grant_text_blocks.append(
+                f"{i}. {alert.grant.title}\n"
+                f"   {alert.grant.funding_agency} - {int(alert.match.match_score * 100)}% match\n"
+                f"   Deadline: {deadline_str}\n"
+                f"   View: {alert.grant.url}\n"
+            )
+
+        body_text = f"""Hi {user.name},
+
+{intro_text}
+
+YOUR MATCHES
+============
+
+{chr(10).join(grant_text_blocks)}
+
+---
+GrantRadar - AI-Powered Grant Discovery
+Manage preferences: {settings.frontend_url}/settings/notifications
+"""
+
+        return EmailContent(
+            subject=subject,
+            body_html=body_html,
+            body_text=body_text,
+            from_email=settings.from_email,
+            from_name=settings.from_name,
+            to_email=user.email,
+            to_name=user.name,
+            tracking_id=str(alerts[0].match_id),  # Use first match ID for tracking
+        )
+
     def _log_alert_sent(
         self, payload: AlertPayload, statuses: list[DeliveryStatus]
     ) -> None:
-        """Log sent alert to Redis for tracking and analytics."""
+        """Log sent alert to Redis and database for tracking and analytics."""
+        import asyncio
+
         for status in statuses:
             alert_record = {
                 "match_id": str(payload.match_id),
@@ -500,9 +705,14 @@ Return the email body only, no subject line or signature."""
 
             # Calculate latency if we have posted_at
             if payload.grant.posted_at and status.sent_at:
-                latency_seconds = (
-                    status.sent_at - payload.grant.posted_at
-                ).total_seconds()
+                # Ensure both are timezone-aware for comparison
+                sent_at = status.sent_at
+                posted_at = payload.grant.posted_at
+                if sent_at.tzinfo is None:
+                    sent_at = sent_at.replace(tzinfo=timezone.utc)
+                if posted_at.tzinfo is None:
+                    posted_at = posted_at.replace(tzinfo=timezone.utc)
+                latency_seconds = (sent_at - posted_at).total_seconds()
                 alert_record["latency_seconds"] = latency_seconds
                 self.logger.info(
                     "alert_latency",
@@ -512,6 +722,7 @@ Return the email body only, no subject line or signature."""
                     target_met=latency_seconds < 300,  # 5 minute target
                 )
 
+            # Log to Redis (short-term cache)
             self.redis_client.hset(
                 f"{self.ALERTS_SENT_KEY}:{status.alert_id}",
                 mapping=alert_record,
@@ -520,6 +731,73 @@ Return the email body only, no subject line or signature."""
             self.redis_client.expire(
                 f"{self.ALERTS_SENT_KEY}:{status.alert_id}",
                 60 * 60 * 24 * 30,
+            )
+
+            # Persist to database (long-term storage)
+            try:
+                # Run async db operation
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.ensure_future(
+                        self._persist_alert_to_db(payload, status)
+                    )
+                else:
+                    asyncio.run(self._persist_alert_to_db(payload, status))
+            except Exception as e:
+                self.logger.warning(
+                    "alert_db_persist_failed",
+                    alert_id=str(status.alert_id),
+                    error=str(e),
+                )
+
+    async def _persist_alert_to_db(
+        self, payload: AlertPayload, status: DeliveryStatus
+    ) -> None:
+        """
+        Persist alert to the alerts_sent database table.
+
+        Args:
+            payload: The alert payload that was sent
+            status: The delivery status for this channel
+        """
+        try:
+            async with get_async_session() as session:
+                # First, verify the match exists in database
+                match_result = await session.execute(
+                    select(Match).where(Match.id == payload.match_id)
+                )
+                match = match_result.scalar_one_or_none()
+
+                if not match:
+                    self.logger.warning(
+                        "alert_persist_match_not_found",
+                        match_id=str(payload.match_id),
+                    )
+                    return
+
+                # Create AlertSent record
+                alert = AlertSent(
+                    id=status.alert_id,
+                    match_id=payload.match_id,
+                    channel=status.channel.value,
+                    sent_at=status.sent_at or datetime.utcnow(),
+                )
+
+                session.add(alert)
+                await session.commit()
+
+                self.logger.debug(
+                    "alert_persisted",
+                    alert_id=str(status.alert_id),
+                    match_id=str(payload.match_id),
+                    channel=status.channel.value,
+                )
+
+        except Exception as e:
+            self.logger.error(
+                "alert_persist_error",
+                alert_id=str(status.alert_id),
+                error=str(e),
             )
 
     def should_batch_for_digest(self, user_id: UUID, priority: AlertPriority) -> bool:
@@ -708,7 +986,7 @@ Return the email body only, no subject line or signature."""
                     name=user.name or user.email.split("@")[0],
                     email=user.email,
                     phone=user.phone,
-                    slack_webhook_url=None,  # Not stored in User model currently
+                    slack_webhook_url=user.slack_webhook_url,
                     alert_preferences={},  # Could be extended with user preferences
                 )
 
@@ -965,7 +1243,7 @@ def process_digest_batch(user_id: str, date_str: str) -> dict:
     """
     Process batched digest alerts for a user.
 
-    Called at end of day to send digest email.
+    Called at end of day to send digest email combining all pending alerts.
     """
     import asyncio
 
@@ -980,21 +1258,24 @@ def process_digest_batch(user_id: str, date_str: str) -> dict:
 
     alerts = [AlertPayload.model_validate_json(data) for data in alert_data]
 
-    # Generate digest email
-    # In production, this would be a separate template
+    # Generate and send digest email
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        # Send single digest email with all alerts
-        # Implementation would combine all grants into one email
-        pass
+        status = loop.run_until_complete(
+            agent._send_digest_email(alerts)
+        )
     finally:
         loop.close()
 
     # Clear processed batch
     agent.redis_client.delete(digest_key)
 
-    return {"user_id": user_id, "alerts_processed": len(alerts)}
+    return {
+        "user_id": user_id,
+        "alerts_processed": len(alerts),
+        "status": status.status if status else "no_email_sent",
+    }
 
 
 # Celery Beat schedule for digest processing
