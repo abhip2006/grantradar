@@ -25,7 +25,26 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create grant_applications table and its indexes."""
 
-    # Create the application_stage enum type
+    # Create the application_stage enum type (with checkfirst to handle partial migrations)
+    # First create the enum type if it doesn't exist
+    connection = op.get_bind()
+    result = connection.execute(
+        sa.text(
+            "SELECT 1 FROM pg_type WHERE typname = 'applicationstage'"
+        )
+    )
+    if result.fetchone() is None:
+        application_stage_enum = sa.Enum(
+            "researching",
+            "writing",
+            "submitted",
+            "awarded",
+            "rejected",
+            name="applicationstage",
+        )
+        application_stage_enum.create(connection, checkfirst=False)
+
+    # Reference the enum for use in the table (create_type=False prevents duplicate creation)
     application_stage_enum = sa.Enum(
         "researching",
         "writing",
@@ -33,8 +52,8 @@ def upgrade() -> None:
         "awarded",
         "rejected",
         name="applicationstage",
+        create_type=False,
     )
-    application_stage_enum.create(op.get_bind(), checkfirst=True)
 
     # Create grant_applications table
     op.create_table(
