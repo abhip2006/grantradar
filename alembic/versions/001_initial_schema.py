@@ -1,22 +1,32 @@
-"""Initial schema with pgvector support
+"""Initial schema with optional pgvector support
 
 Revision ID: 001
 Revises:
 Create Date: 2025-01-06
 
 Creates all tables for the GrantRadar grant intelligence platform:
-- grants: Grant opportunities with vector embeddings
+- grants: Grant opportunities with vector embeddings (optional)
 - users: User accounts and authentication
 - lab_profiles: Research profiles for matching
 - matches: Grant-to-user match results
 - alerts_sent: Notification delivery tracking
+
+Note: pgvector is optional. If not available, embedding columns use BYTEA fallback
+and vector indexes are skipped. The app will work without embedding features.
 """
 from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects import postgresql
+
+# Try to import pgvector, fall back gracefully if not available
+try:
+    from pgvector.sqlalchemy import Vector
+    PGVECTOR_AVAILABLE = True
+except ImportError:
+    PGVECTOR_AVAILABLE = False
+    Vector = None
 
 # Revision identifiers
 revision: str = "001"
@@ -25,15 +35,45 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def check_pgvector_extension(connection) -> bool:
+    """Check if pgvector extension is available on the database server."""
+    try:
+        result = connection.execute(
+            sa.text("SELECT 1 FROM pg_available_extensions WHERE name = 'vector'")
+        )
+        return result.fetchone() is not None
+    except Exception:
+        return False
+
+
 def upgrade() -> None:
     """Create initial database schema."""
 
-    # Enable pgvector extension
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    # Check if pgvector extension is available and enable it
+    bind = op.get_bind()
+    pgvector_enabled = False
+
+    if PGVECTOR_AVAILABLE and check_pgvector_extension(bind):
+        try:
+            op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            pgvector_enabled = True
+            print("pgvector extension enabled successfully")
+        except Exception as e:
+            print(f"pgvector extension not available, using fallback: {e}")
+            pgvector_enabled = False
+    else:
+        print("pgvector not available, embedding features will be disabled")
 
     # ==========================================================================
     # Create grants table
     # ==========================================================================
+    # Define embedding column type based on pgvector availability
+    if pgvector_enabled and Vector is not None:
+        embedding_column = sa.Column("embedding", Vector(1536), nullable=True)
+    else:
+        # Fallback: store serialized embedding as BYTEA (or skip entirely)
+        embedding_column = sa.Column("embedding", postgresql.BYTEA(), nullable=True)
+
     op.create_table(
         "grants",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -50,7 +90,7 @@ def upgrade() -> None:
         sa.Column("eligibility", postgresql.JSONB(), nullable=True),
         sa.Column("categories", postgresql.ARRAY(sa.Text()), nullable=True),
         sa.Column("raw_data", postgresql.JSONB(), nullable=True),
-        sa.Column("embedding", Vector(1536), nullable=True),
+        embedding_column,
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -76,15 +116,16 @@ def upgrade() -> None:
         ["source"],
     )
 
-    # Vector similarity index for grants (IVFFlat)
-    op.execute(
-        """
-        CREATE INDEX ix_grants_embedding
-        ON grants
-        USING ivfflat (embedding vector_cosine_ops)
-        WITH (lists = 100)
-        """
-    )
+    # Vector similarity index for grants (only if pgvector is available)
+    if pgvector_enabled:
+        op.execute(
+            """
+            CREATE INDEX ix_grants_embedding
+            ON grants
+            USING ivfflat (embedding vector_cosine_ops)
+            WITH (lists = 100)
+            """
+        )
 
     # ==========================================================================
     # Create users table
@@ -111,6 +152,12 @@ def upgrade() -> None:
     # ==========================================================================
     # Create lab_profiles table
     # ==========================================================================
+    # Define profile embedding column type based on pgvector availability
+    if pgvector_enabled and Vector is not None:
+        profile_embedding_column = sa.Column("profile_embedding", Vector(1536), nullable=True)
+    else:
+        profile_embedding_column = sa.Column("profile_embedding", postgresql.BYTEA(), nullable=True)
+
     op.create_table(
         "lab_profiles",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
@@ -126,7 +173,7 @@ def upgrade() -> None:
         sa.Column("past_grants", postgresql.JSONB(), nullable=True),
         sa.Column("publications", postgresql.JSONB(), nullable=True),
         sa.Column("orcid", sa.Text(), nullable=True),
-        sa.Column("profile_embedding", Vector(1536), nullable=True),
+        profile_embedding_column,
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -138,15 +185,16 @@ def upgrade() -> None:
     # Lab profiles indexes
     op.create_index("ix_lab_profiles_user_id", "lab_profiles", ["user_id"])
 
-    # Vector similarity index for lab profiles (IVFFlat)
-    op.execute(
-        """
-        CREATE INDEX ix_lab_profiles_embedding
-        ON lab_profiles
-        USING ivfflat (profile_embedding vector_cosine_ops)
-        WITH (lists = 100)
-        """
-    )
+    # Vector similarity index for lab profiles (only if pgvector is available)
+    if pgvector_enabled:
+        op.execute(
+            """
+            CREATE INDEX ix_lab_profiles_embedding
+            ON lab_profiles
+            USING ivfflat (profile_embedding vector_cosine_ops)
+            WITH (lists = 100)
+            """
+        )
 
     # ==========================================================================
     # Create matches table
@@ -232,5 +280,8 @@ def downgrade() -> None:
     op.drop_table("users")
     op.drop_table("grants")
 
-    # Drop pgvector extension
-    op.execute("DROP EXTENSION IF EXISTS vector")
+    # Drop pgvector extension if it exists (safe to run even if not present)
+    try:
+        op.execute("DROP EXTENSION IF EXISTS vector")
+    except Exception:
+        pass  # Extension wasn't installed, ignore

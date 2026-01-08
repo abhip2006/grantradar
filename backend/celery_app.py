@@ -75,6 +75,7 @@ TASK_ROUTES = {
     "backend.tasks.polling.poll_grants_gov": {"queue": "high"},
     "backend.tasks.polling.poll_nsf": {"queue": "high"},
     "backend.tasks.polling.scrape_nih": {"queue": "high"},
+    "backend.tasks.polling.poll_nih_reporter": {"queue": "high"},
     # Normal priority tasks (default)
     "backend.tasks.indexing.reindex_grants": {"queue": "normal"},
     "backend.tasks.analytics.compute_analytics": {"queue": "normal"},
@@ -191,6 +192,11 @@ def create_celery_app() -> Celery:
             "nih-scrape": {
                 "task": "backend.tasks.polling.scrape_nih",
                 "schedule": timedelta(minutes=30),
+                "options": {"queue": "high"},
+            },
+            "nih-reporter-poll": {
+                "task": "backend.tasks.polling.poll_nih_reporter",
+                "schedule": timedelta(minutes=15),
                 "options": {"queue": "high"},
             },
             "deadline-reminder": {
@@ -336,6 +342,10 @@ nsf_circuit = CircuitBreaker(
 nih_circuit = CircuitBreaker(
     failure_threshold=5,
     recovery_timeout=180,  # 3 minutes (scraping is more fragile)
+)
+nih_reporter_circuit = CircuitBreaker(
+    failure_threshold=5,
+    recovery_timeout=120,  # 2 minutes (API is more stable)
 )
 
 
@@ -557,6 +567,7 @@ __all__ = [
     "grants_gov_circuit",
     "nsf_circuit",
     "nih_circuit",
+    "nih_reporter_circuit",
     "route_by_priority",
     "critical_task",
     "high_priority_task",

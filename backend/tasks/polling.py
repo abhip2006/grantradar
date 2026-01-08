@@ -26,6 +26,7 @@ from backend.celery_app import (
     grants_gov_circuit,
     nsf_circuit,
     nih_circuit,
+    nih_reporter_circuit,
     CircuitBreakerOpenError,
 )
 
@@ -357,6 +358,96 @@ def scrape_nih(self) -> dict[str, Any]:
 
 
 # =============================================================================
+# NIH Reporter Polling Task
+# =============================================================================
+
+
+@celery_app.task(
+    name="backend.tasks.polling.poll_nih_reporter",
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,  # 10 minutes max delay
+    retry_kwargs={"max_retries": 3},
+    acks_late=True,
+    time_limit=900,  # 15 minute hard limit
+    soft_time_limit=840,  # 14 minute soft limit
+)
+def poll_nih_reporter(self) -> dict[str, Any]:
+    """
+    Poll NIH Reporter API for active research projects.
+
+    Uses the official NIH Reporter API which is more reliable than scraping.
+    Scheduled to run every 15 minutes via Celery Beat.
+
+    Returns:
+        Dict with polling results:
+            - status: "success" or "error"
+            - grants_discovered: Number of new grants found
+            - source: "nih_reporter"
+
+    Raises:
+        Exception: On critical failures after retries
+    """
+    logger.info(
+        "Starting NIH Reporter polling task",
+        extra={"task_id": self.request.id},
+    )
+
+    # Check circuit breaker
+    if not nih_reporter_circuit.can_execute():
+        logger.warning(
+            "NIH Reporter circuit breaker is open, skipping poll",
+            extra={"task_id": self.request.id},
+        )
+        raise CircuitBreakerOpenError("NIH Reporter circuit breaker is open")
+
+    try:
+        # Import agent (lazy import)
+        from agents.discovery.nih_reporter import NIHReporterDiscoveryAgent
+
+        # Instantiate agent
+        agent = NIHReporterDiscoveryAgent()
+
+        # Run discovery in async context
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            count = loop.run_until_complete(agent.run())
+        finally:
+            loop.close()
+
+        # Record success with circuit breaker
+        nih_reporter_circuit.record_success()
+
+        logger.info(
+            f"NIH Reporter polling completed: {count} grants discovered",
+            extra={
+                "task_id": self.request.id,
+                "grants_discovered": count,
+            },
+        )
+
+        return {
+            "status": "success",
+            "grants_discovered": count,
+            "source": "nih_reporter",
+        }
+
+    except Exception as e:
+        # Record failure with circuit breaker
+        nih_reporter_circuit.record_failure()
+
+        logger.error(
+            f"NIH Reporter polling task failed: {e}",
+            exc_info=True,
+            extra={"task_id": self.request.id},
+        )
+
+        raise
+
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -364,4 +455,5 @@ __all__ = [
     "poll_grants_gov",
     "poll_nsf",
     "scrape_nih",
+    "poll_nih_reporter",
 ]
