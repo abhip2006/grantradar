@@ -119,29 +119,29 @@ class TestExtractDeadlineHistory:
     @pytest.mark.asyncio
     async def test_extract_creates_records(self, async_session: AsyncSession, sample_grants):
         """Test that extraction creates deadline history records."""
+        # Function returns count of records created (int)
         result = await extract_deadline_history_from_grants(async_session)
 
-        assert result["processed"] > 0
-        assert result["created"] > 0
+        assert isinstance(result, int)
+        assert result > 0
 
     @pytest.mark.asyncio
     async def test_extract_handles_duplicates(self, async_session: AsyncSession, sample_grants):
         """Test that duplicate extraction doesn't create duplicate records."""
         # First extraction
         result1 = await extract_deadline_history_from_grants(async_session)
+        assert result1 > 0
 
-        # Second extraction should skip duplicates
+        # Second extraction should create 0 (duplicates skipped)
         result2 = await extract_deadline_history_from_grants(async_session)
-
-        assert result2["skipped"] >= result1["created"]
+        assert result2 == 0
 
     @pytest.mark.asyncio
     async def test_extract_with_no_grants(self, async_session: AsyncSession):
         """Test extraction with no grants in database."""
         result = await extract_deadline_history_from_grants(async_session)
 
-        assert result["processed"] == 0
-        assert result["created"] == 0
+        assert result == 0
 
 
 # =============================================================================
@@ -186,7 +186,8 @@ class TestAddDeadlineRecord:
             source="complete",
         )
 
-        assert result.open_date == open_date
+        # Compare dates without timezone info (SQLite stores naive datetimes)
+        assert result.open_date.replace(tzinfo=None) == open_date.replace(tzinfo=None)
         assert result.fiscal_year == 2026
         assert result.amount_min == 100000
         assert result.amount_max == 500000
@@ -281,8 +282,8 @@ class TestGetDeadlinePatterns:
 
         assert patterns is not None
         assert "typical_months" in patterns
-        assert "typical_day" in patterns
-        assert "date_variance" in patterns
+        assert "typical_day_of_month" in patterns
+        assert "date_variance_days" in patterns
 
     @pytest.mark.asyncio
     async def test_patterns_calculates_typical_day(
@@ -294,8 +295,8 @@ class TestGetDeadlinePatterns:
         )
 
         # Our sample data has day=28
-        assert patterns["typical_day"] is not None
-        assert 1 <= patterns["typical_day"] <= 31
+        assert patterns["typical_day_of_month"] is not None
+        assert 1 <= patterns["typical_day_of_month"] <= 31
 
     @pytest.mark.asyncio
     async def test_patterns_with_insufficient_data(self, async_session: AsyncSession):
@@ -305,7 +306,7 @@ class TestGetDeadlinePatterns:
         )
 
         # Should return None or empty patterns
-        assert patterns is None or patterns.get("typical_day") is None
+        assert patterns is None or patterns.get("typical_day_of_month") is None
 
 
 # =============================================================================
@@ -435,9 +436,9 @@ class TestDeadlineHistoryIntegration:
     @pytest.mark.asyncio
     async def test_full_workflow(self, async_session: AsyncSession, sample_grants):
         """Test complete workflow: extract -> analyze -> predict."""
-        # Step 1: Extract history from grants
+        # Step 1: Extract history from grants (returns count of records created)
         extract_result = await extract_deadline_history_from_grants(async_session)
-        assert extract_result["created"] > 0
+        assert extract_result > 0
 
         # Step 2: Get statistics
         stats = await get_deadline_history_stats(async_session)
