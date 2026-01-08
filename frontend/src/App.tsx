@@ -19,6 +19,11 @@ import { Contact } from './pages/Contact';
 import { About } from './pages/About';
 import { FAQ } from './pages/FAQ';
 import { Pricing } from './pages/Pricing';
+import { FunderInsights } from './pages/FunderInsights';
+import { FunderDetail } from './pages/FunderDetail';
+import { Calendar } from './pages/Calendar';
+import { Analytics } from './pages/Analytics';
+import { Forecast } from './pages/Forecast';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -93,6 +98,46 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Pipeline />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/funders"
+                  element={
+                    <ProtectedRoute>
+                      <FunderInsights />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/funders/:funderName"
+                  element={
+                    <ProtectedRoute>
+                      <FunderDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/calendar"
+                  element={
+                    <ProtectedRoute>
+                      <Calendar />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/analytics"
+                  element={
+                    <ProtectedRoute>
+                      <Analytics />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/forecast"
+                  element={
+                    <ProtectedRoute>
+                      <Forecast />
                     </ProtectedRoute>
                   }
                 />

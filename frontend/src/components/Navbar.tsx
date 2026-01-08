@@ -24,7 +24,10 @@ export function Navbar() {
     ? [
         { name: 'Dashboard', href: '/dashboard' },
         { name: 'Pipeline', href: '/pipeline' },
-        { name: 'Saved', href: '/dashboard?filter=saved' },
+        { name: 'Forecast', href: '/forecast' },
+        { name: 'Analytics', href: '/analytics' },
+        { name: 'Calendar', href: '/calendar' },
+        { name: 'Funders', href: '/funders' },
       ]
     : [
         { name: 'Features', href: '/#features' },

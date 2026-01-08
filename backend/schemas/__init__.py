@@ -47,6 +47,28 @@ from backend.schemas.saved_searches import (
     SavedSearchUpdate,
 )
 from backend.schemas.stats import DashboardStats
+from backend.schemas.calendar import (
+    CalendarDay,
+    CalendarDeadlinesResponse,
+    CalendarEvent,
+    CalendarEventType,
+    CalendarMonthResponse,
+    UpcomingDeadline,
+    UpcomingDeadlinesResponse,
+    UrgencyLevel,
+)
+from backend.schemas.analytics import (
+    CategoryBreakdownItem,
+    CategoryBreakdownResponse,
+    FundingDataPoint,
+    FundingTrendsResponse,
+    PipelineMetricsResponse,
+    PipelineStageMetric,
+    SuccessRateByCategory,
+    SuccessRateByFunder,
+    SuccessRateByStage,
+    SuccessRatesResponse,
+)
 
 __all__ = [
     # Auth
@@ -89,4 +111,24 @@ __all__ = [
     "SavedSearchUpdate",
     # Stats
     "DashboardStats",
+    # Calendar
+    "CalendarDay",
+    "CalendarDeadlinesResponse",
+    "CalendarEvent",
+    "CalendarEventType",
+    "CalendarMonthResponse",
+    "UpcomingDeadline",
+    "UpcomingDeadlinesResponse",
+    "UrgencyLevel",
+    # Analytics
+    "CategoryBreakdownItem",
+    "CategoryBreakdownResponse",
+    "FundingDataPoint",
+    "FundingTrendsResponse",
+    "PipelineMetricsResponse",
+    "PipelineStageMetric",
+    "SuccessRateByCategory",
+    "SuccessRateByFunder",
+    "SuccessRateByStage",
+    "SuccessRatesResponse",
 ]

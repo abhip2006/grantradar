@@ -10,6 +10,8 @@ import type {
   NotificationPreferences,
   Grant,
   CalendarLinks,
+  CalendarMonthResponse,
+  UpcomingDeadlinesResponse,
   ImportPreview,
   CompareResponse,
   SimilarGrantsResponse,
@@ -22,7 +24,18 @@ import type {
   SavedSearch,
   SavedSearchCreate,
   SavedSearchUpdate,
-  SavedSearchList
+  SavedSearchList,
+  FunderListResponse,
+  FunderInsightsResponse,
+  FunderGrantsResponse,
+  SuccessRatesResponse,
+  FundingTrendsResponse,
+  PipelineMetricsResponse,
+  CategoryBreakdownResponse,
+  AnalyticsSummaryResponse,
+  ForecastUpcomingResponse,
+  SeasonalTrendResponse,
+  RecommendationsResponse,
 } from '../types';
 
 // API base URL - connects to FastAPI backend
@@ -393,6 +406,35 @@ export const calendarApi = {
     });
     return response.data;
   },
+
+  // Get deadlines for a specific month
+  getMonthDeadlines: async (
+    year: number,
+    month: number,
+    params: { include_saved?: boolean; include_pipeline?: boolean } = {}
+  ): Promise<CalendarMonthResponse> => {
+    const response = await api.get<CalendarMonthResponse>(`/calendar/month/${year}/${month}`, {
+      params: {
+        include_saved: params.include_saved ?? true,
+        include_pipeline: params.include_pipeline ?? true,
+      },
+    });
+    return response.data;
+  },
+
+  // Get upcoming deadlines
+  getUpcomingDeadlines: async (
+    params: { days?: number; include_saved?: boolean; include_pipeline?: boolean } = {}
+  ): Promise<UpcomingDeadlinesResponse> => {
+    const response = await api.get<UpcomingDeadlinesResponse>('/calendar/upcoming', {
+      params: {
+        days: params.days ?? 30,
+        include_saved: params.include_saved ?? true,
+        include_pipeline: params.include_pipeline ?? true,
+      },
+    });
+    return response.data;
+  },
 };
 
 // Profile Import API
@@ -518,6 +560,138 @@ export const savedSearchesApi = {
       page_size: data.page_size,
       has_more: data.has_more,
     };
+  },
+};
+
+// Funder Insights API
+export const funderInsightsApi = {
+  // List all funders with summary stats
+  listFunders: async (params: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<FunderListResponse> => {
+    const response = await api.get<FunderListResponse>('/funders', {
+      params: {
+        search: params.search,
+        limit: params.limit || 50,
+        offset: params.offset || 0,
+      },
+    });
+    return response.data;
+  },
+
+  // Get top funders by grant count or funding amount
+  getTopFunders: async (params: {
+    sort_by?: 'grant_count' | 'funding_amount';
+    limit?: number;
+  } = {}): Promise<FunderListResponse> => {
+    const response = await api.get<FunderListResponse>('/funders/top', {
+      params: {
+        sort_by: params.sort_by || 'grant_count',
+        limit: params.limit || 10,
+      },
+    });
+    return response.data;
+  },
+
+  // Get detailed insights for a specific funder
+  getFunderInsights: async (funderName: string): Promise<FunderInsightsResponse> => {
+    const encodedName = encodeURIComponent(funderName);
+    const response = await api.get<FunderInsightsResponse>(`/funders/${encodedName}/insights`);
+    return response.data;
+  },
+
+  // Get grants from a specific funder
+  getFunderGrants: async (
+    funderName: string,
+    params: { page?: number; page_size?: number; active_only?: boolean } = {}
+  ): Promise<FunderGrantsResponse> => {
+    const encodedName = encodeURIComponent(funderName);
+    const response = await api.get<FunderGrantsResponse>(`/funders/${encodedName}/grants`, {
+      params: {
+        page: params.page || 1,
+        page_size: params.page_size || 20,
+        active_only: params.active_only || false,
+      },
+    });
+    return response.data;
+  },
+};
+
+// Analytics API - Success rates, funding trends, pipeline metrics
+export const analyticsApi = {
+  // Get success rates by stage, category, and funder
+  getSuccessRates: async (): Promise<SuccessRatesResponse> => {
+    const response = await api.get<SuccessRatesResponse>('/analytics/success-rates');
+    return response.data;
+  },
+
+  // Get funding trends over time
+  getFundingTrends: async (params: {
+    period?: 'monthly' | 'quarterly' | 'yearly';
+    months?: number;
+  } = {}): Promise<FundingTrendsResponse> => {
+    const response = await api.get<FundingTrendsResponse>('/analytics/funding-trends', {
+      params: {
+        period: params.period || 'monthly',
+        months: params.months || 12,
+      },
+    });
+    return response.data;
+  },
+
+  // Get pipeline conversion metrics
+  getPipelineMetrics: async (): Promise<PipelineMetricsResponse> => {
+    const response = await api.get<PipelineMetricsResponse>('/analytics/pipeline-metrics');
+    return response.data;
+  },
+
+  // Get category breakdown
+  getCategoryBreakdown: async (): Promise<CategoryBreakdownResponse> => {
+    const response = await api.get<CategoryBreakdownResponse>('/analytics/category-breakdown');
+    return response.data;
+  },
+
+  // Get analytics summary (dashboard stats)
+  getSummary: async (): Promise<AnalyticsSummaryResponse> => {
+    const response = await api.get<AnalyticsSummaryResponse>('/analytics/summary');
+    return response.data;
+  },
+};
+
+// Forecast API - Predict upcoming grant opportunities
+export const forecastApi = {
+  // Get upcoming grant forecasts based on historical patterns
+  getUpcoming: async (params: {
+    lookahead_months?: number;
+    limit?: number;
+  } = {}): Promise<ForecastUpcomingResponse> => {
+    const response = await api.get<ForecastUpcomingResponse>('/forecast/upcoming', {
+      params: {
+        lookahead_months: params.lookahead_months || 6,
+        limit: params.limit || 20,
+      },
+    });
+    return response.data;
+  },
+
+  // Get seasonal grant availability trends
+  getSeasonal: async (): Promise<SeasonalTrendResponse> => {
+    const response = await api.get<SeasonalTrendResponse>('/forecast/seasonal');
+    return response.data;
+  },
+
+  // Get personalized recommendations based on profile match
+  getRecommendations: async (params: {
+    limit?: number;
+  } = {}): Promise<RecommendationsResponse> => {
+    const response = await api.get<RecommendationsResponse>('/forecast/recommendations', {
+      params: {
+        limit: params.limit || 10,
+      },
+    });
+    return response.data;
   },
 };
 
