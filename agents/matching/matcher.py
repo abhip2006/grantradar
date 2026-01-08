@@ -111,12 +111,12 @@ class GrantMatcher:
                 id as grant_id,
                 title,
                 description,
-                funding_agency,
-                funding_amount,
+                agency,
+                amount_min,
+                amount_max,
                 deadline,
-                eligibility_criteria,
+                eligibility,
                 categories,
-                keywords,
                 embedding
             FROM grants
             WHERE id = :grant_id
@@ -128,16 +128,28 @@ class GrantMatcher:
             logger.warning("grant_not_found", grant_id=str(grant_id))
             return None
 
+        # Extract keywords from categories if available
+        keywords = []
+        if result.categories:
+            keywords = result.categories
+
+        # Parse eligibility criteria
+        eligibility_criteria = []
+        if result.eligibility:
+            elig = result.eligibility
+            if isinstance(elig, dict) and elig.get("applicant_types"):
+                eligibility_criteria = elig["applicant_types"]
+
         return GrantData(
             grant_id=grant_id,
             title=result.title,
             description=result.description or "",
-            funding_agency=result.funding_agency,
-            funding_amount=result.funding_amount,
+            funding_agency=result.agency,
+            funding_amount=result.amount_max or result.amount_min,
             deadline=result.deadline,
-            eligibility_criteria=result.eligibility_criteria or [],
+            eligibility_criteria=eligibility_criteria,
             categories=result.categories or [],
-            keywords=result.keywords or [],
+            keywords=keywords,
             embedding=result.embedding,
         )
 

@@ -1,6 +1,6 @@
 """
-Profile Embedding Generation Tasks
-Celery tasks for computing and updating user profile embeddings.
+Embedding Generation Tasks
+Celery tasks for computing and updating profile and grant embeddings.
 """
 import logging
 from typing import Any
@@ -12,6 +12,184 @@ from backend.celery_app import celery_app, normal_task
 from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Grant Embedding Tasks
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    queue="normal",
+    priority=3,
+    soft_time_limit=60,
+    time_limit=90,
+    autoretry_for=(Exception,),
+    max_retries=3,
+    retry_backoff=True,
+    retry_backoff_max=300,
+    retry_jitter=True,
+)
+def compute_grant_embedding(self, grant_id: str) -> dict[str, Any]:
+    """
+    Compute and store embedding for a grant.
+
+    This task is triggered when:
+    - A new grant is discovered and validated
+    - A grant's content is updated
+
+    Args:
+        grant_id: UUID string of the grant to compute embedding for
+
+    Returns:
+        dict with status and metadata about the embedding generation
+    """
+    from agents.matching.grant_embedder import GrantEmbedder
+
+    logger.info(f"Computing grant embedding for grant_id={grant_id}")
+
+    engine = create_engine(
+        settings.database_url,
+        pool_size=2,
+        max_overflow=5,
+        pool_pre_ping=True,
+    )
+
+    try:
+        embedder = GrantEmbedder(engine)
+        result = embedder.build_embedding(UUID(grant_id), force=True)
+
+        if result:
+            logger.info(
+                f"Successfully generated embedding for grant_id={grant_id}, "
+                f"dims={result['dimensions']}"
+            )
+            return {
+                "status": "success",
+                "grant_id": grant_id,
+                **result,
+            }
+        else:
+            logger.warning(f"Embedding generation returned None for grant_id={grant_id}")
+            return {
+                "status": "skipped",
+                "grant_id": grant_id,
+                "reason": "Grant not found or empty content",
+            }
+
+    except Exception as e:
+        logger.error(
+            f"Failed to compute embedding for grant_id={grant_id}: {e}",
+            exc_info=True,
+        )
+        raise
+
+    finally:
+        engine.dispose()
+
+
+@celery_app.task(
+    bind=True,
+    queue="normal",
+    priority=2,
+    soft_time_limit=600,
+    time_limit=720,
+)
+def rebuild_missing_grant_embeddings(self) -> dict[str, Any]:
+    """
+    Generate embeddings for all grants that don't have them.
+
+    Use this for:
+    - Initial setup after importing grants
+    - Recovery after embedding failures
+    - Backfilling after model upgrades
+
+    Returns:
+        Statistics about the rebuild operation
+    """
+    from agents.matching.grant_embedder import GrantEmbedder
+
+    logger.info("Starting missing grant embedding rebuild")
+
+    engine = create_engine(
+        settings.database_url,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+    )
+
+    try:
+        embedder = GrantEmbedder(engine)
+        stats = embedder.rebuild_missing_embeddings()
+
+        logger.info(f"Grant embedding rebuild complete: {stats}")
+        return stats
+
+    except Exception as e:
+        logger.error(f"Failed to rebuild grant embeddings: {e}", exc_info=True)
+        raise
+
+    finally:
+        engine.dispose()
+
+
+@celery_app.task(
+    bind=True,
+    queue="normal",
+    priority=3,
+    soft_time_limit=180,
+    time_limit=240,
+)
+def compute_grant_embeddings_batch(
+    self, grant_ids: list[str]
+) -> dict[str, Any]:
+    """
+    Compute embeddings for multiple grants in batch.
+
+    More efficient than individual tasks when processing many grants.
+
+    Args:
+        grant_ids: List of grant UUID strings
+
+    Returns:
+        Statistics about the batch operation
+    """
+    from agents.matching.grant_embedder import GrantEmbedder
+
+    logger.info(f"Computing embeddings for {len(grant_ids)} grants")
+
+    engine = create_engine(
+        settings.database_url,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,
+    )
+
+    try:
+        embedder = GrantEmbedder(engine)
+        stats = embedder.build_embeddings_batch(
+            [UUID(gid) for gid in grant_ids],
+            force=True,
+        )
+
+        logger.info(f"Batch grant embedding complete: {stats}")
+        return stats
+
+    except Exception as e:
+        logger.error(
+            f"Failed to compute batch grant embeddings: {e}",
+            exc_info=True,
+        )
+        raise
+
+    finally:
+        engine.dispose()
+
+
+# =============================================================================
+# Profile Embedding Tasks
+# =============================================================================
 
 
 @celery_app.task(
