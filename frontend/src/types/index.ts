@@ -778,3 +778,108 @@ export interface TemplateRenderRequest {
 export interface TemplateRenderResponse {
   rendered_content: string;
 }
+
+// ===== AI Tools Types =====
+
+// Eligibility Check
+export type EligibilityStatus = 'eligible' | 'not_eligible' | 'partial' | 'unknown';
+
+export interface EligibilityCriterion {
+  criterion: string;
+  met: boolean;
+  explanation: string;
+  confidence: number;
+}
+
+export interface EligibilityCheckResponse {
+  grant_id: string;
+  grant_title: string;
+  overall_status: EligibilityStatus;
+  overall_confidence: number;
+  criteria: EligibilityCriterion[];
+  summary: string;
+  recommendations: string[];
+  missing_info: string[];
+  session_id?: string;
+  checked_at: string;
+}
+
+// Chat
+export interface ChatSource {
+  document_type: string;
+  document_id?: string;
+  title: string;
+  excerpt: string;
+  relevance_score: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  sources?: ChatSource[];
+  created_at: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  session_type: string;
+  context_grant_id?: string;
+  messages: ChatMessage[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSessionListItem {
+  id: string;
+  title: string;
+  session_type: string;
+  message_count: number;
+  last_message_at?: string;
+  created_at: string;
+}
+
+// Research
+export type ResearchStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ResearchGrantResult {
+  id: string;
+  title: string;
+  funder: string;
+  mechanism?: string;
+  description?: string;
+  deadline?: string;
+  amount_min?: number;
+  amount_max?: number;
+  relevance_score: number;
+  match_reasons: string[];
+}
+
+export interface ResearchSession {
+  id: string;
+  query: string;
+  status: ResearchStatus;
+  results?: ResearchGrantResult[];
+  insights?: string;
+  grants_found?: number;
+  processing_time_ms?: number;
+  created_at: string;
+  completed_at?: string;
+}
+
+// Funding Alerts
+export type AlertFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface FundingAlertPreferences {
+  id: string;
+  enabled: boolean;
+  frequency: AlertFrequency;
+  min_match_score: number;
+  include_deadlines: boolean;
+  include_new_grants: boolean;
+  include_insights: boolean;
+  preferred_funders?: string[];
+  last_sent_at?: string;
+}

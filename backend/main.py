@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import analytics, auth, calendar, compare, contact, deadlines, forecast, funder_insights, grants, integrations, matches, pipeline, preferences, profile, reminders, saved_searches, similar, stats, templates
+from backend.api import alerts, analytics, auth, calendar, chat, compare, contact, deadlines, eligibility, forecast, funder_insights, grants, integrations, matches, pipeline, preferences, profile, reminders, research, saved_searches, similar, stats, templates
 from backend.core.config import settings
 from backend.database import check_db_connection, close_db, init_db
 
@@ -257,12 +257,15 @@ async def readiness_check() -> dict[str, Any]:
 # =============================================================================
 
 # Include all API routers
+app.include_router(alerts.router)
 app.include_router(analytics.router)
 app.include_router(auth.router)
 app.include_router(calendar.router)
+app.include_router(chat.router)
 app.include_router(compare.router)
 app.include_router(contact.router)
 app.include_router(deadlines.router)
+app.include_router(eligibility.router)
 app.include_router(forecast.router)
 app.include_router(funder_insights.router)
 app.include_router(grants.router)
@@ -272,6 +275,7 @@ app.include_router(pipeline.router)
 app.include_router(preferences.router)
 app.include_router(profile.router)
 app.include_router(reminders.router)
+app.include_router(research.router)
 app.include_router(saved_searches.router)
 app.include_router(similar.router)
 app.include_router(stats.router)

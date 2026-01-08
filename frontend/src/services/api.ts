@@ -51,6 +51,14 @@ import type {
   TemplateListResponse,
   TemplateRenderResponse,
   TemplateCategory,
+  EligibilityCheckResponse,
+  ChatSession,
+  ChatSessionListItem,
+  ChatMessage,
+  ResearchSession,
+  ResearchGrantResult,
+  FundingAlertPreferences,
+  AlertFrequency,
 } from '../types';
 
 // API base URL - connects to FastAPI backend
@@ -846,6 +854,112 @@ export const templatesApi = {
   // Get categories
   getCategories: async (): Promise<TemplateCategory[]> => {
     const response = await api.get<TemplateCategory[]>('/templates/categories');
+    return response.data;
+  },
+};
+
+// ===== AI Tools API =====
+
+// Eligibility API
+export const eligibilityApi = {
+  checkEligibility: async (grantId: string, additionalContext?: string) => {
+    const response = await api.post<EligibilityCheckResponse>('/eligibility/check', {
+      grant_id: grantId,
+      additional_context: additionalContext,
+    });
+    return response.data;
+  },
+
+  followUp: async (sessionId: string, message: string) => {
+    const response = await api.post('/eligibility/follow-up', {
+      session_id: sessionId,
+      message,
+    });
+    return response.data;
+  },
+
+  getSessions: async () => {
+    const response = await api.get('/eligibility/sessions');
+    return response.data;
+  },
+};
+
+// Chat API
+export const chatApi = {
+  createSession: async (data: { title?: string; session_type?: string; context_grant_id?: string }) => {
+    const response = await api.post<ChatSession>('/chat/sessions', data);
+    return response.data;
+  },
+
+  getSessions: async (limit = 50) => {
+    const response = await api.get<ChatSessionListItem[]>('/chat/sessions', { params: { limit } });
+    return response.data;
+  },
+
+  getSession: async (sessionId: string) => {
+    const response = await api.get<ChatSession>(`/chat/sessions/${sessionId}`);
+    return response.data;
+  },
+
+  sendMessage: async (sessionId: string, content: string) => {
+    const response = await api.post<ChatMessage>(`/chat/sessions/${sessionId}/messages`, { content });
+    return response.data;
+  },
+
+  deleteSession: async (sessionId: string) => {
+    await api.delete(`/chat/sessions/${sessionId}`);
+  },
+};
+
+// Research API
+export const researchApi = {
+  createSession: async (query: string) => {
+    const response = await api.post<ResearchSession>('/research/sessions', { query });
+    return response.data;
+  },
+
+  getSessions: async (limit = 20) => {
+    const response = await api.get<ResearchSession[]>('/research/sessions', { params: { limit } });
+    return response.data;
+  },
+
+  getSession: async (sessionId: string) => {
+    const response = await api.get<ResearchSession>(`/research/sessions/${sessionId}`);
+    return response.data;
+  },
+
+  quickSearch: async (query: string, maxResults = 10) => {
+    const response = await api.post<ResearchGrantResult[]>('/research/quick-search', {
+      query,
+      max_results: maxResults,
+    });
+    return response.data;
+  },
+
+  deleteSession: async (sessionId: string) => {
+    await api.delete(`/research/sessions/${sessionId}`);
+  },
+};
+
+// Funding Alerts API
+export const alertsApi = {
+  getPreferences: async () => {
+    const response = await api.get<FundingAlertPreferences>('/alerts/preferences');
+    return response.data;
+  },
+
+  updatePreferences: async (data: Partial<FundingAlertPreferences>) => {
+    const response = await api.put<FundingAlertPreferences>('/alerts/preferences', data);
+    return response.data;
+  },
+
+  preview: async () => {
+    const response = await api.get('/alerts/preview');
+    return response.data;
+  },
+
+  sendNow: async () => {
+    const response = await api.post('/alerts/send-now');
     return response.data;
   },
 };

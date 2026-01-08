@@ -107,6 +107,7 @@ def create_celery_app() -> Celery:
             "backend.tasks.matching",
             "backend.tasks.notifications",
             "backend.tasks.deadline_reminders",
+            "backend.tasks.funding_alerts",
             "backend.tasks.polling",
             "backend.tasks.indexing",
             "backend.tasks.analytics",
@@ -218,6 +219,11 @@ def create_celery_app() -> Celery:
             "cleanup-expired": {
                 "task": "backend.tasks.cleanup.cleanup_expired_data",
                 "schedule": timedelta(hours=24),
+                "options": {"queue": "normal"},
+            },
+            "send-funding-alerts": {
+                "task": "funding_alerts.send_scheduled_alerts",
+                "schedule": timedelta(hours=24),  # Daily at the same time
                 "options": {"queue": "normal"},
             },
         },

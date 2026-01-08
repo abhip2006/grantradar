@@ -30,6 +30,7 @@ export function Navbar() {
         { name: 'Calendar', href: '/calendar' },
         { name: 'Funders', href: '/funders' },
         { name: 'Templates', href: '/templates' },
+        { name: 'AI Tools', href: '/ai-tools' },
         { name: 'Integrations', href: '/integrations' },
       ]
     : [

@@ -294,6 +294,22 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    funding_alert_preferences: Mapped[Optional["FundingAlertPreference"]] = relationship(
+        "FundingAlertPreference",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    chat_sessions: Mapped[List["ChatSession"]] = relationship(
+        "ChatSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    research_sessions: Mapped[List["ResearchSession"]] = relationship(
+        "ResearchSession",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email='{self.email}')>"
@@ -1153,6 +1169,97 @@ class Template(Base):
         return f"<Template(id={self.id}, title='{self.title[:50]}...')>"
 
 
+class FundingAlertPreference(Base):
+    """
+    User preferences for funding alert email newsletters.
+
+    Stores configuration for personalized funding alert emails including
+    frequency, minimum match scores, and content preferences.
+    """
+
+    __tablename__ = "funding_alert_preferences"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the preference record",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        doc="Reference to the owning user",
+    )
+    enabled: Mapped[bool] = mapped_column(
+        default=True,
+        doc="Whether funding alerts are enabled",
+    )
+    frequency: Mapped[str] = mapped_column(
+        String(20),
+        default="weekly",
+        nullable=False,
+        doc="Alert frequency: 'daily', 'weekly', or 'monthly'",
+    )
+    min_match_score: Mapped[int] = mapped_column(
+        Integer,
+        default=70,
+        nullable=False,
+        doc="Minimum match score (0-100) to include in alerts",
+    )
+    include_deadlines: Mapped[bool] = mapped_column(
+        default=True,
+        doc="Include upcoming deadline reminders in alerts",
+    )
+    include_new_grants: Mapped[bool] = mapped_column(
+        default=True,
+        doc="Include new matching grants in alerts",
+    )
+    include_insights: Mapped[bool] = mapped_column(
+        default=True,
+        doc="Include AI-generated personalized insights",
+    )
+    preferred_funders: Mapped[Optional[list[str]]] = mapped_column(
+        ARRAY(Text),
+        nullable=True,
+        doc="List of preferred funder names to prioritize",
+    )
+    last_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Timestamp of last sent funding alert",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Record last update timestamp",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="funding_alert_preferences",
+    )
+
+    __table_args__ = (
+        Index("ix_funding_alert_preferences_user_id", user_id),
+        Index("ix_funding_alert_preferences_enabled", enabled),
+        Index("ix_funding_alert_preferences_frequency", frequency),
+    )
+
+    def __repr__(self) -> str:
+        return f"<FundingAlertPreference(id={self.id}, user_id={self.user_id}, enabled={self.enabled})>"
+
+
 class GrantDeadlineHistory(Base):
     """
     Historical record of grant deadlines for forecasting and analysis.
@@ -1254,3 +1361,219 @@ class GrantDeadlineHistory(Base):
 
     def __repr__(self) -> str:
         return f"<GrantDeadlineHistory(id={self.id}, funder='{self.funder_name}', deadline={self.deadline_date})>"
+
+
+class ChatSession(Base):
+    """
+    Chat session for AI-powered conversations.
+
+    Tracks eligibility check conversations and other AI interactions
+    with context about the grant being discussed.
+    """
+
+    __tablename__ = "chat_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the chat session",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the owning user",
+    )
+    title: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        doc="Session title for display",
+    )
+    session_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="eligibility",
+        doc="Session type (eligibility, general, etc.)",
+    )
+    context_grant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("grants.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Optional reference to grant being discussed",
+    )
+    metadata_: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        doc="Additional session metadata",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Session creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Session last update timestamp",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="chat_sessions",
+    )
+    context_grant: Mapped[Optional["Grant"]] = relationship("Grant")
+    messages: Mapped[List["ChatMessage"]] = relationship(
+        "ChatMessage",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
+    )
+
+    __table_args__ = (
+        Index("ix_chat_sessions_user_id", user_id),
+        Index("ix_chat_sessions_session_type", session_type),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ChatSession(id={self.id}, type='{self.session_type}')>"
+
+
+class ChatMessage(Base):
+    """
+    Individual message in a chat session.
+
+    Stores the conversation history between user and AI assistant.
+    """
+
+    __tablename__ = "chat_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the message",
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the chat session",
+    )
+    role: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        doc="Message role: 'user', 'assistant', or 'system'",
+    )
+    content: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Message content",
+    )
+    sources: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="RAG citations and source references",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Message creation timestamp",
+    )
+
+    # Relationships
+    session: Mapped["ChatSession"] = relationship(
+        "ChatSession",
+        back_populates="messages",
+    )
+
+    __table_args__ = (Index("ix_chat_messages_session_id", session_id),)
+
+    def __repr__(self) -> str:
+        return f"<ChatMessage(id={self.id}, role='{self.role}')>"
+
+
+class ResearchSession(Base):
+    """
+    Deep research session for intelligent grant discovery.
+
+    Tracks research queries and their results, including AI-generated
+    insights and processing metrics.
+    """
+
+    __tablename__ = "research_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the research session",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the owning user",
+    )
+    query: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Research query submitted by user",
+    )
+    status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="pending",
+        doc="Status: 'pending', 'processing', 'completed', 'failed'",
+    )
+    results: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Research results as JSON",
+    )
+    insights: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="AI-generated insights from research",
+    )
+    grants_found: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Number of grants found in research",
+    )
+    processing_time_ms: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Processing time in milliseconds",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Session creation timestamp",
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Session completion timestamp",
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="research_sessions",
+    )
+
+    __table_args__ = (
+        Index("ix_research_sessions_user_id", user_id),
+        Index("ix_research_sessions_status", status),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ResearchSession(id={self.id}, status='{self.status}')>"

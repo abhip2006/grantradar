@@ -11,6 +11,7 @@ from backend.services.deadline_history import (
     get_funder_deadline_history,
     predict_next_deadline,
 )
+from backend.services.deep_research import DeepResearchService
 
 # ML forecast requires pandas/prophet - optional dependency
 try:
@@ -36,6 +37,8 @@ __all__ = [
     "predict_next_deadline",
     "bulk_add_deadline_records",
     "get_deadline_history_stats",
+    # Deep research service
+    "DeepResearchService",
     # ML forecast (optional)
     "GrantDeadlinePredictor",
     "MLPredictionResult",

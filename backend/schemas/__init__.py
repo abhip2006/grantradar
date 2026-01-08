@@ -2,6 +2,14 @@
 GrantRadar Pydantic Schemas
 Request/Response models for API endpoints.
 """
+from backend.schemas.alerts import (
+    AlertDeadlineSummary,
+    AlertFrequency,
+    AlertGrantSummary,
+    FundingAlertPreferencesCreate,
+    FundingAlertPreferencesResponse,
+    FundingAlertPreview,
+)
 from backend.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -103,8 +111,40 @@ from backend.schemas.templates import (
     TemplateUpdate,
     TemplateVariable,
 )
+from backend.schemas.eligibility import (
+    EligibilityStatus,
+    EligibilityCriterion,
+    EligibilityCheckRequest,
+    EligibilityCheckResponse,
+    EligibilityFollowUpRequest,
+    EligibilityFollowUpResponse,
+)
+from backend.schemas.chat import (
+    ChatSessionType,
+    ChatSource,
+    ChatMessageCreate,
+    ChatMessageResponse,
+    ChatSessionCreate,
+    ChatSessionResponse,
+    ChatSessionListItem,
+)
+from backend.schemas.research import (
+    ResearchStatus,
+    ResearchGrantResult,
+    ResearchSessionCreate,
+    ResearchSessionResponse,
+    ResearchSessionListItem,
+    ResearchQuickSearch,
+)
 
 __all__ = [
+    # Alerts
+    "AlertDeadlineSummary",
+    "AlertFrequency",
+    "AlertGrantSummary",
+    "FundingAlertPreferencesCreate",
+    "FundingAlertPreferencesResponse",
+    "FundingAlertPreview",
     # Auth
     "ForgotPasswordRequest",
     "ForgotPasswordResponse",
@@ -195,4 +235,26 @@ __all__ = [
     "TemplateResponse",
     "TemplateUpdate",
     "TemplateVariable",
+    # Eligibility
+    "EligibilityStatus",
+    "EligibilityCriterion",
+    "EligibilityCheckRequest",
+    "EligibilityCheckResponse",
+    "EligibilityFollowUpRequest",
+    "EligibilityFollowUpResponse",
+    # Chat
+    "ChatSessionType",
+    "ChatSource",
+    "ChatMessageCreate",
+    "ChatMessageResponse",
+    "ChatSessionCreate",
+    "ChatSessionResponse",
+    "ChatSessionListItem",
+    # Research
+    "ResearchStatus",
+    "ResearchGrantResult",
+    "ResearchSessionCreate",
+    "ResearchSessionResponse",
+    "ResearchSessionListItem",
+    "ResearchQuickSearch",
 ]
