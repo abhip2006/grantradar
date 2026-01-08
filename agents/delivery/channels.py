@@ -19,6 +19,7 @@ from sendgrid.helpers.mail import (
     ClickTracking,
     OpenTracking,
     Category,
+    CustomArg,
 )
 from twilio.rest import Client as TwilioClient
 from twilio.base.exceptions import TwilioRestException
@@ -94,12 +95,12 @@ class SendGridChannel(BaseChannel):
         Returns:
             Configured Mail object ready to send
         """
-        # Build the message
-        message = Mail(
-            from_email=Email(content.from_email, content.from_name),
-            to_emails=To(content.to_email, content.to_name),
-            subject=content.subject,
-        )
+        # Build the message - use separate assignment for better compatibility
+        # across SendGrid library versions
+        message = Mail()
+        message.from_email = Email(content.from_email, content.from_name)
+        message.subject = content.subject
+        message.add_to(To(content.to_email, content.to_name))
 
         # Add HTML and plain text content
         # Plain text should come first for proper fallback
@@ -123,7 +124,7 @@ class SendGridChannel(BaseChannel):
 
         # Add custom tracking ID for webhook correlation
         if content.tracking_id:
-            message.custom_arg = {"match_id": content.tracking_id}
+            message.add_custom_arg(CustomArg(key="match_id", value=content.tracking_id))
 
         return message
 
