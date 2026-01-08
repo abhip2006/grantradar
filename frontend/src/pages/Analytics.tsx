@@ -1,36 +1,52 @@
 import { useState } from 'react';
+import { Tab } from '@headlessui/react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ChartBarIcon,
+  ClockIcon,
+  TrophyIcon,
+  SparklesIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
-  ChartPieIcon,
-  CurrencyDollarIcon,
-  FunnelIcon,
 } from '@heroicons/react/24/outline';
-import { analyticsApi } from '../services/api';
 import {
+  StatsSummary,
   SuccessRateChart,
   FundingTrendChart,
   PipelineMetrics,
-  StatsSummary,
   StageConversionFunnel,
+  TimeToAwardChart,
+  FunderLeaderboard,
+  MatchQualityChart,
+  DeadlineHeatmap,
+  ApplicationsCreatedSparkline,
+  StageChangesSparkline,
+  MatchesSavedSparkline,
 } from '../components/analytics';
+import { analyticsApi } from '../services/api';
 
-type AnalyticsTab = 'overview' | 'success' | 'funding' | 'pipeline';
-
-const TABS: { key: AnalyticsTab; label: string; icon: React.ReactNode }[] = [
-  { key: 'overview', label: 'Overview', icon: <ChartBarIcon className="h-4 w-4" /> },
-  { key: 'success', label: 'Success Rates', icon: <ChartPieIcon className="h-4 w-4" /> },
-  { key: 'funding', label: 'Funding Trends', icon: <CurrencyDollarIcon className="h-4 w-4" /> },
-  { key: 'pipeline', label: 'Pipeline', icon: <FunnelIcon className="h-4 w-4" /> },
+const TABS = [
+  { name: 'Overview', icon: ChartBarIcon },
+  { name: 'Performance', icon: TrophyIcon },
+  { name: 'Matches', icon: SparklesIcon },
+  { name: 'Trends', icon: ClockIcon },
 ];
 
 export function Analytics() {
-  const [activeTab, setActiveTab] = useState<AnalyticsTab>('overview');
+  const [selectedTab, setSelectedTab] = useState(0);
   const [fundingPeriod, setFundingPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
 
-  // Fetch all analytics data
+  // Fetch analytics data needed for components that require props
+  const {
+    data: summary,
+    isLoading: loadingSummary,
+    error: summaryError,
+    refetch: refetchSummary,
+  } = useQuery({
+    queryKey: ['analytics', 'summary'],
+    queryFn: analyticsApi.getSummary,
+  });
+
   const {
     data: successRates,
     isLoading: loadingSuccess,
@@ -61,32 +77,41 @@ export function Analytics() {
     queryFn: analyticsApi.getPipelineMetrics,
   });
 
-  const {
-    data: summary,
-    isLoading: loadingSummary,
-    error: summaryError,
-    refetch: refetchSummary,
-  } = useQuery({
-    queryKey: ['analytics', 'summary'],
-    queryFn: analyticsApi.getSummary,
-  });
+  const isLoading = loadingSummary || loadingSuccess || loadingFunding || loadingPipeline;
+  const hasError = summaryError || successError || fundingError || pipelineError;
+  const isFetching = isLoading;
 
-  const isLoading = loadingSuccess || loadingFunding || loadingPipeline || loadingSummary;
-  const hasError = successError || fundingError || pipelineError || summaryError;
+  // Compute derived metrics from by_stage data
+  const getStageCount = (stage: string) => {
+    return successRates?.by_stage?.find((s) => s.stage.toLowerCase() === stage)?.count || 0;
+  };
+  const totalSubmitted = getStageCount('submitted');
+  const totalAwarded = getStageCount('awarded');
 
   const refetchAll = () => {
+    refetchSummary();
     refetchSuccess();
     refetchFunding();
     refetchPipeline();
-    refetchSummary();
   };
+
+  // Check if user has any data
+  const hasNoData =
+    successRates?.total_applications === 0 &&
+    pipelineMetrics?.total_in_pipeline === 0;
 
   // Render loading state
   if (isLoading && !successRates && !fundingTrends && !pipelineMetrics) {
     return (
-      <div className="min-h-screen bg-[var(--gr-bg-secondary)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="skeleton h-8 w-48 mb-6" />
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="skeleton h-8 w-48 mb-2" />
+            <div className="skeleton h-4 w-64" />
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="skeleton h-12 w-full rounded-xl mb-6" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="skeleton h-80 rounded-xl" />
             <div className="skeleton h-80 rounded-xl" />
@@ -101,16 +126,19 @@ export function Analytics() {
   // Render error state
   if (hasError) {
     return (
-      <div className="min-h-screen bg-[var(--gr-bg-secondary)] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <ExclamationTriangleIcon className="h-12 w-12 text-[var(--gr-danger)] mx-auto mb-4" />
-          <h2 className="text-xl font-display font-medium text-[var(--gr-text-primary)] mb-2">
+          <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-display font-medium text-gray-900 mb-2">
             Failed to load analytics
           </h2>
-          <p className="text-[var(--gr-text-secondary)] mb-4">
+          <p className="text-gray-500 mb-4">
             There was an error loading your analytics data.
           </p>
-          <button onClick={refetchAll} className="btn-primary">
+          <button
+            onClick={refetchAll}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
             <ArrowPathIcon className="h-4 w-4" />
             Try Again
           </button>
@@ -119,124 +147,184 @@ export function Analytics() {
     );
   }
 
-  // Check if user has any data
-  const hasNoData =
-    successRates?.total_applications === 0 &&
-    pipelineMetrics?.total_in_pipeline === 0;
-
   return (
-    <div className="min-h-screen bg-[var(--gr-bg-secondary)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-display font-semibold text-[var(--gr-text-primary)]">
-              Analytics
-            </h1>
-            <p className="text-sm text-[var(--gr-text-secondary)] mt-1">
-              Track your grant application performance and funding trends
-            </p>
-          </div>
-
-          <button
-            onClick={refetchAll}
-            disabled={isLoading}
-            className="btn-secondary"
-          >
-            <ArrowPathIcon className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-
-        {/* Empty state */}
-        {hasNoData && (
-          <div className="bg-white rounded-xl border border-[var(--gr-border-default)] p-12 text-center mb-6">
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-[var(--gr-bg-secondary)] flex items-center justify-center mb-6">
-              <ChartBarIcon className="w-8 h-8 text-[var(--gr-text-tertiary)]" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
+              <p className="mt-1 text-sm text-gray-500">
+                Track your grant application performance and trends
+              </p>
             </div>
-            <h3 className="text-xl font-display font-medium text-[var(--gr-text-primary)] mb-2">
+            <button
+              onClick={refetchAll}
+              disabled={isFetching}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <ArrowPathIcon className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {hasNoData && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
+              <ChartBarIcon className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-display font-medium text-gray-900 mb-2">
               No analytics data yet
             </h3>
-            <p className="text-[var(--gr-text-secondary)] max-w-md mx-auto mb-6">
+            <p className="text-gray-500 max-w-md mx-auto mb-6">
               Start tracking grant applications in your pipeline to see success rates,
               funding trends, and conversion metrics.
             </p>
-            <a href="/pipeline" className="btn-primary inline-flex">
+            <a
+              href="/pipeline"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            >
               Go to Pipeline
             </a>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Tab navigation */}
-        {!hasNoData && (
-          <>
-            <div className="flex gap-1 p-1 bg-white rounded-xl border border-[var(--gr-border-default)] mb-6 overflow-x-auto">
-              {TABS.map(({ key, label, icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveTab(key)}
-                  className={`
-                    flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-                    ${activeTab === key
-                      ? 'bg-[var(--gr-blue-600)] text-white'
-                      : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] hover:bg-[var(--gr-bg-hover)]'
-                    }
-                  `}
+      {/* Tabs */}
+      {!hasNoData && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <Tab.Group selectedIndex={selectedTab} onChange={setSelectedTab}>
+            <Tab.List className="flex space-x-1 bg-white rounded-xl p-1 shadow mb-6">
+              {TABS.map((tab) => (
+                <Tab
+                  key={tab.name}
+                  className={({ selected }) =>
+                    `w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium leading-5 transition-colors
+                    ${selected
+                      ? 'bg-blue-600 text-white shadow'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`
+                  }
                 >
-                  {icon}
-                  {label}
-                </button>
+                  <tab.icon className="w-4 h-4" />
+                  {tab.name}
+                </Tab>
               ))}
-            </div>
+            </Tab.List>
 
-            {/* Tab content */}
-            <div className="space-y-6">
+            <Tab.Panels>
               {/* Overview Tab */}
-              {activeTab === 'overview' && (
-                <>
-                  {/* Summary Stats Cards */}
-                  {summary && <StatsSummary data={summary} />}
+              <Tab.Panel className="space-y-6">
+                {/* Activity Sparklines */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <ApplicationsCreatedSparkline />
+                  <StageChangesSparkline />
+                  <MatchesSavedSparkline />
+                </div>
 
-                  {/* Charts Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {successRates && <SuccessRateChart data={successRates} />}
-                    {pipelineMetrics && <StageConversionFunnel data={pipelineMetrics} />}
-                  </div>
+                {/* Stats Summary */}
+                {summary && <StatsSummary data={summary} />}
 
-                  {/* Funding Trend Preview */}
-                  {fundingTrends && (
-                    <FundingTrendChart
-                      data={fundingTrends}
-                      onPeriodChange={setFundingPeriod}
-                    />
+                {/* Two column layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <DeadlineHeatmap />
+                  {successRates && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-6">
+                      <h3 className="text-lg font-display font-medium text-gray-900 mb-4">
+                        Quick Stats
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Total Applications</span>
+                          <span className="font-semibold text-gray-900">
+                            {successRates.total_applications}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Submitted</span>
+                          <span className="font-semibold text-gray-900">
+                            {totalSubmitted}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Awarded</span>
+                          <span className="font-semibold text-emerald-600">
+                            {totalAwarded}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600">Win Rate</span>
+                          <span className="font-semibold text-blue-600">
+                            {successRates.overall_success_rate.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </>
-              )}
+                </div>
+              </Tab.Panel>
 
-              {/* Success Rates Tab */}
-              {activeTab === 'success' && successRates && (
-                <SuccessRateChart data={successRates} />
-              )}
+              {/* Performance Tab */}
+              <Tab.Panel className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <TimeToAwardChart />
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="text-lg font-display font-medium text-gray-900 mb-4">
+                      Overall Win Rate
+                    </h3>
+                    {successRates ? (
+                      <div className="flex items-center justify-center h-64">
+                        <div className="text-center">
+                          <div className="text-5xl font-display font-bold text-blue-600">
+                            {successRates.overall_success_rate.toFixed(0)}%
+                          </div>
+                          <div className="text-gray-500 mt-2">
+                            {totalAwarded} of {totalSubmitted} submitted
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-64 text-gray-400">
+                        Loading...
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <FunderLeaderboard />
+                {successRates && <SuccessRateChart data={successRates} />}
+              </Tab.Panel>
 
-              {/* Funding Trends Tab */}
-              {activeTab === 'funding' && fundingTrends && (
-                <FundingTrendChart
-                  data={fundingTrends}
-                  onPeriodChange={setFundingPeriod}
-                />
-              )}
+              {/* Matches Tab */}
+              <Tab.Panel className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <MatchQualityChart />
+                  {pipelineMetrics && <StageConversionFunnel data={pipelineMetrics} />}
+                </div>
+                {pipelineMetrics && <PipelineMetrics data={pipelineMetrics} />}
+              </Tab.Panel>
 
-              {/* Pipeline Tab */}
-              {activeTab === 'pipeline' && pipelineMetrics && (
-                <>
-                  <StageConversionFunnel data={pipelineMetrics} />
-                  <PipelineMetrics data={pipelineMetrics} />
-                </>
-              )}
-            </div>
-          </>
-        )}
-      </div>
+              {/* Trends Tab */}
+              <Tab.Panel className="space-y-6">
+                {fundingTrends && (
+                  <FundingTrendChart
+                    data={fundingTrends}
+                    onPeriodChange={setFundingPeriod}
+                  />
+                )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {pipelineMetrics && <PipelineMetrics data={pipelineMetrics} />}
+                  {pipelineMetrics && <StageConversionFunnel data={pipelineMetrics} />}
+                </div>
+              </Tab.Panel>
+            </Tab.Panels>
+          </Tab.Group>
+        </div>
+      )}
     </div>
   );
 }

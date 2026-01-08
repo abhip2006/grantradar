@@ -3,7 +3,7 @@ Analytics API Endpoints
 Track success rates, funding trends, and pipeline performance metrics.
 """
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Query
@@ -11,19 +11,35 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import joinedload
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
-from backend.models import ApplicationStage, Grant, GrantApplication
+from backend.models import (
+    ApplicationActivity,
+    ApplicationStage,
+    Grant,
+    GrantApplication,
+    Match,
+)
 from backend.schemas.analytics import (
+    ActivityTimelineResponse,
     AnalyticsSummaryResponse,
     CategoryBreakdownItem,
     CategoryBreakdownResponse,
+    DailyActivity,
+    DayData,
+    DeadlineHeatmapResponse,
+    FunderLeaderboardResponse,
+    FunderRanking,
     FundingDataPoint,
     FundingTrendsResponse,
+    MatchQualityResponse,
     PipelineMetricsResponse,
     PipelineStageMetric,
+    ScoreRangeBucket,
+    StageTimingData,
     SuccessRateByCategory,
     SuccessRateByFunder,
     SuccessRateByStage,
     SuccessRatesResponse,
+    TimeToAwardResponse,
 )
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
@@ -583,4 +599,578 @@ async def get_analytics_summary(
         pipeline_conversion_rate=pipeline_conversion_rate,
         top_funder=top_funder,
         top_category=top_category,
+    )
+
+
+@router.get(
+    "/time-to-award",
+    response_model=TimeToAwardResponse,
+    summary="Get time to award metrics",
+    description="Get metrics on time from submission to award.",
+)
+async def get_time_to_award_metrics(
+    db: AsyncSessionDep,
+    current_user: CurrentUser,
+    months: int = Query(
+        default=12,
+        ge=1,
+        le=24,
+        description="Number of months of data to analyze",
+    ),
+) -> TimeToAwardResponse:
+    """
+    Get metrics on time from submission to award.
+
+    Calculates:
+    - Average and median days from creation to award
+    - Breakdown by category and funder
+    - Monthly trend data
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=months * 30)
+
+    # Get awarded applications with grant data
+    result = await db.execute(
+        select(GrantApplication)
+        .options(joinedload(GrantApplication.grant))
+        .where(
+            GrantApplication.user_id == current_user.id,
+            GrantApplication.stage == ApplicationStage.AWARDED,
+            GrantApplication.created_at >= cutoff,
+        )
+    )
+    awarded_apps = result.unique().scalars().all()
+
+    if not awarded_apps:
+        return TimeToAwardResponse(
+            overall_avg_days=0,
+            overall_median_days=0,
+            by_stage=[],
+            by_category={},
+            by_funder={},
+            trend=[],
+        )
+
+    # Calculate days from created_at to updated_at for awarded applications
+    days_list = []
+    category_days: dict[str, list[int]] = defaultdict(list)
+    funder_days: dict[str, list[int]] = defaultdict(list)
+    month_days: dict[str, list[int]] = defaultdict(list)
+
+    for app in awarded_apps:
+        if app.updated_at and app.created_at:
+            days = (app.updated_at - app.created_at).days
+            days_list.append(days)
+
+            # Group by category
+            categories = app.grant.categories or ["Uncategorized"]
+            for category in categories:
+                category_days[category].append(days)
+
+            # Group by funder
+            funder = app.grant.agency or "Unknown"
+            funder_days[funder].append(days)
+
+            # Group by month for trend
+            month_key = app.updated_at.strftime("%Y-%m")
+            month_days[month_key].append(days)
+
+    # Calculate overall stats
+    avg_days = sum(days_list) / len(days_list) if days_list else 0
+    sorted_days = sorted(days_list)
+    median_days = sorted_days[len(sorted_days) // 2] if sorted_days else 0
+
+    # Calculate category averages
+    by_category = {
+        cat: sum(days) / len(days) if days else 0
+        for cat, days in category_days.items()
+    }
+
+    # Calculate funder averages
+    by_funder = {
+        funder: sum(days) / len(days) if days else 0
+        for funder, days in funder_days.items()
+    }
+
+    # Build trend data
+    trend = [
+        {
+            "period": month,
+            "avg_days": sum(days) / len(days) if days else 0,
+            "count": len(days),
+        }
+        for month, days in sorted(month_days.items())
+    ]
+
+    return TimeToAwardResponse(
+        overall_avg_days=round(avg_days, 1),
+        overall_median_days=float(median_days),
+        by_stage=[],  # Would need stage transition tracking for detailed breakdown
+        by_category={k: round(v, 1) for k, v in by_category.items()},
+        by_funder={k: round(v, 1) for k, v in by_funder.items()},
+        trend=trend,
+    )
+
+
+@router.get(
+    "/funder-leaderboard",
+    response_model=FunderLeaderboardResponse,
+    summary="Get funder leaderboard",
+    description="Get top funders ranked by success rate and total awarded.",
+)
+async def get_funder_leaderboard(
+    db: AsyncSessionDep,
+    current_user: CurrentUser,
+    limit: int = Query(
+        default=10,
+        ge=5,
+        le=50,
+        description="Number of funders to return",
+    ),
+) -> FunderLeaderboardResponse:
+    """
+    Get top funders ranked by success rate and total awarded.
+
+    Includes:
+    - Success rate ranking
+    - Total awarded amounts
+    - Performance trend (improving/declining)
+    """
+    # Fetch all applications with grant data
+    result = await db.execute(
+        select(GrantApplication)
+        .options(joinedload(GrantApplication.grant))
+        .where(GrantApplication.user_id == current_user.id)
+    )
+    applications = result.unique().scalars().all()
+
+    if not applications:
+        return FunderLeaderboardResponse(
+            rankings=[],
+            total_funders=0,
+            period_months=12,
+        )
+
+    # Group by funder
+    funder_stats: dict[str, dict] = defaultdict(
+        lambda: {
+            "total": 0,
+            "submitted": 0,
+            "awarded": 0,
+            "awarded_amount": 0,
+            "recent_awarded": 0,
+            "older_awarded": 0,
+        }
+    )
+
+    # Calculate cutoff for trend (last 6 months vs previous)
+    six_months_ago = datetime.now(timezone.utc) - timedelta(days=180)
+
+    for app in applications:
+        funder = app.grant.agency or "Unknown"
+        funder_stats[funder]["total"] += 1
+
+        grant_amount = app.grant.amount_max or app.grant.amount_min or 0
+
+        if app.stage in [
+            ApplicationStage.SUBMITTED,
+            ApplicationStage.AWARDED,
+            ApplicationStage.REJECTED,
+        ]:
+            funder_stats[funder]["submitted"] += 1
+
+        if app.stage == ApplicationStage.AWARDED:
+            funder_stats[funder]["awarded"] += 1
+            funder_stats[funder]["awarded_amount"] += grant_amount
+
+            # Track for trend calculation
+            if app.updated_at and app.updated_at >= six_months_ago:
+                funder_stats[funder]["recent_awarded"] += 1
+            else:
+                funder_stats[funder]["older_awarded"] += 1
+
+    # Build rankings
+    rankings = []
+    for funder, stats in funder_stats.items():
+        submitted = stats["submitted"]
+        awarded = stats["awarded"]
+        success_rate = calculate_success_rate(awarded, submitted)
+
+        # Determine trend
+        if stats["recent_awarded"] > stats["older_awarded"]:
+            trend = "up"
+        elif stats["recent_awarded"] < stats["older_awarded"]:
+            trend = "down"
+        else:
+            trend = "stable"
+
+        avg_award = (
+            stats["awarded_amount"] / awarded
+            if awarded > 0
+            else 0
+        )
+
+        rankings.append({
+            "funder": funder,
+            "success_rate": success_rate,
+            "total_awarded": stats["awarded_amount"],
+            "total_applications": submitted,
+            "awarded_count": awarded,
+            "avg_award_amount": round(avg_award, 2),
+            "trend": trend,
+        })
+
+    # Sort by success rate (descending), then by total awarded
+    rankings.sort(key=lambda x: (-x["success_rate"], -x["total_awarded"]))
+
+    # Add rank and limit
+    rankings_limited = [
+        FunderRanking(rank=i + 1, **r)
+        for i, r in enumerate(rankings[:limit])
+    ]
+
+    return FunderLeaderboardResponse(
+        rankings=rankings_limited,
+        total_funders=len(funder_stats),
+        period_months=12,
+    )
+
+
+@router.get(
+    "/match-quality",
+    response_model=MatchQualityResponse,
+    summary="Get match quality metrics",
+    description="Get match algorithm quality metrics.",
+)
+async def get_match_quality_metrics(
+    db: AsyncSessionDep,
+    current_user: CurrentUser,
+) -> MatchQualityResponse:
+    """
+    Get match algorithm quality metrics.
+
+    Includes:
+    - Score distribution histogram
+    - Conversion rates by score range
+    - User action breakdown
+    """
+    # Fetch all matches for the user
+    result = await db.execute(
+        select(Match)
+        .options(joinedload(Match.application))
+        .where(Match.user_id == current_user.id)
+    )
+    matches = result.unique().scalars().all()
+
+    if not matches:
+        return MatchQualityResponse(
+            total_matches=0,
+            avg_score=0,
+            score_distribution=[],
+            action_breakdown={},
+            conversion_by_score=[],
+        )
+
+    # Calculate average score
+    scores = [m.match_score for m in matches]
+    avg_score = sum(scores) / len(scores)
+
+    # Define score buckets (0.0-0.2, 0.2-0.4, ..., 0.8-1.0)
+    buckets = [
+        (0.0, 0.2),
+        (0.2, 0.4),
+        (0.4, 0.6),
+        (0.6, 0.8),
+        (0.8, 1.0),
+    ]
+
+    bucket_data: dict[tuple, dict] = {
+        bucket: {"count": 0, "saved": 0, "applied": 0, "awarded": 0}
+        for bucket in buckets
+    }
+
+    # Action breakdown
+    action_counts: dict[str, int] = defaultdict(int)
+
+    for match in matches:
+        # Find the bucket for this score
+        for bucket_range in buckets:
+            if bucket_range[0] <= match.match_score < bucket_range[1] or (
+                bucket_range[1] == 1.0 and match.match_score == 1.0
+            ):
+                bucket_data[bucket_range]["count"] += 1
+
+                # Track actions
+                action = match.user_action or "none"
+                action_counts[action] += 1
+
+                if action == "saved":
+                    bucket_data[bucket_range]["saved"] += 1
+                elif action == "applied":
+                    bucket_data[bucket_range]["applied"] += 1
+
+                # Check if there's an awarded application from this match
+                if match.application and match.application.stage == ApplicationStage.AWARDED:
+                    bucket_data[bucket_range]["awarded"] += 1
+
+                break
+
+    # Build score distribution
+    score_distribution = []
+    for bucket_range, data in bucket_data.items():
+        count = data["count"]
+        score_distribution.append(
+            ScoreRangeBucket(
+                range_start=bucket_range[0],
+                range_end=bucket_range[1],
+                count=count,
+                saved_rate=round((data["saved"] / count * 100) if count > 0 else 0, 1),
+                applied_rate=round((data["applied"] / count * 100) if count > 0 else 0, 1),
+                awarded_rate=round((data["awarded"] / count * 100) if count > 0 else 0, 1),
+            )
+        )
+
+    # Build conversion by score data
+    conversion_by_score = [
+        {
+            "range": f"{bucket[0]:.1f}-{bucket[1]:.1f}",
+            "conversion_rate": round(
+                (data["applied"] / data["count"] * 100) if data["count"] > 0 else 0,
+                1,
+            ),
+        }
+        for bucket, data in bucket_data.items()
+    ]
+
+    return MatchQualityResponse(
+        total_matches=len(matches),
+        avg_score=round(avg_score, 3),
+        score_distribution=score_distribution,
+        action_breakdown=dict(action_counts),
+        conversion_by_score=conversion_by_score,
+    )
+
+
+@router.get(
+    "/deadline-heatmap",
+    response_model=DeadlineHeatmapResponse,
+    summary="Get deadline heatmap",
+    description="Get deadline density for calendar heatmap.",
+)
+async def get_deadline_heatmap(
+    db: AsyncSessionDep,
+    current_user: CurrentUser,
+    months: int = Query(
+        default=6,
+        ge=1,
+        le=12,
+        description="Number of months to look ahead",
+    ),
+) -> DeadlineHeatmapResponse:
+    """
+    Get deadline density for calendar heatmap.
+
+    Returns:
+    - Count of deadlines per day
+    - Visual intensity based on count
+    - Application counts per deadline
+    """
+    start_date = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    end_date = start_date + timedelta(days=months * 30)
+
+    # Fetch applications with upcoming grant deadlines
+    result = await db.execute(
+        select(GrantApplication)
+        .options(joinedload(GrantApplication.grant))
+        .where(
+            GrantApplication.user_id == current_user.id,
+            GrantApplication.stage.in_([
+                ApplicationStage.RESEARCHING,
+                ApplicationStage.WRITING,
+            ]),
+        )
+    )
+    applications = result.unique().scalars().all()
+
+    # Group by deadline date
+    deadline_counts: dict[str, dict] = defaultdict(
+        lambda: {"count": 0, "applications": 0}
+    )
+
+    for app in applications:
+        if app.grant.deadline and start_date <= app.grant.deadline <= end_date:
+            date_key = app.grant.deadline.strftime("%Y-%m-%d")
+            deadline_counts[date_key]["count"] += 1
+            deadline_counts[date_key]["applications"] += 1
+
+    if not deadline_counts:
+        return DeadlineHeatmapResponse(
+            days=[],
+            max_count=0,
+            total_deadlines=0,
+        )
+
+    # Calculate max for intensity scaling
+    max_count = max(d["count"] for d in deadline_counts.values())
+
+    # Determine intensity thresholds
+    def get_intensity(count: int, max_c: int) -> str:
+        if max_c == 0:
+            return "low"
+        ratio = count / max_c
+        if ratio >= 0.75:
+            return "critical"
+        elif ratio >= 0.5:
+            return "high"
+        elif ratio >= 0.25:
+            return "medium"
+        return "low"
+
+    # Build day data
+    days = [
+        DayData(
+            date=date,
+            count=data["count"],
+            applications=data["applications"],
+            intensity=get_intensity(data["count"], max_count),
+        )
+        for date, data in sorted(deadline_counts.items())
+    ]
+
+    total_deadlines = sum(d["count"] for d in deadline_counts.values())
+
+    return DeadlineHeatmapResponse(
+        days=days,
+        max_count=max_count,
+        total_deadlines=total_deadlines,
+    )
+
+
+@router.get(
+    "/activity-timeline",
+    response_model=ActivityTimelineResponse,
+    summary="Get activity timeline",
+    description="Get user activity over time for sparklines/charts.",
+)
+async def get_activity_timeline(
+    db: AsyncSessionDep,
+    current_user: CurrentUser,
+    days: int = Query(
+        default=30,
+        ge=7,
+        le=90,
+        description="Number of days of activity to return",
+    ),
+) -> ActivityTimelineResponse:
+    """
+    Get user activity over time for sparklines/charts.
+
+    Tracks:
+    - Daily counts of applications created
+    - Stage changes
+    - Matches saved
+    - Cumulative totals
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Initialize daily buckets
+    daily_data: dict[str, dict] = {}
+    current = cutoff.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    while current <= end:
+        date_key = current.strftime("%Y-%m-%d")
+        daily_data[date_key] = {
+            "applications_created": 0,
+            "stage_changes": 0,
+            "matches_saved": 0,
+        }
+        current += timedelta(days=1)
+
+    # Count applications created
+    result = await db.execute(
+        select(GrantApplication)
+        .where(
+            GrantApplication.user_id == current_user.id,
+            GrantApplication.created_at >= cutoff,
+        )
+    )
+    applications = result.scalars().all()
+
+    for app in applications:
+        date_key = app.created_at.strftime("%Y-%m-%d")
+        if date_key in daily_data:
+            daily_data[date_key]["applications_created"] += 1
+
+    # Count stage changes from activity log
+    result = await db.execute(
+        select(ApplicationActivity)
+        .join(GrantApplication)
+        .where(
+            GrantApplication.user_id == current_user.id,
+            ApplicationActivity.action == "status_changed",
+            ApplicationActivity.created_at >= cutoff,
+        )
+    )
+    activities = result.scalars().all()
+
+    for activity in activities:
+        date_key = activity.created_at.strftime("%Y-%m-%d")
+        if date_key in daily_data:
+            daily_data[date_key]["stage_changes"] += 1
+
+    # Count matches saved
+    result = await db.execute(
+        select(Match)
+        .where(
+            Match.user_id == current_user.id,
+            Match.user_action == "saved",
+            Match.created_at >= cutoff,
+        )
+    )
+    saved_matches = result.scalars().all()
+
+    for match in saved_matches:
+        date_key = match.created_at.strftime("%Y-%m-%d")
+        if date_key in daily_data:
+            daily_data[date_key]["matches_saved"] += 1
+
+    # Build response
+    daily = [
+        DailyActivity(
+            date=date,
+            applications_created=data["applications_created"],
+            stage_changes=data["stage_changes"],
+            matches_saved=data["matches_saved"],
+            total_actions=(
+                data["applications_created"]
+                + data["stage_changes"]
+                + data["matches_saved"]
+            ),
+        )
+        for date, data in sorted(daily_data.items())
+    ]
+
+    # Calculate totals
+    totals = {
+        "applications_created": sum(d.applications_created for d in daily),
+        "stage_changes": sum(d.stage_changes for d in daily),
+        "matches_saved": sum(d.matches_saved for d in daily),
+        "total_actions": sum(d.total_actions for d in daily),
+    }
+
+    # Calculate daily averages
+    num_days = len(daily) or 1
+    avg_daily = {
+        "applications_created": round(totals["applications_created"] / num_days, 2),
+        "stage_changes": round(totals["stage_changes"] / num_days, 2),
+        "matches_saved": round(totals["matches_saved"] / num_days, 2),
+        "total_actions": round(totals["total_actions"] / num_days, 2),
+    }
+
+    return ActivityTimelineResponse(
+        daily=daily,
+        totals=totals,
+        avg_daily=avg_daily,
     )

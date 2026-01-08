@@ -698,6 +698,36 @@ export const analyticsApi = {
     const response = await api.get<AnalyticsSummaryResponse>('/analytics/summary');
     return response.data;
   },
+
+  // Get time to award analytics
+  getTimeToAward: async (months = 12) => {
+    const response = await api.get('/analytics/time-to-award', { params: { months } });
+    return response.data;
+  },
+
+  // Get funder leaderboard rankings
+  getFunderLeaderboard: async (limit = 10) => {
+    const response = await api.get('/analytics/funder-leaderboard', { params: { limit } });
+    return response.data;
+  },
+
+  // Get match quality distribution and actions breakdown
+  getMatchQuality: async () => {
+    const response = await api.get('/analytics/match-quality');
+    return response.data;
+  },
+
+  // Get deadline heatmap data
+  getDeadlineHeatmap: async (months = 6) => {
+    const response = await api.get('/analytics/deadline-heatmap', { params: { months } });
+    return response.data;
+  },
+
+  // Get activity timeline for sparklines
+  getActivityTimeline: async (days = 30) => {
+    const response = await api.get('/analytics/activity-timeline', { params: { days } });
+    return response.data;
+  },
 };
 
 // Forecast API - Predict upcoming grant opportunities

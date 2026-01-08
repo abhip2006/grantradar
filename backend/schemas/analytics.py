@@ -230,3 +230,210 @@ class AnalyticsSummaryResponse(BaseModel):
         None,
         description="Most successful category by win rate"
     )
+
+
+# =============================================================================
+# Time to Award Schemas
+# =============================================================================
+
+
+class StageTimingData(BaseModel):
+    """Timing metrics for a specific pipeline stage."""
+
+    stage: str = Field(..., description="Pipeline stage name")
+    avg_days: float = Field(..., description="Average days spent in this stage")
+    median_days: float = Field(..., description="Median days spent in this stage")
+    min_days: int = Field(..., description="Minimum days spent in this stage")
+    max_days: int = Field(..., description="Maximum days spent in this stage")
+    count: int = Field(..., description="Number of applications that passed through")
+
+
+class TimeToAwardResponse(BaseModel):
+    """Metrics on time from submission to award."""
+
+    overall_avg_days: float = Field(
+        ...,
+        description="Overall average days from creation to award"
+    )
+    overall_median_days: float = Field(
+        ...,
+        description="Overall median days from creation to award"
+    )
+    by_stage: list[StageTimingData] = Field(
+        default_factory=list,
+        description="Timing breakdown by pipeline stage"
+    )
+    by_category: dict[str, float] = Field(
+        default_factory=dict,
+        description="Average days to award by category"
+    )
+    by_funder: dict[str, float] = Field(
+        default_factory=dict,
+        description="Average days to award by funder"
+    )
+    trend: list[dict] = Field(
+        default_factory=list,
+        description="Monthly trend of time to award"
+    )
+
+
+# =============================================================================
+# Funder Leaderboard Schemas
+# =============================================================================
+
+
+class FunderRanking(BaseModel):
+    """Ranking entry for a specific funder."""
+
+    rank: int = Field(..., description="Leaderboard position")
+    funder: str = Field(..., description="Funder/agency name")
+    success_rate: float = Field(
+        ...,
+        description="Win rate as percentage (0-100)",
+        ge=0,
+        le=100
+    )
+    total_awarded: float = Field(..., description="Total funding amount awarded")
+    total_applications: int = Field(..., description="Total applications submitted")
+    awarded_count: int = Field(..., description="Number of grants awarded")
+    avg_award_amount: float = Field(..., description="Average award amount")
+    trend: str = Field(
+        ...,
+        description="Performance trend: 'up', 'down', or 'stable'"
+    )
+
+
+class FunderLeaderboardResponse(BaseModel):
+    """Top funders ranked by success rate and total awarded."""
+
+    rankings: list[FunderRanking] = Field(
+        default_factory=list,
+        description="Funder rankings"
+    )
+    total_funders: int = Field(..., description="Total unique funders in dataset")
+    period_months: int = Field(..., description="Time period analyzed in months")
+
+
+# =============================================================================
+# Match Quality Schemas
+# =============================================================================
+
+
+class ScoreRangeBucket(BaseModel):
+    """Match quality metrics for a specific score range."""
+
+    range_start: float = Field(..., description="Score range start (0.0-1.0)")
+    range_end: float = Field(..., description="Score range end (0.0-1.0)")
+    count: int = Field(..., description="Number of matches in this range")
+    saved_rate: float = Field(
+        ...,
+        description="Percentage of matches saved",
+        ge=0,
+        le=100
+    )
+    applied_rate: float = Field(
+        ...,
+        description="Percentage of matches that led to applications",
+        ge=0,
+        le=100
+    )
+    awarded_rate: float = Field(
+        ...,
+        description="Percentage of matches that led to awards",
+        ge=0,
+        le=100
+    )
+
+
+class MatchQualityResponse(BaseModel):
+    """Match algorithm quality metrics."""
+
+    total_matches: int = Field(..., description="Total matches analyzed")
+    avg_score: float = Field(..., description="Average match score (0.0-1.0)")
+    score_distribution: list[ScoreRangeBucket] = Field(
+        default_factory=list,
+        description="Score distribution histogram buckets"
+    )
+    action_breakdown: dict[str, int] = Field(
+        default_factory=dict,
+        description="Count by user action (saved, dismissed, applied, none)"
+    )
+    conversion_by_score: list[dict] = Field(
+        default_factory=list,
+        description="Conversion rates by score range"
+    )
+
+
+# =============================================================================
+# Deadline Heatmap Schemas
+# =============================================================================
+
+
+class DayData(BaseModel):
+    """Deadline data for a single day."""
+
+    date: str = Field(..., description="Date in ISO format (YYYY-MM-DD)")
+    count: int = Field(..., description="Number of deadlines on this day")
+    applications: int = Field(
+        ...,
+        description="Number of active applications for these deadlines"
+    )
+    intensity: str = Field(
+        ...,
+        description="Visual intensity: 'low', 'medium', 'high', 'critical'"
+    )
+
+
+class DeadlineHeatmapResponse(BaseModel):
+    """Deadline density for calendar heatmap visualization."""
+
+    days: list[DayData] = Field(
+        default_factory=list,
+        description="Deadline data for each day"
+    )
+    max_count: int = Field(..., description="Maximum deadlines on any single day")
+    total_deadlines: int = Field(..., description="Total deadlines in the period")
+
+
+# =============================================================================
+# Activity Timeline Schemas
+# =============================================================================
+
+
+class DailyActivity(BaseModel):
+    """Activity metrics for a single day."""
+
+    date: str = Field(..., description="Date in ISO format (YYYY-MM-DD)")
+    applications_created: int = Field(
+        ...,
+        description="Number of applications created on this day"
+    )
+    stage_changes: int = Field(
+        ...,
+        description="Number of stage changes on this day"
+    )
+    matches_saved: int = Field(
+        ...,
+        description="Number of matches saved on this day"
+    )
+    total_actions: int = Field(
+        ...,
+        description="Total actions performed on this day"
+    )
+
+
+class ActivityTimelineResponse(BaseModel):
+    """User activity over time for sparklines/charts."""
+
+    daily: list[DailyActivity] = Field(
+        default_factory=list,
+        description="Daily activity metrics"
+    )
+    totals: dict[str, int] = Field(
+        default_factory=dict,
+        description="Total counts for each activity type"
+    )
+    avg_daily: dict[str, float] = Field(
+        default_factory=dict,
+        description="Average daily counts for each activity type"
+    )
