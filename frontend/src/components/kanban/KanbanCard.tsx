@@ -6,13 +6,14 @@ import {
   CalendarIcon,
   PaperClipIcon,
   CheckCircleIcon,
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 
-const PRIORITY_STYLES: Record<Priority, string> = {
-  low: 'border-l-slate-400',
-  medium: 'border-l-blue-500',
-  high: 'border-l-amber-500',
-  critical: 'border-l-red-500',
+const PRIORITY_CONFIG: Record<Priority, { className: string; label: string }> = {
+  low: { className: 'kanban-card-priority-low', label: 'Low' },
+  medium: { className: 'kanban-card-priority-medium', label: 'Medium' },
+  high: { className: 'kanban-card-priority-high', label: 'High' },
+  critical: { className: 'kanban-card-priority-critical', label: 'Critical' },
 };
 
 interface KanbanCardProps {
@@ -34,7 +35,6 @@ export function KanbanCard({ card, isDragging, onClick }: KanbanCardProps) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isSortableDragging ? 0.5 : 1,
   };
 
   const isOverdue = card.target_date && new Date(card.target_date) < new Date() &&
@@ -44,6 +44,11 @@ export function KanbanCard({ card, isDragging, onClick }: KanbanCardProps) {
   const grantTitle = card.grant?.title || 'Untitled Application';
   const grantAgency = card.grant?.agency || card.grant?.funder_name;
 
+  const priorityConfig = PRIORITY_CONFIG[card.priority];
+  const subtaskProgress = card.subtask_progress?.total > 0
+    ? Math.round((card.subtask_progress.completed / card.subtask_progress.total) * 100)
+    : 0;
+
   return (
     <div
       ref={setNodeRef}
@@ -52,73 +57,110 @@ export function KanbanCard({ card, isDragging, onClick }: KanbanCardProps) {
       {...listeners}
       onClick={onClick}
       className={`
-        bg-white rounded-lg shadow-sm border border-gray-200 p-3 cursor-pointer
-        hover:shadow-md transition-shadow
-        border-l-4 ${PRIORITY_STYLES[card.priority]}
-        ${isDragging ? 'shadow-lg rotate-2' : ''}
-        ${isOverdue ? 'ring-2 ring-red-200' : ''}
+        kanban-card
+        ${priorityConfig.className}
+        ${isDragging || isSortableDragging ? 'kanban-card-dragging' : ''}
+        ${isOverdue ? 'ring-2 ring-red-200 ring-offset-1' : ''}
+        ${isSortableDragging ? 'opacity-50' : ''}
       `}
     >
-      {/* Title */}
-      <h4 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2">
-        {grantTitle}
-      </h4>
+      {/* Header with title */}
+      <div className="mb-3">
+        <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 leading-snug">
+          {grantTitle}
+        </h4>
+      </div>
 
       {/* Agency badge */}
       {grantAgency && (
-        <span className="inline-block px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-600 mb-2">
-          {grantAgency}
-        </span>
+        <div className="mb-3">
+          <span className="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg bg-gray-50 text-gray-600 border border-gray-100">
+            {grantAgency}
+          </span>
+        </div>
+      )}
+
+      {/* Progress bar for subtasks */}
+      {card.subtask_progress && card.subtask_progress.total > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs text-gray-500 font-medium">Progress</span>
+            <span className="text-xs font-semibold text-gray-700">
+              {card.subtask_progress.completed}/{card.subtask_progress.total}
+            </span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500"
+              style={{ width: `${subtaskProgress}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Metadata row */}
-      <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
-        {/* Subtask progress */}
+      <div className="flex items-center flex-wrap gap-3 text-xs">
+        {/* Subtask count icon */}
         {card.subtask_progress && card.subtask_progress.total > 0 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 text-gray-500">
             <CheckCircleIcon className="w-4 h-4" />
-            <span>
-              {card.subtask_progress.completed}/{card.subtask_progress.total}
-            </span>
+            <span className="font-medium">{card.subtask_progress.completed}/{card.subtask_progress.total}</span>
           </div>
         )}
 
         {/* Attachments */}
         {card.attachments_count > 0 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 text-gray-500">
             <PaperClipIcon className="w-4 h-4" />
-            <span>{card.attachments_count}</span>
+            <span className="font-medium">{card.attachments_count}</span>
           </div>
         )}
 
         {/* Due date */}
         {card.target_date && (
-          <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600' : ''}`}>
-            <CalendarIcon className="w-4 h-4" />
-            <span>{format(new Date(card.target_date), 'MMM d')}</span>
+          <div className={`flex items-center gap-1.5 ${isOverdue ? 'text-red-600' : 'text-gray-500'}`}>
+            {isOverdue ? (
+              <ExclamationCircleIcon className="w-4 h-4" />
+            ) : (
+              <CalendarIcon className="w-4 h-4" />
+            )}
+            <span className="font-medium">{format(new Date(card.target_date), 'MMM d')}</span>
           </div>
         )}
       </div>
 
       {/* Assignees */}
       {card.assignees && card.assignees.length > 0 && (
-        <div className="flex items-center gap-1 mt-2 -space-x-1">
-          {card.assignees.slice(0, 3).map(assignee => (
-            <div
-              key={assignee.user_id}
-              className="w-6 h-6 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center"
-              title={assignee.user?.name || assignee.user?.email || 'Unknown'}
-            >
-              <span className="text-xs text-gray-600">
-                {(assignee.user?.name || assignee.user?.email || '?')[0].toUpperCase()}
-              </span>
-            </div>
-          ))}
+        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-50">
+          <div className="flex -space-x-2">
+            {card.assignees.slice(0, 3).map((assignee, idx) => (
+              <div
+                key={assignee.user_id}
+                className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 border-2 border-white flex items-center justify-center shadow-sm"
+                title={assignee.user?.name || assignee.user?.email || 'Unknown'}
+                style={{ zIndex: 3 - idx }}
+              >
+                <span className="text-xs font-semibold text-gray-600">
+                  {(assignee.user?.name || assignee.user?.email || '?')[0].toUpperCase()}
+                </span>
+              </div>
+            ))}
+          </div>
           {card.assignees.length > 3 && (
-            <span className="text-xs text-gray-500 pl-2">
+            <span className="text-xs text-gray-400 font-medium pl-1">
               +{card.assignees.length - 3}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Priority indicator dot */}
+      {card.priority === 'critical' && (
+        <div className="absolute top-3 right-3">
+          <span className="flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+          </span>
         </div>
       )}
     </div>

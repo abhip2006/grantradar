@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -22,6 +22,11 @@ export function KanbanBoard() {
   const [filters, setFilters] = useState<KanbanFilters>({});
   const [activeCard, setActiveCard] = useState<KanbanCardType | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const { data: board, isLoading, error } = useKanbanBoard(filters);
   const reorderMutation = useReorderCard();
@@ -90,23 +95,55 @@ export function KanbanBoard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="h-full flex flex-col bg-mesh">
+        <div className="p-4">
+          <div className="skeleton h-12 rounded-xl mb-4" />
+        </div>
+        <div className="flex-1 flex gap-4 p-4 overflow-x-auto">
+          {STAGES.map((stage, idx) => (
+            <div
+              key={stage}
+              className="w-80 flex-shrink-0 skeleton rounded-2xl h-96"
+              style={{ animationDelay: `${idx * 0.1}s` }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-red-600 p-4">
-        Error loading board: {error.message}
+      <div className="h-full flex items-center justify-center bg-mesh">
+        <div className="text-center animate-fade-in-up">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-display font-semibold text-gray-900 mb-2">
+            Error loading board
+          </h3>
+          <p className="text-gray-500 text-sm mb-4">
+            {error.message}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <BoardFilters filters={filters} onChange={setFilters} totals={board?.totals} />
+    <div className="h-full flex flex-col bg-mesh">
+      {/* Premium Filters Bar */}
+      <div className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
+        <BoardFilters filters={filters} onChange={setFilters} totals={board?.totals} />
+      </div>
 
       <DndContext
         sensors={sensors}
@@ -114,26 +151,38 @@ export function KanbanBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-4 p-4 min-w-max h-full">
-            {STAGES.map(stage => (
-              <KanbanColumn
+        <div className="flex-1 overflow-x-auto kanban-scroll">
+          <div className="flex gap-5 p-5 min-w-max h-full">
+            {STAGES.map((stage, idx) => (
+              <div
                 key={stage}
-                stage={stage}
-                cards={board?.columns[stage] || []}
-                onCardClick={setSelectedCardId}
-              />
+                className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}
+                style={{ animationDelay: `${(idx + 1) * 0.05}s` }}
+              >
+                <KanbanColumn
+                  stage={stage}
+                  cards={board?.columns[stage] || []}
+                  onCardClick={setSelectedCardId}
+                />
+              </div>
             ))}
           </div>
         </div>
 
-        <DragOverlay>
+        {/* Drag Overlay with premium card preview */}
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        }}>
           {activeCard && (
-            <KanbanCard card={activeCard} isDragging />
+            <div className="kanban-card-dragging">
+              <KanbanCard card={activeCard} isDragging />
+            </div>
           )}
         </DragOverlay>
       </DndContext>
 
+      {/* Card Detail Modal */}
       {selectedCardId && (
         <CardDetailModal
           applicationId={selectedCardId}
