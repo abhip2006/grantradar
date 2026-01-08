@@ -22,12 +22,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// DEV BYPASS: Set to true to skip authentication
+const DEV_BYPASS_AUTH = true;
+const MOCK_USER: User = {
+  id: 'dev-user-123',
+  email: 'dev@grantradar.com',
+  name: 'Dev User',
+  organization_name: 'GrantRadar Dev',
+  organization_type: 'university',
+  focus_areas: ['biomedical', 'technology'],
+  created_at: new Date().toISOString(),
+  has_profile: true,
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(DEV_BYPASS_AUTH ? MOCK_USER : null);
+  const [isLoading, setIsLoading] = useState(!DEV_BYPASS_AUTH);
 
   // Initialize auth state from localStorage
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) {
+      setIsLoading(false);
+      return;
+    }
+
     const initAuth = async () => {
       const token = localStorage.getItem('access_token');
       const storedUser = localStorage.getItem('user');
@@ -130,4 +148,4 @@ export function useAuth(): AuthContextType {
   return context;
 }
 
-export default AuthContext;
+// Removed default export for better HMR compatibility

@@ -15,7 +15,6 @@ import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { grantsApi } from '../services/api';
 import { socketService } from '../services/socket';
 import { useToast } from '../contexts/ToastContext';
-import { Navbar } from '../components/Navbar';
 import { GrantCard } from '../components/GrantCard';
 import { WelcomeModal } from '../components/WelcomeModal';
 import { SavedSearches } from '../components/SavedSearches';
@@ -455,8 +454,6 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[var(--gr-bg-primary)]">
-      <Navbar />
-
       {/* Welcome Modal for first-time users */}
       <WelcomeModal
         isOpen={showWelcomeModal}
