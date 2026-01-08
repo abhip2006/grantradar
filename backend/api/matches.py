@@ -3,11 +3,13 @@ Match API Endpoints
 List matches, get details, perform actions, and submit feedback.
 """
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, bindparam, func, or_, select, text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.types import Text
 from sqlalchemy.orm import joinedload
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -38,45 +40,102 @@ async def list_matches(
     max_score: Optional[float] = Query(default=None, ge=0, le=1, description="Maximum match score"),
     user_action: Optional[str] = Query(default=None, description="Filter by action (saved, dismissed)"),
     exclude_dismissed: bool = Query(default=True, description="Exclude dismissed matches"),
+    # Grant-level filters
+    agency: Optional[List[str]] = Query(default=None, description="Filter by funding agencies"),
+    source: Optional[str] = Query(default=None, description="Filter by grant source"),
+    categories: Optional[List[str]] = Query(default=None, description="Filter by categories"),
+    min_amount: Optional[int] = Query(default=None, ge=0, description="Minimum funding amount"),
+    max_amount: Optional[int] = Query(default=None, ge=0, description="Maximum funding amount"),
+    deadline_after: Optional[datetime] = Query(default=None, description="Deadline on or after date"),
+    deadline_before: Optional[datetime] = Query(default=None, description="Deadline on or before date"),
 ) -> MatchList:
     """
     Get a paginated list of grant matches for the authenticated user.
 
     Matches are sorted by score (highest first) by default.
+    Supports filtering by match score, user action, and grant-level attributes.
     """
     # Build base query with grant join
     query = (
         select(Match)
+        .join(Match.grant)
         .options(joinedload(Match.grant))
         .where(Match.user_id == current_user.id)
     )
     count_query = (
         select(func.count(Match.id))
+        .select_from(Match)
+        .join(Match.grant)
         .where(Match.user_id == current_user.id)
     )
 
-    # Apply filters
-    filters = []
+    # Apply match-level filters
+    match_filters = []
 
     if min_score is not None:
-        filters.append(Match.match_score >= min_score)
+        match_filters.append(Match.match_score >= min_score)
 
     if max_score is not None:
-        filters.append(Match.match_score <= max_score)
+        match_filters.append(Match.match_score <= max_score)
 
     if user_action:
-        filters.append(Match.user_action == user_action)
+        match_filters.append(Match.user_action == user_action)
     elif exclude_dismissed:
-        filters.append(
+        match_filters.append(
             or_(
                 Match.user_action.is_(None),
                 Match.user_action != "dismissed"
             )
         )
 
-    if filters:
-        query = query.where(and_(*filters))
-        count_query = count_query.where(and_(*filters))
+    # Apply grant-level filters
+    grant_filters = []
+
+    if agency:
+        grant_filters.append(Grant.agency.in_(agency))
+
+    if source:
+        grant_filters.append(Grant.source == source)
+
+    if categories:
+        # Match any category in the list using PostgreSQL array overlap operator
+        # The && operator checks if two arrays have any elements in common
+        # Cast the column type explicitly since StringArray TypeDecorator doesn't expose overlap()
+        from sqlalchemy import cast
+        grant_filters.append(
+            cast(Grant.categories, ARRAY(Text)).overlap(categories)
+        )
+
+    if min_amount is not None:
+        # Include grants where either min or max is >= min_amount
+        grant_filters.append(
+            or_(
+                Grant.amount_min >= min_amount,
+                Grant.amount_max >= min_amount
+            )
+        )
+
+    if max_amount is not None:
+        # Include grants where either min or max is <= max_amount
+        grant_filters.append(
+            or_(
+                Grant.amount_max <= max_amount,
+                and_(Grant.amount_max.is_(None), Grant.amount_min <= max_amount)
+            )
+        )
+
+    if deadline_after is not None:
+        grant_filters.append(Grant.deadline >= deadline_after)
+
+    if deadline_before is not None:
+        grant_filters.append(Grant.deadline <= deadline_before)
+
+    # Combine all filters
+    all_filters = match_filters + grant_filters
+
+    if all_filters:
+        query = query.where(and_(*all_filters))
+        count_query = count_query.where(and_(*all_filters))
 
     # Get total count
     total_result = await db.execute(count_query)
@@ -117,9 +176,6 @@ async def list_matches(
         has_more=(offset + len(matches)) < total
     )
 
-
-# Import or_ for the filter
-from sqlalchemy import or_
 
 
 @router.get(
