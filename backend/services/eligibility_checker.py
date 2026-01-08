@@ -75,6 +75,8 @@ class EligibilityChecker:
             metadata_={"grant_title": grant.title, "initial_status": result.overall_status.value}
         )
         db.add(session)
+        # Flush to ensure session.id is assigned before creating messages
+        await db.flush()
 
         # Save initial exchange
         user_msg = ChatMessage(

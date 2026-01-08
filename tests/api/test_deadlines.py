@@ -766,7 +766,10 @@ class TestDeadlineEdgeCases:
         await async_session.commit()
         await async_session.refresh(deadline)
 
-        assert deadline.sponsor_deadline < datetime.now(timezone.utc)
+        # SQLite returns timezone-naive datetimes, so compare naive to naive
+        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+        deadline_naive = deadline.sponsor_deadline.replace(tzinfo=None) if deadline.sponsor_deadline.tzinfo else deadline.sponsor_deadline
+        assert deadline_naive < now_naive
 
     @pytest.mark.asyncio
     async def test_deadline_with_long_title(self, async_session, db_user):
@@ -836,4 +839,8 @@ class TestDeadlineEdgeCases:
         deadlines = result.scalars().all()
 
         assert len(deadlines) == 5
-        assert all(d.sponsor_deadline == same_date for d in deadlines)
+        # SQLite returns timezone-naive datetimes, compare naive to naive
+        same_date_naive = same_date.replace(tzinfo=None)
+        for d in deadlines:
+            d_naive = d.sponsor_deadline.replace(tzinfo=None) if d.sponsor_deadline.tzinfo else d.sponsor_deadline
+            assert d_naive == same_date_naive
