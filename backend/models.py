@@ -118,8 +118,7 @@ class StringArray(TypeDecorator):
 
     def load_dialect_impl(self, dialect):
         if dialect.name == "postgresql":
-            from sqlalchemy import ARRAY as PG_ARRAY
-            return dialect.type_descriptor(PG_StringArray())
+            return dialect.type_descriptor(ARRAY(String))
         else:
             return dialect.type_descriptor(JSON())
 

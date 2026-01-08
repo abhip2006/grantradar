@@ -102,6 +102,9 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for error handling
+// DEV BYPASS: Set to true to skip auth redirects
+const DEV_BYPASS_AUTH = true;
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -109,6 +112,11 @@ api.interceptors.response.use(
 
     // If 401 and we have a refresh token, try to refresh
     if (error.response?.status === 401 && originalRequest) {
+      // DEV BYPASS: Skip redirect on 401
+      if (DEV_BYPASS_AUTH) {
+        return Promise.reject(error);
+      }
+
       const refreshToken = localStorage.getItem('refresh_token');
 
       if (refreshToken && !originalRequest.url?.includes('/auth/refresh')) {

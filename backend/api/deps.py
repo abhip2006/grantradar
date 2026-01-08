@@ -2,6 +2,7 @@
 FastAPI Dependencies
 Shared dependencies for authentication and database access.
 """
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 from uuid import UUID
@@ -17,6 +18,9 @@ from backend.core.config import settings
 from backend.database import get_db
 from backend.models import User
 from backend.schemas.auth import TokenData
+
+# DEV BYPASS: Set to True to skip authentication (uses first user in DB)
+DEV_BYPASS_AUTH = os.getenv("DEV_BYPASS_AUTH", "true").lower() == "true"
 
 # =============================================================================
 # Password Hashing
@@ -122,6 +126,27 @@ async def get_current_user(
 
     Raises HTTPException 401 if not authenticated.
     """
+    # DEV BYPASS: Return first user from database when auth is disabled
+    if DEV_BYPASS_AUTH:
+        result = await db.execute(select(User).limit(1))
+        user = result.scalar_one_or_none()
+        if user:
+            return user
+        # If no users exist, create a dev user
+        from uuid import uuid4
+        dev_user = User(
+            id=uuid4(),
+            email="dev@grantradar.com",
+            name="Dev User",
+            hashed_password="dev",
+            organization_type="university",
+            focus_areas=["biomedical", "technology"],
+        )
+        db.add(dev_user)
+        await db.commit()
+        await db.refresh(dev_user)
+        return dev_user
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
