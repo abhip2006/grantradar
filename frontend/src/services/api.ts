@@ -41,6 +41,10 @@ import type {
   DeadlineUpdate,
   DeadlineFilters,
   DeadlineListResponse,
+  DeadlineStatus,
+  DeadlineStats,
+  StatusHistoryResponse,
+  RecurrencePresetsResponse,
   CalendarProvider,
   CalendarIntegration,
   CalendarIntegrationStatus,
@@ -58,6 +62,8 @@ import type {
   ResearchSession,
   ResearchGrantResult,
   FundingAlertPreferences,
+  FilterOptions,
+  AdvancedGrantFilters,
 } from '../types';
 import type {
   KanbanBoard,
@@ -77,6 +83,14 @@ import type {
   TeamInvite,
   Assignee,
 } from '../types/kanban';
+import type {
+  TeamMember,
+  TeamActivity,
+  TeamStats,
+  TeamInviteRequest,
+  TeamMemberUpdate,
+  TeamActivityFilters,
+} from '../types/team';
 
 // API base URL - connects to FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -311,21 +325,59 @@ export const grantsApi = {
     return response.data;
   },
 
-  // Get user's matches
+  // Get filter options for dropdowns
+  getFilterOptions: async (): Promise<FilterOptions> => {
+    const response = await api.get<FilterOptions>('/filters/options');
+    return response.data;
+  },
+
+  // Get user's matches with advanced filtering
   getMatches: async (params: {
     page?: number;
     per_page?: number;
     source?: string;
     status?: string;
     min_score?: number;
+    // Advanced filters
+    advancedFilters?: AdvancedGrantFilters;
   } = {}): Promise<PaginatedResponse<GrantMatch>> => {
+    const { advancedFilters, ...baseParams } = params;
+
+    // Build params object
+    const queryParams: Record<string, unknown> = {
+      page: baseParams.page || 1,
+      page_size: baseParams.per_page || 20,
+      min_score: baseParams.min_score ? baseParams.min_score / 100 : undefined,
+      user_action: baseParams.status,
+      exclude_dismissed: baseParams.status !== 'dismissed',
+      source: advancedFilters?.agencies ? undefined : baseParams.source,
+      min_amount: advancedFilters?.min_amount,
+      max_amount: advancedFilters?.max_amount,
+      deadline_after: advancedFilters?.deadline_after,
+      deadline_before: advancedFilters?.deadline_before,
+    };
+
     const response = await api.get('/matches', {
-      params: {
-        page: params.page || 1,
-        page_size: params.per_page || 20,
-        min_score: params.min_score ? params.min_score / 100 : undefined, // Convert to 0-1
-        user_action: params.status,
-        exclude_dismissed: params.status !== 'dismissed',
+      params: queryParams,
+      paramsSerializer: (params) => {
+        // Custom serializer for FastAPI array params (agency=a&agency=b format)
+        const searchParams = new URLSearchParams();
+        Object.entries(params).forEach(([key, value]) => {
+          if (value === undefined || value === null) return;
+          if (Array.isArray(value)) {
+            value.forEach((v) => searchParams.append(key, String(v)));
+          } else {
+            searchParams.append(key, String(value));
+          }
+        });
+        // Add array params from advancedFilters separately
+        if (advancedFilters?.agencies) {
+          advancedFilters.agencies.forEach((a) => searchParams.append('agency', a));
+        }
+        if (advancedFilters?.categories) {
+          advancedFilters.categories.forEach((c) => searchParams.append('categories', c));
+        }
+        return searchParams.toString();
       },
     });
 
@@ -817,6 +869,36 @@ export const deadlinesApi = {
     });
     return response.data;
   },
+
+  // Change deadline status with history tracking
+  changeStatus: async (id: string, status: DeadlineStatus, notes?: string): Promise<Deadline> => {
+    const response = await api.post<Deadline>(`/deadlines/${id}/status`, { status, notes });
+    return response.data;
+  },
+
+  // Get status change history for a deadline
+  getStatusHistory: async (id: string): Promise<StatusHistoryResponse> => {
+    const response = await api.get<StatusHistoryResponse>(`/deadlines/${id}/history`);
+    return response.data;
+  },
+
+  // Update reminder configuration for a deadline
+  updateReminderConfig: async (id: string, reminderConfig: number[]): Promise<Deadline> => {
+    const response = await api.put<Deadline>(`/deadlines/${id}/reminders`, { reminder_config: reminderConfig });
+    return response.data;
+  },
+
+  // Get deadline statistics
+  getStats: async (): Promise<DeadlineStats> => {
+    const response = await api.get<DeadlineStats>('/deadlines/stats');
+    return response.data;
+  },
+
+  // Get recurrence presets for recurring deadlines
+  getRecurrencePresets: async (): Promise<RecurrencePresetsResponse> => {
+    const response = await api.get<RecurrencePresetsResponse>('/deadlines/recurrence-presets');
+    return response.data;
+  },
 };
 
 // ============================================
@@ -1142,6 +1224,72 @@ export const kanbanApi = {
 
   updateAssignees: async (appId: string, userIds: string[]) => {
     const response = await api.patch<Assignee[]>(`/kanban/${appId}/assignees`, { user_ids: userIds });
+    return response.data;
+  },
+};
+
+// Team API - Team collaboration and member management
+export const teamApi = {
+  // Get all team members
+  getMembers: async (): Promise<TeamMember[]> => {
+    const response = await api.get<TeamMember[]>('/team/members');
+    return response.data;
+  },
+
+  // Get a single team member
+  getMember: async (memberId: string): Promise<TeamMember> => {
+    const response = await api.get<TeamMember>(`/team/members/${memberId}`);
+    return response.data;
+  },
+
+  // Update team member role/permissions
+  updateMember: async (memberId: string, data: TeamMemberUpdate): Promise<TeamMember> => {
+    const response = await api.patch<TeamMember>(`/team/members/${memberId}`, data);
+    return response.data;
+  },
+
+  // Remove a team member
+  removeMember: async (memberId: string): Promise<void> => {
+    await api.delete(`/team/members/${memberId}`);
+  },
+
+  // Invite a new team member
+  inviteMember: async (data: TeamInviteRequest): Promise<TeamMember> => {
+    const response = await api.post<TeamMember>('/team/invite', data);
+    return response.data;
+  },
+
+  // Resend invitation email
+  resendInvitation: async (memberId: string): Promise<TeamMember> => {
+    const response = await api.post<TeamMember>(`/team/members/${memberId}/resend`);
+    return response.data;
+  },
+
+  // Cancel a pending invitation
+  cancelInvitation: async (memberId: string): Promise<void> => {
+    await api.delete(`/team/invitations/${memberId}`);
+  },
+
+  // Accept invitation (uses token from email link)
+  acceptInvitation: async (token: string): Promise<TeamMember> => {
+    const response = await api.post<TeamMember>('/team/invitations/accept', { token });
+    return response.data;
+  },
+
+  // Decline invitation (uses token from email link)
+  declineInvitation: async (token: string, reason?: string): Promise<void> => {
+    await api.post('/team/invitations/decline', { token, reason });
+  },
+
+  // Get team activity feed
+  getActivities: async (filters?: TeamActivityFilters): Promise<TeamActivity[]> => {
+    const response = await api.get<TeamActivity[]>('/team/activities', { params: filters });
+    return response.data;
+  },
+
+  // Get team statistics
+  getStats: async (): Promise<TeamStats> => {
+    const response = await api.get<TeamStats>('/team/stats');
     return response.data;
   },
 };

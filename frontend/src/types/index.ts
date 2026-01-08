@@ -275,6 +275,39 @@ export interface PipelineItemUpdate {
   target_date?: string;
 }
 
+// Advanced filter types for dashboard
+export interface AdvancedGrantFilters {
+  agencies?: string[];
+  categories?: string[];
+  min_amount?: number;
+  max_amount?: number;
+  deadline_after?: string;
+  deadline_before?: string;
+  // Phase 2 filters (require migration)
+  career_stages?: string[];
+  citizenship?: string[];
+  geographic_scope?: string;
+}
+
+export interface FilterOptionItem {
+  value: string;
+  label: string;
+}
+
+export interface FilterOptions {
+  agencies: string[];
+  categories: string[];
+  sources: string[];
+  amount_range: {
+    min: number;
+    max: number;
+  };
+  // Predefined options for future filters
+  career_stages: FilterOptionItem[];
+  citizenship_options: FilterOptionItem[];
+  geographic_scopes: FilterOptionItem[];
+}
+
 // Saved search types
 export interface SavedSearchFilters {
   search_query?: string;
@@ -598,9 +631,37 @@ export interface RecommendationsResponse {
   generated_at: string;
 }
 
-// Deadline types
-export type DeadlineStatus = 'active' | 'completed' | 'archived';
+// Deadline types - Extended workflow statuses
+export type DeadlineStatus =
+  | 'not_started'
+  | 'drafting'
+  | 'internal_review'
+  | 'submitted'
+  | 'under_review'
+  | 'awarded'
+  | 'rejected';
+
 export type DeadlinePriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type UrgencyLevel = 'none' | 'low' | 'medium' | 'high' | 'critical' | 'overdue';
+
+// Status display configuration
+export const DEADLINE_STATUS_CONFIG: Record<DeadlineStatus, { label: string; color: string; bgColor: string; order: number }> = {
+  not_started: { label: 'Not Started', color: 'text-gray-600', bgColor: 'bg-gray-100', order: 0 },
+  drafting: { label: 'Drafting', color: 'text-blue-600', bgColor: 'bg-blue-100', order: 1 },
+  internal_review: { label: 'Internal Review', color: 'text-yellow-600', bgColor: 'bg-yellow-100', order: 2 },
+  submitted: { label: 'Submitted', color: 'text-purple-600', bgColor: 'bg-purple-100', order: 3 },
+  under_review: { label: 'Under Review', color: 'text-orange-600', bgColor: 'bg-orange-100', order: 4 },
+  awarded: { label: 'Awarded', color: 'text-green-600', bgColor: 'bg-green-100', order: 5 },
+  rejected: { label: 'Rejected', color: 'text-red-600', bgColor: 'bg-red-100', order: 6 },
+};
+
+export const DEADLINE_PRIORITY_CONFIG: Record<DeadlinePriority, { label: string; color: string; bgColor: string }> = {
+  low: { label: 'Low', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+  medium: { label: 'Medium', color: 'text-blue-500', bgColor: 'bg-blue-100' },
+  high: { label: 'High', color: 'text-orange-500', bgColor: 'bg-orange-100' },
+  critical: { label: 'Critical', color: 'text-red-500', bgColor: 'bg-red-100' },
+};
 
 export interface Deadline {
   id: string;
@@ -617,8 +678,18 @@ export interface Deadline {
   url?: string;
   notes?: string;
   color: string;
+  // Recurring deadline fields
+  is_recurring: boolean;
+  recurrence_rule?: string;
+  parent_deadline_id?: string;
+  // Reminder configuration
+  reminder_config: number[];
+  escalation_sent: boolean;
+  // Computed fields
   days_until_deadline: number;
   is_overdue: boolean;
+  urgency_level: UrgencyLevel;
+  status_config: { label: string; color: string; order: number };
   grant?: Grant;
   created_at: string;
   updated_at: string;
@@ -632,10 +703,16 @@ export interface DeadlineCreate {
   funder?: string;
   mechanism?: string;
   internal_deadline?: string;
+  status?: DeadlineStatus;
   priority?: DeadlinePriority;
   url?: string;
   notes?: string;
   color?: string;
+  // Recurring fields
+  is_recurring?: boolean;
+  recurrence_rule?: string;
+  // Reminder config
+  reminder_config?: number[];
 }
 
 export interface DeadlineUpdate extends Partial<DeadlineCreate> {
@@ -654,6 +731,50 @@ export interface DeadlineFilters {
 export interface DeadlineListResponse {
   items: Deadline[];
   total: number;
+}
+
+// Status history types
+export interface StatusHistoryEntry {
+  id: string;
+  deadline_id: string;
+  previous_status?: string;
+  new_status: string;
+  changed_by?: string;
+  changed_at: string;
+  notes?: string;
+}
+
+export interface StatusHistoryResponse {
+  items: StatusHistoryEntry[];
+  total: number;
+}
+
+// Status change request
+export interface StatusChangeRequest {
+  status: DeadlineStatus;
+  notes?: string;
+}
+
+// Deadline stats
+export interface DeadlineStats {
+  total: number;
+  by_status: Record<string, number>;
+  by_priority: Record<string, number>;
+  overdue: number;
+  due_this_week: number;
+  due_this_month: number;
+  recurring_templates: number;
+}
+
+// Recurrence presets
+export interface RecurrencePreset {
+  key: string;
+  label: string;
+  rule: string;
+}
+
+export interface RecurrencePresetsResponse {
+  presets: RecurrencePreset[];
 }
 
 // ============================================

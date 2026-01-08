@@ -19,7 +19,8 @@ import { GrantCard } from '../components/GrantCard';
 import { WelcomeModal } from '../components/WelcomeModal';
 import { SavedSearches } from '../components/SavedSearches';
 import { CompareBar } from '../components/CompareBar';
-import type { GrantMatch, GrantSource, DashboardStats, SavedSearchFilters } from '../types';
+import AdvancedFilters from '../components/AdvancedFilters';
+import type { GrantMatch, GrantSource, DashboardStats, SavedSearchFilters, AdvancedGrantFilters } from '../types';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    GRANTRADAR DASHBOARD
@@ -247,6 +248,7 @@ export function Dashboard() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [compareSelection, setCompareSelection] = useState<Array<{ id: string; title: string }>>([]);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedGrantFilters>({});
 
   // Build current filters object for saved searches
   const currentFilters: SavedSearchFilters = {
@@ -302,6 +304,19 @@ export function Dashboard() {
     queryFn: grantsApi.getDashboardStats,
   });
 
+  // Count active advanced filters
+  const advancedFilterCount = [
+    advancedFilters.agencies?.length,
+    advancedFilters.categories?.length,
+    advancedFilters.min_amount || advancedFilters.max_amount,
+    advancedFilters.deadline_after || advancedFilters.deadline_before,
+  ].filter(Boolean).length;
+
+  // Clear advanced filters handler
+  const handleClearAdvancedFilters = useCallback(() => {
+    setAdvancedFilters({});
+  }, []);
+
   // Infinite grants query
   const {
     data,
@@ -310,7 +325,7 @@ export function Dashboard() {
     isFetchingNextPage,
     isLoading: grantsLoading,
   } = useInfiniteQuery({
-    queryKey: ['grants', selectedSource, showSavedOnly, minScore],
+    queryKey: ['grants', selectedSource, showSavedOnly, minScore, advancedFilters],
     queryFn: ({ pageParam = 1 }) =>
       grantsApi.getMatches({
         page: pageParam,
@@ -318,6 +333,7 @@ export function Dashboard() {
         source: selectedSource === 'all' ? undefined : selectedSource,
         status: showSavedOnly ? 'saved' : undefined,
         min_score: minScore,
+        advancedFilters: advancedFilterCount > 0 ? advancedFilters : undefined,
       }),
     getNextPageParam: (lastPage) =>
       lastPage.has_more ? lastPage.page + 1 : undefined,
@@ -532,8 +548,17 @@ export function Dashboard() {
             </button>
           </div>
 
+          {/* Advanced Filters */}
+          <div className="mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
+            <AdvancedFilters
+              filters={advancedFilters}
+              onFiltersChange={setAdvancedFilters}
+              onClear={handleClearAdvancedFilters}
+            />
+          </div>
+
           {/* Active Filters Indicator */}
-          {(selectedSource !== 'all' || showSavedOnly || searchQuery || minScore) && (
+          {(selectedSource !== 'all' || showSavedOnly || searchQuery || minScore || advancedFilterCount > 0) && (
             <div className="flex items-center flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
               <FunnelIcon className="w-4 h-4 text-[var(--gr-text-tertiary)]" />
               <span className="text-sm text-[var(--gr-text-tertiary)]">Active filters:</span>
@@ -549,12 +574,16 @@ export function Dashboard() {
               {searchQuery && (
                 <span className="badge badge-slate">"{searchQuery}"</span>
               )}
+              {advancedFilterCount > 0 && (
+                <span className="badge badge-blue">{advancedFilterCount} advanced filter{advancedFilterCount !== 1 ? 's' : ''}</span>
+              )}
               <button
                 onClick={() => {
                   setSelectedSource('all');
                   setShowSavedOnly(false);
                   setMinScore(undefined);
                   setSearchQuery('');
+                  setAdvancedFilters({});
                 }}
                 className="text-xs text-[var(--gr-text-tertiary)] hover:text-[var(--gr-danger)] ml-2"
               >
