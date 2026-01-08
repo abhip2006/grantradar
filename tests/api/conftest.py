@@ -20,6 +20,15 @@ from backend.models import (
     ChatMessage,
     ResearchSession,
     FundingAlertPreference,
+    GrantApplication,
+    ApplicationSubtask,
+    ApplicationActivity,
+    ApplicationAttachment,
+    CustomFieldDefinition,
+    CustomFieldValue,
+    LabMember,
+    ApplicationAssignee,
+    ApplicationStage,
 )
 
 
@@ -328,3 +337,153 @@ def mock_sendgrid_client():
     mock = MagicMock()
     mock.send.return_value = MagicMock(status_code=202)
     return mock
+
+
+# ===== Kanban Board Fixtures =====
+
+@pytest_asyncio.fixture
+async def db_pipeline_item(async_session, db_user, db_grant):
+    """Create a pipeline item (grant application) for kanban tests."""
+    app = GrantApplication(
+        user_id=db_user.id,
+        grant_id=db_grant.id,
+        stage=ApplicationStage.RESEARCHING,
+        position=0,
+        priority="medium",
+    )
+    async_session.add(app)
+    await async_session.commit()
+    await async_session.refresh(app)
+    return app
+
+
+@pytest_asyncio.fixture
+async def db_kanban_subtask(async_session, db_pipeline_item):
+    """Create a subtask for kanban tests."""
+    subtask = ApplicationSubtask(
+        application_id=db_pipeline_item.id,
+        title="Test Subtask",
+        position=0,
+    )
+    async_session.add(subtask)
+    await async_session.commit()
+    await async_session.refresh(subtask)
+    return subtask
+
+
+@pytest_asyncio.fixture
+async def db_custom_field(async_session, db_user):
+    """Create a custom field definition for tests."""
+    field = CustomFieldDefinition(
+        user_id=db_user.id,
+        name="Test Field",
+        field_type="text",
+        is_required=False,
+        show_in_card=True,
+        position=0,
+    )
+    async_session.add(field)
+    await async_session.commit()
+    await async_session.refresh(field)
+    return field
+
+
+@pytest_asyncio.fixture
+async def db_lab_member(async_session, db_user):
+    """Create a lab member for tests."""
+    member = LabMember(
+        lab_owner_id=db_user.id,
+        member_email="testmember@university.edu",
+        role="member",
+    )
+    async_session.add(member)
+    await async_session.commit()
+    await async_session.refresh(member)
+    return member
+
+
+@pytest_asyncio.fixture
+async def db_kanban_activity(async_session, db_pipeline_item, db_user):
+    """Create an activity log entry for kanban tests."""
+    activity = ApplicationActivity(
+        application_id=db_pipeline_item.id,
+        user_id=db_user.id,
+        action="stage_changed",
+        details={"from_stage": "researching", "to_stage": "writing"},
+    )
+    async_session.add(activity)
+    await async_session.commit()
+    await async_session.refresh(activity)
+    return activity
+
+
+@pytest_asyncio.fixture
+async def db_kanban_attachment(async_session, db_pipeline_item, db_user):
+    """Create an attachment for kanban tests."""
+    attachment = ApplicationAttachment(
+        application_id=db_pipeline_item.id,
+        user_id=db_user.id,
+        filename="test_document.pdf",
+        file_type="application/pdf",
+        file_size=1024,
+        storage_path="/uploads/test_document.pdf",
+        category="draft",
+    )
+    async_session.add(attachment)
+    await async_session.commit()
+    await async_session.refresh(attachment)
+    return attachment
+
+
+@pytest_asyncio.fixture
+async def db_custom_field_value(async_session, db_pipeline_item, db_custom_field):
+    """Create a custom field value for kanban tests."""
+    value = CustomFieldValue(
+        application_id=db_pipeline_item.id,
+        field_id=db_custom_field.id,
+        value={"value": "Test Value"},
+    )
+    async_session.add(value)
+    await async_session.commit()
+    await async_session.refresh(value)
+    return value
+
+
+@pytest_asyncio.fixture
+async def db_application_assignee(async_session, db_pipeline_item, db_user):
+    """Create an application assignee for kanban tests."""
+    assignee = ApplicationAssignee(
+        application_id=db_pipeline_item.id,
+        user_id=db_user.id,
+        assigned_by=db_user.id,
+    )
+    async_session.add(assignee)
+    await async_session.commit()
+    await async_session.refresh(assignee)
+    return assignee
+
+
+@pytest_asyncio.fixture
+async def db_pipeline_items_varied(async_session, db_user, db_grant):
+    """Create a varied set of pipeline items for testing filters and sorting."""
+    now = datetime.now(timezone.utc)
+    items = []
+
+    # Create items in different stages
+    for stage in [ApplicationStage.RESEARCHING, ApplicationStage.WRITING, ApplicationStage.SUBMITTED, ApplicationStage.AWARDED, ApplicationStage.REJECTED]:
+        item = GrantApplication(
+            user_id=db_user.id,
+            grant_id=db_grant.id,
+            stage=stage,
+            position=0,
+            priority="medium",
+        )
+        items.append(item)
+        async_session.add(item)
+
+    await async_session.commit()
+
+    for item in items:
+        await async_session.refresh(item)
+
+    return items

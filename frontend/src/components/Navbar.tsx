@@ -24,6 +24,7 @@ export function Navbar() {
     ? [
         { name: 'Dashboard', href: '/dashboard' },
         { name: 'Pipeline', href: '/pipeline' },
+        { name: 'Board', href: '/kanban' },
         { name: 'Deadlines', href: '/deadlines' },
         { name: 'Forecast', href: '/forecast' },
         { name: 'Analytics', href: '/analytics' },

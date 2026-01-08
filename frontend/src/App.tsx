@@ -28,6 +28,7 @@ import { Deadlines } from './pages/Deadlines';
 import { Integrations } from './pages/Integrations';
 import { Templates } from './pages/Templates';
 import { AITools } from './pages/AITools';
+import { Kanban } from './pages/Kanban';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -102,6 +103,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Pipeline />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/kanban"
+                  element={
+                    <ProtectedRoute>
+                      <Kanban />
                     </ProtectedRoute>
                   }
                 />

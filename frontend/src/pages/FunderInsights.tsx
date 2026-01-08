@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   MagnifyingGlassIcon,
   BuildingLibraryIcon,
@@ -237,7 +237,6 @@ function TopFundersSection() {
 
 export function FunderInsights() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const searchQuery = searchParams.get('search') || '';
   const [searchInput, setSearchInput] = useState(searchQuery);
 

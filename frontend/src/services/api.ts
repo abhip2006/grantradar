@@ -58,8 +58,25 @@ import type {
   ResearchSession,
   ResearchGrantResult,
   FundingAlertPreferences,
-  AlertFrequency,
 } from '../types';
+import type {
+  KanbanBoard,
+  KanbanCard,
+  KanbanFilters,
+  ReorderRequest,
+  CardUpdate,
+  SubtaskCreate,
+  SubtaskUpdate,
+  Subtask,
+  Activity,
+  Attachment,
+  CustomFieldDefinition,
+  FieldDefinitionCreate,
+  FieldDefinitionUpdate,
+  LabMember,
+  TeamInvite,
+  Assignee,
+} from '../types/kanban';
 
 // API base URL - connects to FastAPI backend
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -960,6 +977,133 @@ export const alertsApi = {
 
   sendNow: async () => {
     const response = await api.post('/alerts/send-now');
+    return response.data;
+  },
+};
+
+// Kanban Board API
+export const kanbanApi = {
+  // Board operations
+  getBoard: async (filters?: KanbanFilters) => {
+    const response = await api.get<KanbanBoard>('/kanban', { params: filters });
+    return response.data;
+  },
+
+  reorderCard: async (data: ReorderRequest) => {
+    const response = await api.post<KanbanCard>('/kanban/reorder', data);
+    return response.data;
+  },
+
+  updateCard: async (appId: string, data: CardUpdate) => {
+    const response = await api.patch<KanbanCard>(`/kanban/${appId}`, data);
+    return response.data;
+  },
+
+  // Subtasks
+  getSubtasks: async (appId: string) => {
+    const response = await api.get<Subtask[]>(`/kanban/${appId}/subtasks`);
+    return response.data;
+  },
+
+  createSubtask: async (appId: string, data: SubtaskCreate) => {
+    const response = await api.post<Subtask>(`/kanban/${appId}/subtasks`, data);
+    return response.data;
+  },
+
+  updateSubtask: async (subtaskId: string, data: SubtaskUpdate) => {
+    const response = await api.patch<Subtask>(`/kanban/subtasks/${subtaskId}`, data);
+    return response.data;
+  },
+
+  deleteSubtask: async (subtaskId: string) => {
+    await api.delete(`/kanban/subtasks/${subtaskId}`);
+  },
+
+  reorderSubtasks: async (appId: string, subtaskIds: string[]) => {
+    const response = await api.post<Subtask[]>(`/kanban/${appId}/subtasks/reorder`, { subtask_ids: subtaskIds });
+    return response.data;
+  },
+
+  // Activities
+  getActivities: async (appId: string, limit?: number, offset?: number) => {
+    const response = await api.get<Activity[]>(`/kanban/${appId}/activities`, { params: { limit, offset } });
+    return response.data;
+  },
+
+  addComment: async (appId: string, content: string) => {
+    const response = await api.post<Activity>(`/kanban/${appId}/comments`, { content });
+    return response.data;
+  },
+
+  // Attachments
+  getAttachments: async (appId: string) => {
+    const response = await api.get<Attachment[]>(`/kanban/${appId}/attachments`);
+    return response.data;
+  },
+
+  uploadAttachment: async (appId: string, file: File, metadata?: { description?: string; category?: string }) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (metadata?.description) formData.append('description', metadata.description);
+    if (metadata?.category) formData.append('category', metadata.category);
+
+    const response = await api.post<Attachment>(`/kanban/${appId}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteAttachment: async (attachmentId: string) => {
+    await api.delete(`/kanban/attachments/${attachmentId}`);
+  },
+
+  downloadAttachment: async (attachmentId: string) => {
+    const response = await api.get(`/kanban/attachments/${attachmentId}/download`, { responseType: 'blob' });
+    return response.data;
+  },
+
+  // Custom Fields
+  getFieldDefinitions: async () => {
+    const response = await api.get<CustomFieldDefinition[]>('/kanban/fields');
+    return response.data;
+  },
+
+  createFieldDefinition: async (data: FieldDefinitionCreate) => {
+    const response = await api.post<CustomFieldDefinition>('/kanban/fields', data);
+    return response.data;
+  },
+
+  updateFieldDefinition: async (fieldId: string, data: FieldDefinitionUpdate) => {
+    const response = await api.patch<CustomFieldDefinition>(`/kanban/fields/${fieldId}`, data);
+    return response.data;
+  },
+
+  deleteFieldDefinition: async (fieldId: string) => {
+    await api.delete(`/kanban/fields/${fieldId}`);
+  },
+
+  updateCardFields: async (appId: string, fields: Record<string, any>) => {
+    const response = await api.patch<KanbanCard>(`/kanban/${appId}/fields`, { fields });
+    return response.data;
+  },
+
+  // Team
+  getTeamMembers: async () => {
+    const response = await api.get<LabMember[]>('/kanban/team');
+    return response.data;
+  },
+
+  inviteTeamMember: async (data: TeamInvite) => {
+    const response = await api.post<LabMember>('/kanban/team/invite', data);
+    return response.data;
+  },
+
+  removeTeamMember: async (memberId: string) => {
+    await api.delete(`/kanban/team/${memberId}`);
+  },
+
+  updateAssignees: async (appId: string, userIds: string[]) => {
+    const response = await api.patch<Assignee[]>(`/kanban/${appId}/assignees`, { user_ids: userIds });
     return response.data;
   },
 };
