@@ -54,7 +54,15 @@ celerybeat.pid
 
 # Database
 *.db
+*.sqlite
 *.sqlite3
+*.sql.dump
+*.dump
+*.bak
+data/*.json
+data/*.csv
+exports/
+dumps/
 
 # Logs
 logs/*
@@ -66,9 +74,52 @@ backups/*
 !backups/.gitkeep
 *.sql.gz
 *.sql.gz.gpg
+*.tar.gz
+*.zip
+backup_*.sql
+*_backup.*
 
 # Playwright
 playwright/.cache/
 
 # Docker
 docker-compose.override.yml
+.docker/
+
+# SSL/TLS Certificates
+*.crt
+*.cert
+*.ca-bundle
+ssl/
+certs/
+
+# Uploads and User Data
+uploads/
+media/
+user_data/
+private/
+
+# Sessions and Cache
+*.session
+.cache/
+cache/
+tmp/
+temp/
+
+# Infrastructure State (Terraform, etc.)
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+.terraform/
+
+# Kubernetes Secrets
+*-secret.yaml
+*-secret.yml
+kubeconfig*
+
+# Jupyter Notebooks (may contain output data)
+.ipynb_checkpoints/
+
+# Redis/Celery dumps
+dump.rdb
+appendonly.aof
