@@ -1,8 +1,17 @@
-# Environment
+# Environment and Secrets
 .env
 .env.local
 .env.*.local
 *.env
+.env.production
+.env.staging
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
 
 # Python
 __pycache__/

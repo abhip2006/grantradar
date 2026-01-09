@@ -532,17 +532,17 @@ CELERY_BROKER_URL=redis://localhost:6379/1      # Celery broker
 CELERY_RESULT_BACKEND=redis://localhost:6379/2  # Task results
 
 # ===== AI API Keys =====
-ANTHROPIC_API_KEY=sk-ant-...        # Required for validation & matching
-OPENAI_API_KEY=sk-...                # Required for embeddings
+ANTHROPIC_API_KEY=your_anthropic_key_here        # Required for validation & matching
+OPENAI_API_KEY=your_openai_key_here              # Required for embeddings
 
 # ===== Notification Services =====
-SENDGRID_API_KEY=SG....              # Email delivery
-TWILIO_ACCOUNT_SID=AC...             # SMS delivery
-TWILIO_AUTH_TOKEN=...                # SMS authentication
+SENDGRID_API_KEY=your_sendgrid_key_here          # Email delivery
+TWILIO_ACCOUNT_SID=your_twilio_sid_here          # SMS delivery
+TWILIO_AUTH_TOKEN=your_twilio_token_here         # SMS authentication
 TWILIO_PHONE_NUMBER=+1234567890      # SMS sender number
 
 # ===== Application =====
-SECRET_KEY=...                        # JWT signing
+SECRET_KEY=your_secret_key_here       # JWT signing (use: openssl rand -hex 32)
 ENVIRONMENT=development
 DEBUG=true
 BACKEND_URL=http://localhost:8000
