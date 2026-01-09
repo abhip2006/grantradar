@@ -76,6 +76,13 @@ __all__ = [
     "NIH_SUCCESS_RATES",
     "NSF_SUCCESS_RATES",
     "DEFAULT_RATES",
+    # Effort estimation service
+    "EffortEstimate",
+    "estimate_effort",
+    "format_effort_display",
+    "extract_mechanism_from_grant",
+    "MECHANISM_EFFORT",
+    "DEFAULT_EFFORT",
     # ML forecast (optional)
     "GrantDeadlinePredictor",
     "MLPredictionResult",
