@@ -1,0 +1,39 @@
+Welcome to {{ app_name }}, {{ user_name }}!
+==========================================
+
+We're excited to have you join our community of researchers. {{ app_name }} uses AI to help you discover and secure the perfect funding opportunities for your research.
+
+
+GET STARTED IN 3 EASY STEPS
+---------------------------
+
+1. Complete Your Research Profile
+   Tell us about your research interests, expertise, and funding needs. The more details you provide, the better matches we can find.
+
+2. Review Your Matched Grants
+   Our AI analyzes thousands of funding opportunities and matches them to your profile. Review and save the ones that interest you.
+
+3. Set Up Deadline Reminders
+   Never miss a deadline again. Configure notifications to stay on top of important submission dates.
+
+
+Go to your dashboard: {{ dashboard_url }}
+
+
+WHAT YOU CAN DO WITH {{ app_name|upper }}
+-----------------------------------------
+
+* AI-powered grant matching
+* Deadline tracking
+* Application assistance
+* Team collaboration
+
+
+If you have any questions, our support team is here to help. Just reply to this email or visit our help center at {{ frontend_url }}/help
+
+Best of luck with your research!
+The {{ app_name }} Team
+
+---
+{{ app_name }}
+Empowering researchers to find and secure funding opportunities.

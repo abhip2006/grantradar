@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{{ notification_title }} - {{ app_name }}{% endblock %}
+
+{% block preview_text %}{{ preview_text or notification_title }}{% endblock %}
+
+{% block header_subtitle %}
+{% if notification_category %}
+<p style="margin: 10px 0 0 0; font-size: 14px; color: rgba(255, 255, 255, 0.9);">
+    {{ notification_category }}
+</p>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<!-- Notification Icon/Type Badge (optional) -->
+{% if notification_type %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 20px;">
+    <tr>
+        <td>
+            {% if notification_type == 'success' %}
+            <div style="display: inline-block; background-color: #d1fae5; color: #065f46; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                Success
+            </div>
+            {% elif notification_type == 'warning' %}
+            <div style="display: inline-block; background-color: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                Attention Required
+            </div>
+            {% elif notification_type == 'error' %}
+            <div style="display: inline-block; background-color: #fee2e2; color: #991b1b; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                Action Required
+            </div>
+            {% elif notification_type == 'info' %}
+            <div style="display: inline-block; background-color: #dbeafe; color: #1e40af; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                Information
+            </div>
+            {% endif %}
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<!-- Title -->
+<h2 style="margin: 0 0 20px 0; font-size: 24px; font-weight: 600; color: #1a1a2e;">
+    {{ notification_title }}
+</h2>
+
+<!-- Greeting -->
+<p style="margin: 0 0 20px 0; font-size: 16px; color: #4b5563;">
+    Hi {{ user_name }},
+</p>
+
+<!-- Main Message -->
+<p style="margin: 0 0 25px 0; font-size: 16px; color: #4b5563; line-height: 1.7;">
+    {{ notification_message }}
+</p>
+
+<!-- Details Box (optional) -->
+{% if details %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f3f4f6; border-radius: 8px; margin-bottom: 25px;">
+    <tr>
+        <td style="padding: 20px;">
+            {% if details.title %}
+            <h4 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #1a1a2e;">
+                {{ details.title }}
+            </h4>
+            {% endif %}
+            {% for key, value in details.items.items() %}
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #4b5563;">
+                <strong style="color: #1a1a2e;">{{ key }}:</strong> {{ value }}
+            </p>
+            {% endfor %}
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<!-- CTA Button (optional) -->
+{% if action_url %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+        <td align="center" style="padding: 10px 0 25px 0;">
+            <a href="{{ action_url }}" class="button" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 16px 40px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);">
+                {{ action_text or 'View Details' }}
+            </a>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<!-- Secondary Action (optional) -->
+{% if secondary_action_url %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+    <tr>
+        <td align="center" style="padding-bottom: 20px;">
+            <a href="{{ secondary_action_url }}" style="color: #667eea; font-size: 14px; text-decoration: none; font-weight: 500;">
+                {{ secondary_action_text or 'Learn More' }}
+            </a>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<!-- Additional Notes (optional) -->
+{% if additional_notes %}
+<p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.7; border-left: 3px solid #667eea; padding-left: 16px;">
+    {{ additional_notes }}
+</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{{ notification_title }}
+{{ '=' * notification_title|length }}
+
+Hi {{ user_name }},
+
+{{ notification_message }}
+
+{% if details %}
+{% if details.title %}
+{{ details.title }}
+{{ '-' * details.title|length }}
+{% endif %}
+{% for key, value in details.items.items() %}
+{{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+{% if action_url %}
+{{ action_text or 'View Details' }}: {{ action_url }}
+{% endif %}
+
+{% if secondary_action_url %}
+{{ secondary_action_text or 'Learn More' }}: {{ secondary_action_url }}
+{% endif %}
+
+{% if additional_notes %}
+Note: {{ additional_notes }}
+{% endif %}
+
+---
+{{ app_name }}
+Empowering researchers to find and secure funding opportunities.
+
+Manage notification preferences: {{ frontend_url }}/settings/notifications

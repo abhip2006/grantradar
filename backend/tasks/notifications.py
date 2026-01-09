@@ -1029,6 +1029,125 @@ def send_password_reset_email(email: str, name: str, reset_url: str) -> dict:
 
 
 # =============================================================================
+# Email Verification
+# =============================================================================
+
+
+@celery_app.task(queue="critical")
+def send_verification_email(email: str, name: str, verification_url: str) -> dict:
+    """
+    Send an email verification email to a user.
+
+    Args:
+        email: User's email address.
+        name: User's name for personalization.
+        verification_url: Email verification URL with token.
+
+    Returns:
+        Dictionary with send status.
+    """
+    try:
+        from backend.core.config import settings
+
+        # Check if SendGrid is configured
+        if not settings.sendgrid_api_key:
+            logger.warning(
+                f"SendGrid not configured - would send verification email to {email}"
+            )
+            return {
+                "status": "skipped",
+                "reason": "SendGrid not configured",
+                "email": email,
+            }
+
+        import sendgrid
+        from sendgrid.helpers.mail import Content, Email, Mail, To
+
+        sg = sendgrid.SendGridAPIClient(api_key=settings.sendgrid_api_key)
+
+        from_email = Email(settings.from_email, settings.from_name)
+        to_email = To(email)
+        subject = f"Verify Your {settings.app_name} Email Address"
+
+        # HTML content for the email
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">{settings.app_name}</h1>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">Verify Your Email Address</h2>
+                <p>Hi {name},</p>
+                <p>Thank you for creating an account with {settings.app_name}! Please verify your email address by clicking the button below:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{verification_url}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Verify Email Address</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">This link will expire in 24 hours for security reasons.</p>
+                <p style="color: #666; font-size: 14px;">If you didn't create an account with {settings.app_name}, you can safely ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                    If the button doesn't work, copy and paste this link into your browser:<br>
+                    <a href="{verification_url}" style="color: #667eea; word-break: break-all;">{verification_url}</a>
+                </p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+                <p>&copy; {settings.app_name}. All rights reserved.</p>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Plain text fallback
+        plain_content = f"""
+        Verify Your Email Address
+
+        Hi {name},
+
+        Thank you for creating an account with {settings.app_name}! Please verify your email address by clicking the link below:
+
+        {verification_url}
+
+        This link will expire in 24 hours for security reasons.
+
+        If you didn't create an account with {settings.app_name}, you can safely ignore this email.
+
+        - The {settings.app_name} Team
+        """
+
+        mail = Mail(from_email, to_email, subject, Content("text/plain", plain_content))
+        mail.add_content(Content("text/html", html_content))
+
+        response = sg.send(mail)
+
+        logger.info(
+            f"Verification email sent to {email}, status_code={response.status_code}"
+        )
+
+        return {
+            "status": "sent",
+            "email": email,
+            "status_code": response.status_code,
+        }
+
+    except Exception as e:
+        logger.error(
+            f"Failed to send verification email to {email}: {e}",
+            exc_info=True,
+        )
+        return {
+            "status": "failed",
+            "email": email,
+            "error": str(e),
+        }
+
+
+# =============================================================================
 # Exports
 # =============================================================================
 
@@ -1039,4 +1158,5 @@ __all__ = [
     "notify_grant_update",
     "send_stats_update",
     "send_password_reset_email",
+    "send_verification_email",
 ]

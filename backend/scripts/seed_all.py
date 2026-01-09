@@ -196,6 +196,20 @@ async def seed_compliance_rules(dry_run: bool = False, force: bool = False) -> S
         return SeedResult(name, False, f"Error: {e}")
 
 
+async def seed_demo_data(dry_run: bool = False, clean: bool = False) -> SeedResult:
+    """Seed demo/development data (users, grants, applications, teams)."""
+    name = "Demo Data"
+    try:
+        if dry_run:
+            return SeedResult(name, True, "Would seed demo users, grants, applications, and teams")
+
+        from backend.scripts.seed_data import run_seed
+        await run_seed(clean=clean, dry_run=dry_run, verbose=False)
+        return SeedResult(name, True, "Seeded demo data successfully (3 users, 20+ grants, applications, team)")
+    except Exception as e:
+        return SeedResult(name, False, f"Error: {e}")
+
+
 async def get_table_counts() -> dict:
     """Get counts of seeded data from various tables."""
     try:
@@ -212,6 +226,11 @@ async def get_table_counts() -> dict:
             ("templates", "Document Templates"),
             ("checklist_templates", "Checklist Templates"),
             ("compliance_rules", "Compliance Rules"),
+            ("users", "Users"),
+            ("grants", "Grants"),
+            ("grant_applications", "Applications"),
+            ("lab_members", "Team Members"),
+            ("notifications", "Notifications"),
         ]
 
         async with get_async_session() as session:
@@ -235,7 +254,8 @@ async def run_all_seeds(
     force: bool = False,
     skip_check: bool = False,
     dry_run: bool = False,
-    verbose: bool = False
+    verbose: bool = False,
+    include_demo: bool = False,
 ) -> List[SeedResult]:
     """Run all seed operations in order."""
 
@@ -286,6 +306,12 @@ async def run_all_seeds(
         ("Checklist Templates", lambda: seed_checklists(dry_run, reset=force)),
         ("Compliance Rules", lambda: seed_compliance_rules(dry_run, force)),
     ]
+
+    # Optionally include demo data
+    if include_demo:
+        seed_operations.append(
+            ("Demo Data", lambda: seed_demo_data(dry_run, clean=force))
+        )
 
     for name, seed_func in seed_operations:
         print(f"\n  Seeding {name}...")
@@ -345,6 +371,7 @@ Examples:
   python -m backend.scripts.seed_all --dry-run    # Preview what would be seeded
   python -m backend.scripts.seed_all --force      # Force re-seed (updates existing)
   python -m backend.scripts.seed_all --skip-check # Skip DB/migration checks
+  python -m backend.scripts.seed_all --demo       # Include demo data (users, grants, apps)
         """
     )
     parser.add_argument(
@@ -367,6 +394,11 @@ Examples:
         action="store_true",
         help="Enable verbose output"
     )
+    parser.add_argument(
+        "--demo", "-d",
+        action="store_true",
+        help="Include demo data (users, grants, applications, teams)"
+    )
 
     args = parser.parse_args()
 
@@ -378,7 +410,8 @@ Examples:
             force=args.force,
             skip_check=args.skip_check,
             dry_run=args.dry_run,
-            verbose=args.verbose
+            verbose=args.verbose,
+            include_demo=args.demo,
         ))
 
         # Exit with error code if any seed failed

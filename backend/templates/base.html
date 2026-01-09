@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:AllowPNG/>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        /* Reset styles */
+        body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+
+        /* Base styles */
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            background-color: #f4f5f7;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1a1a2e;
+        }
+
+        /* Responsive styles */
+        @media only screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+                padding: 10px !important;
+            }
+            .content {
+                padding: 20px !important;
+            }
+            .header {
+                padding: 20px !important;
+            }
+            .button {
+                width: 100% !important;
+                display: block !important;
+            }
+            .mobile-full-width {
+                width: 100% !important;
+                display: block !important;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .body-wrapper {
+                background-color: #1a1a2e !important;
+            }
+            .content-wrapper {
+                background-color: #16213e !important;
+            }
+            .text-dark {
+                color: #e4e4e4 !important;
+            }
+            .text-muted {
+                color: #a0a0a0 !important;
+            }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f5f7;">
+    <!-- Preview text -->
+    <div style="display: none; font-size: 1px; color: #f4f5f7; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+        {% block preview_text %}{% endblock %}
+        &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847; &#847;
+    </div>
+
+    <!-- Email wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="body-wrapper" style="background-color: #f4f5f7;">
+        <tr>
+            <td align="center" style="padding: 40px 20px;">
+                <!-- Container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" class="container" style="max-width: 600px; margin: 0 auto;">
+
+                    <!-- Header with GrandRadar branding -->
+                    <tr>
+                        <td class="header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; text-align: center; border-radius: 12px 12px 0 0;">
+                            <!-- Logo/Brand -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td align="center">
+                                        <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
+                                            {{ app_name }}
+                                        </h1>
+                                        {% block header_subtitle %}{% endblock %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Main content area -->
+                    <tr>
+                        <td class="content-wrapper" style="background-color: #ffffff; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td class="content" style="padding: 40px;">
+                                        {% block content %}{% endblock %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f9fafb; padding: 30px 40px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                {% block footer_content %}
+                                <tr>
+                                    <td align="center" style="padding-bottom: 15px;">
+                                        <a href="{{ frontend_url }}/settings/notifications" style="color: #667eea; font-size: 13px; text-decoration: none;">
+                                            Manage notification preferences
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endblock %}
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                            &copy; {{ current_year }} {{ app_name }}. All rights reserved.
+                                        </p>
+                                        <p style="margin: 8px 0 0 0; font-size: 12px; color: #9ca3af;">
+                                            Empowering researchers to find and secure funding opportunities.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -46,6 +46,74 @@ services:
     depends_on:
       - redis
 
+  # PostgreSQL Backup Service
+  backup:
+    image: postgres:16
+    container_name: grantradar_backup
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: grantradar
+      PGUSER: grantradar
+      PGPASSWORD: ${POSTGRES_PASSWORD:-grantradar_dev_password}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      S3_BACKUP_BUCKET: ${S3_BACKUP_BUCKET:-}
+      S3_BACKUP_PREFIX: ${S3_BACKUP_PREFIX:-grantradar/backups}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+    volumes:
+      - ./scripts/backup:/scripts/backup:ro
+      - backup_data:/backups
+      - ./logs:/logs
+    working_dir: /
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["echo 'Run with: docker-compose run --rm backup /scripts/backup/backup.sh'"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - backup
+
+  # Scheduled Backup Service (runs on a schedule)
+  backup-cron:
+    image: postgres:16
+    container_name: grantradar_backup_cron
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: grantradar
+      PGUSER: grantradar
+      PGPASSWORD: ${POSTGRES_PASSWORD:-grantradar_dev_password}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      S3_BACKUP_BUCKET: ${S3_BACKUP_BUCKET:-}
+      S3_BACKUP_PREFIX: ${S3_BACKUP_PREFIX:-grantradar/backups}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 2 * * *}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      NOTIFICATION_EMAIL: ${NOTIFICATION_EMAIL:-}
+    volumes:
+      - ./scripts/backup:/scripts/backup:ro
+      - backup_data:/backups
+      - ./logs:/logs
+    working_dir: /
+    entrypoint: ["/bin/bash", "-c"]
+    command: |
+      apt-get update && apt-get install -y cron awscli gnupg &&
+      echo "$${BACKUP_SCHEDULE} /scripts/backup/backup-cron.sh --upload-s3 >> /var/log/cron.log 2>&1" | crontab - &&
+      cron -f
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - backup-scheduled
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
+  backup_data:

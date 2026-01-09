@@ -51,6 +51,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = Field(None, description="Phone number")
     created_at: datetime = Field(..., description="Account creation timestamp")
     has_profile: bool = Field(default=False, description="Whether user has completed profile")
+    email_verified: bool = Field(default=False, description="Whether email has been verified")
 
     class Config:
         from_attributes = True
@@ -83,3 +84,35 @@ class ResetPasswordResponse(BaseModel):
 
     message: str = Field(..., description="Response message")
     success: bool = Field(..., description="Whether the password was reset successfully")
+
+
+# =============================================================================
+# Email Verification Schemas
+# =============================================================================
+
+
+class SendVerificationRequest(BaseModel):
+    """Schema for requesting verification email (resend)."""
+
+    email: Optional[EmailStr] = Field(
+        None,
+        description="User email address (optional - uses current user's email if not provided)"
+    )
+
+
+class SendVerificationResponse(BaseModel):
+    """Schema for send verification response."""
+
+    message: str = Field(
+        default="If this email is registered and not yet verified, a verification link has been sent.",
+        description="Response message"
+    )
+    success: bool = Field(default=True, description="Whether the request was processed")
+
+
+class VerifyEmailResponse(BaseModel):
+    """Schema for email verification response."""
+
+    message: str = Field(..., description="Response message")
+    success: bool = Field(..., description="Whether the email was verified successfully")
+    email_verified: bool = Field(..., description="Current email verification status")

@@ -48,8 +48,15 @@ celerybeat.pid
 *.sqlite3
 
 # Logs
-logs/
+logs/*
+!logs/.gitkeep
 *.log
+
+# Backups
+backups/*
+!backups/.gitkeep
+*.sql.gz
+*.sql.gz.gpg
 
 # Playwright
 playwright/.cache/

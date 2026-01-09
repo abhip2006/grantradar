@@ -1,0 +1,41 @@
+DEADLINE REMINDER - Due in {{ time_remaining }}
+{{ '=' * 50 }}
+
+Hi {{ user_name }},
+
+This is a reminder that the deadline for the following {% if deadline_type == 'custom' %}task{% else %}grant{% endif %} is coming up:
+
+{{ grant_title }}
+{{ '-' * grant_title|length }}
+
+{% if funder %}Funder: {{ funder }}
+{% endif %}{% if mechanism %}Mechanism: {{ mechanism }}
+{% endif %}{% if amount_range %}Funding: {{ amount_range }}
+{% endif %}Deadline: {{ deadline_date }}
+{% if priority %}Priority: {{ priority|upper }}
+{% endif %}{% if status %}Status: {{ status }}
+{% endif %}
+
+{% if notes %}
+Notes:
+{{ notes }}
+
+{% endif %}
+View {% if deadline_type == 'custom' %}deadline{% else %}grant{% endif %}: {{ view_url }}
+{% if grant_url %}
+Visit funder's website: {{ grant_url }}
+{% endif %}
+
+QUICK TIPS:
+-----------
+* Submit early to avoid last-minute technical issues
+* Double-check all required documents and attachments
+* Review eligibility requirements one final time
+
+Don't miss this opportunity! Make sure to submit your application before the deadline.
+
+---
+{{ app_name }}
+Empowering researchers to find and secure funding opportunities.
+
+Manage reminder preferences: {{ frontend_url }}/settings/notifications

@@ -410,6 +410,23 @@ class User(Base):
         doc="Stripe customer ID for billing",
     )
 
+    # Email verification
+    email_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        doc="Whether the user's email has been verified",
+    )
+    email_verification_token_hash: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Hashed email verification token",
+    )
+    email_verification_token_expires: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Expiration time for the email verification token",
+    )
+
     # Notification preferences
     email_notifications: Mapped[bool] = mapped_column(
         default=True,

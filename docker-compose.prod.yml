@@ -1,23 +1,41 @@
 # GrantRadar Production Docker Compose Configuration
 # Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# For HTTPS/SSL setup:
+# 1. Run: ./scripts/ssl-setup.sh all (for development self-signed certs)
+# 2. Or use Let's Encrypt with the certbot service below
+# 3. Uncomment HTTPS redirect in nginx/nginx.conf
+#
+# SSL Certificate paths:
+# - Development: ./nginx/ssl/ (self-signed)
+# - Production: /etc/letsencrypt/live/${DOMAIN}/ (Let's Encrypt)
 
 version: '3.8'
 
 services:
   # =============================================================================
-  # Frontend - Nginx serving React SPA with reverse proxy
+  # Frontend - Nginx serving React SPA with reverse proxy (HTTP + HTTPS)
   # =============================================================================
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost/api}
-        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost}
+        VITE_API_URL: ${VITE_API_URL:-https://localhost/api}
+        VITE_WS_URL: ${VITE_WS_URL:-wss://localhost}
     container_name: grantradar_frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_HTTP_PORT:-80}:80"
+      - "${FRONTEND_HTTPS_PORT:-443}:443"
+    volumes:
+      # SSL certificates
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/ssl.conf:/etc/nginx/ssl.conf:ro
+      # Let's Encrypt webroot for certificate challenges
+      - certbot_webroot:/var/www/certbot:ro
+      # Let's Encrypt certificates (production)
+      - letsencrypt_certs:/etc/letsencrypt:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -253,6 +271,34 @@ services:
           cpus: '0.1'
           memory: 64M
 
+  # =============================================================================
+  # Certbot - Let's Encrypt Certificate Auto-Renewal (Production)
+  # =============================================================================
+  # Uncomment this service for production Let's Encrypt certificate management
+  # certbot:
+  #   image: certbot/certbot:latest
+  #   container_name: grantradar_certbot
+  #   volumes:
+  #     - letsencrypt_certs:/etc/letsencrypt
+  #     - certbot_webroot:/var/www/certbot
+  #   depends_on:
+  #     - frontend
+  #   # Initial certificate request (run once):
+  #   # docker-compose -f docker-compose.prod.yml run --rm certbot certonly \
+  #   #   --webroot -w /var/www/certbot \
+  #   #   -d your-domain.com -d www.your-domain.com \
+  #   #   --email admin@your-domain.com --agree-tos --non-interactive
+  #   #
+  #   # Certificate renewal (run periodically via cron or as a scheduled container):
+  #   entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+  #   networks:
+  #     - grantradar_network
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "2"
+
 # =============================================================================
 # Networks
 # =============================================================================
@@ -273,4 +319,9 @@ volumes:
   redis_data:
     driver: local
   celery_beat_schedule:
+    driver: local
+  # SSL/TLS certificate volumes
+  letsencrypt_certs:
+    driver: local
+  certbot_webroot:
     driver: local

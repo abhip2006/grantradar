@@ -25,6 +25,22 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
 
+    # ===== SSL/HTTPS Configuration =====
+    # Set to True when running behind HTTPS reverse proxy
+    ssl_enabled: bool = False
+    # Trust X-Forwarded-* headers from reverse proxy
+    trust_proxy_headers: bool = True
+    # Secure cookie settings (enabled when SSL is active)
+    cookie_secure: bool = False  # Set to True in production with HTTPS
+    # SameSite cookie policy: "lax", "strict", or "none"
+    cookie_samesite: str = "lax"
+
+    # ===== CORS Configuration =====
+    # Allowed origins for CORS (comma-separated list or "*" for all)
+    cors_origins: str = "http://localhost:3000,http://localhost:5173,http://localhost:80"
+    # Allow credentials in CORS requests
+    cors_allow_credentials: bool = True
+
     # ===== Database =====
     database_url: str = "postgresql://grantradar:grantradar_dev_password@localhost:5432/grantradar"
     async_database_url: str = "postgresql+asyncpg://grantradar:grantradar_dev_password@localhost:5432/grantradar"
@@ -71,6 +87,12 @@ class Settings(BaseSettings):
     # ===== LLM Config =====
     llm_model: str = "claude-sonnet-4-20250514"
     llm_max_tokens: int = 4096
+
+    # ===== Sentry Error Tracking =====
+    sentry_dsn: Optional[str] = None
+    sentry_environment: Optional[str] = None  # Falls back to environment if not set
+    sentry_traces_sample_rate: float = 0.1  # 10% of transactions for performance monitoring
+    sentry_profiles_sample_rate: float = 0.1  # 10% of transactions for profiling
 
     # ===== Rate Limiting =====
     rate_limit_enabled: bool = True  # Set to False to disable rate limiting

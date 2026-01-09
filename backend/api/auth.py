@@ -88,11 +88,16 @@ async def register(
         password_hash=hashed_password,
         name=user_data.name,
         institution=user_data.institution,
+        email_verified=False,
     )
 
     db.add(new_user)
     await db.flush()
     await db.refresh(new_user)
+
+    # Generate and send verification email
+    from backend.api.verification import generate_and_send_verification_email
+    await generate_and_send_verification_email(new_user, db)
 
     # Generate tokens
     access_token = create_access_token(
@@ -239,7 +244,8 @@ async def get_me(
         institution=current_user.institution,
         phone=current_user.phone,
         created_at=current_user.created_at,
-        has_profile=profile is not None
+        has_profile=profile is not None,
+        email_verified=current_user.email_verified,
     )
 
 

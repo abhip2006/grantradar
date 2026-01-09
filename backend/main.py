@@ -11,13 +11,14 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import admin_analytics, aims, alerts, analytics, api_keys, audit, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, sharing, similar, stats, team, team_collaboration, templates, workflow_analytics, writing
+from backend.api import admin_analytics, aims, alerts, analytics, api_keys, audit, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, sharing, similar, stats, team, team_collaboration, templates, verification, workflow_analytics, writing
 from backend.core.config import settings
 from backend.core.rate_limit import (
     RateLimitMiddleware,
     close_rate_limiter,
     rate_limit_exception_handler,
 )
+from backend.core.sentry import capture_exception, init_sentry
 from backend.database import close_db, init_db
 
 # =============================================================================
@@ -103,6 +104,12 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"Version: {settings.app_version}")
+
+    # Initialize Sentry error tracking
+    if init_sentry():
+        logger.info("Sentry error tracking enabled")
+    else:
+        logger.info("Sentry error tracking disabled (no DSN configured)")
 
     # Initialize database (in production, use migrations instead)
     if settings.debug:
@@ -219,8 +226,21 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     """Handle unexpected exceptions."""
     logger.exception(f"Unexpected error: {exc}")
 
+    # Capture exception to Sentry with request context
+    event_id = capture_exception(
+        exc,
+        extra={
+            "request_url": str(request.url),
+            "request_method": request.method,
+            "request_path": request.url.path,
+        },
+    )
+
     # Don't expose internal errors in production
-    detail = str(exc) if settings.debug else "Internal server error"
+    if settings.debug:
+        detail = str(exc)
+    else:
+        detail = f"Internal server error (ref: {event_id})" if event_id else "Internal server error"
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -228,6 +248,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
             "error": True,
             "message": detail,
             "status_code": 500,
+            "error_id": event_id,
         },
     )
 
@@ -285,6 +306,7 @@ app.include_router(stats.router)
 app.include_router(team.router)
 app.include_router(team_collaboration.router)
 app.include_router(templates.router)
+app.include_router(verification.router)
 app.include_router(workflow_analytics.router)
 app.include_router(writing.router)
 

@@ -63,6 +63,10 @@ from backend.services.audit import (
     audit_action,
     log_audit_action,
 )
+from backend.services.email import (
+    EmailTemplateService,
+    get_email_service,
+)
 
 # ML forecast requires pandas/prophet - optional dependency
 try:
@@ -138,4 +142,7 @@ __all__ = [
     "AuditService",
     "audit_action",
     "log_audit_action",
+    # Email template service
+    "EmailTemplateService",
+    "get_email_service",
 ]
