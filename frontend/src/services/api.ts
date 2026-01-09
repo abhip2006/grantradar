@@ -65,6 +65,7 @@ import type {
   FilterOptions,
   AdvancedGrantFilters,
   OutcomeUpdate,
+  MechanismInfo,
 } from '../types';
 import type {
   KanbanBoard,
@@ -472,6 +473,12 @@ export const grantsApi = {
   ): Promise<GrantMatch> => {
     const response = await api.post(`/matches/${matchId}/outcome`, outcome);
     return transformMatch(response.data);
+  },
+
+  // Get mechanism info for competition data
+  getMechanismInfo: async (code: string): Promise<MechanismInfo> => {
+    const response = await api.get<MechanismInfo>(`/intelligence/mechanisms/${encodeURIComponent(code)}`);
+    return response.data;
   },
 };
 
