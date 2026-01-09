@@ -42,15 +42,20 @@ class TestDeadlineStatus:
 
     def test_status_values(self):
         """Test all status enum values exist."""
-        assert DeadlineStatus.ACTIVE.value == "active"
-        assert DeadlineStatus.COMPLETED.value == "completed"
-        assert DeadlineStatus.ARCHIVED.value == "archived"
+        assert DeadlineStatus.NOT_STARTED.value == "not_started"
+        assert DeadlineStatus.DRAFTING.value == "drafting"
+        assert DeadlineStatus.INTERNAL_REVIEW.value == "internal_review"
+        assert DeadlineStatus.SUBMITTED.value == "submitted"
+        assert DeadlineStatus.UNDER_REVIEW.value == "under_review"
+        assert DeadlineStatus.AWARDED.value == "awarded"
+        assert DeadlineStatus.REJECTED.value == "rejected"
 
     def test_status_from_string(self):
         """Test creating status from string value."""
-        assert DeadlineStatus("active") == DeadlineStatus.ACTIVE
-        assert DeadlineStatus("completed") == DeadlineStatus.COMPLETED
-        assert DeadlineStatus("archived") == DeadlineStatus.ARCHIVED
+        assert DeadlineStatus("not_started") == DeadlineStatus.NOT_STARTED
+        assert DeadlineStatus("drafting") == DeadlineStatus.DRAFTING
+        assert DeadlineStatus("submitted") == DeadlineStatus.SUBMITTED
+        assert DeadlineStatus("awarded") == DeadlineStatus.AWARDED
 
 
 class TestDeadlineCreate:
@@ -238,8 +243,8 @@ class TestDeadlineUpdate:
 
     def test_partial_update_status_only(self):
         """Test updating only status."""
-        data = DeadlineUpdate(status=DeadlineStatus.COMPLETED)
-        assert data.status == DeadlineStatus.COMPLETED
+        data = DeadlineUpdate(status=DeadlineStatus.SUBMITTED)
+        assert data.status == DeadlineStatus.SUBMITTED
         assert data.title is None
 
     def test_partial_update_priority_only(self):
@@ -258,7 +263,7 @@ class TestDeadlineUpdate:
             funder="NSF",
             mechanism="R21",
             internal_deadline=datetime.now(timezone.utc) + timedelta(days=55),
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.DRAFTING,
             priority=DeadlinePriority.CRITICAL,
             url="https://nsf.gov/example",
             notes="Updated notes",
@@ -267,7 +272,7 @@ class TestDeadlineUpdate:
         assert data.title == "Updated Title"
         assert data.funder == "NSF"
         assert data.mechanism == "R21"
-        assert data.status == DeadlineStatus.ACTIVE
+        assert data.status == DeadlineStatus.DRAFTING
         assert data.priority == DeadlinePriority.CRITICAL
 
     def test_invalid_title_too_long(self):
@@ -303,7 +308,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=future,
             internal_deadline=None,
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.NOT_STARTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -312,7 +317,7 @@ class TestDeadlineResponse:
             updated_at=now,
         )
         assert data.title == "Test Deadline"
-        assert data.status == DeadlineStatus.ACTIVE
+        assert data.status == DeadlineStatus.NOT_STARTED
 
     def test_days_until_deadline_future(self):
         """Test days_until_deadline for future deadline."""
@@ -329,7 +334,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=future,
             internal_deadline=None,
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.NOT_STARTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -356,7 +361,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=past,
             internal_deadline=None,
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.NOT_STARTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -367,8 +372,8 @@ class TestDeadlineResponse:
         assert data.days_until_deadline < 0
         assert data.days_until_deadline >= -6
 
-    def test_is_overdue_past_active(self):
-        """Test is_overdue for past deadline with active status."""
+    def test_is_overdue_past_not_started(self):
+        """Test is_overdue for past deadline with not_started status."""
         now = datetime.now(timezone.utc)
         past = now - timedelta(days=5)
 
@@ -382,7 +387,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=past,
             internal_deadline=None,
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.NOT_STARTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -392,8 +397,8 @@ class TestDeadlineResponse:
         )
         assert data.is_overdue is True
 
-    def test_is_overdue_past_completed(self):
-        """Test that completed deadlines are not marked overdue."""
+    def test_is_overdue_past_submitted(self):
+        """Test that submitted deadlines are not marked overdue."""
         now = datetime.now(timezone.utc)
         past = now - timedelta(days=5)
 
@@ -407,7 +412,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=past,
             internal_deadline=None,
-            status=DeadlineStatus.COMPLETED,
+            status=DeadlineStatus.SUBMITTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -417,8 +422,8 @@ class TestDeadlineResponse:
         )
         assert data.is_overdue is False
 
-    def test_is_overdue_past_archived(self):
-        """Test that archived deadlines are not marked overdue."""
+    def test_is_overdue_past_awarded(self):
+        """Test that awarded deadlines are not marked overdue."""
         now = datetime.now(timezone.utc)
         past = now - timedelta(days=5)
 
@@ -432,7 +437,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=past,
             internal_deadline=None,
-            status=DeadlineStatus.ARCHIVED,
+            status=DeadlineStatus.AWARDED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -457,7 +462,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=future,
             internal_deadline=None,
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.NOT_STARTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -482,7 +487,7 @@ class TestDeadlineResponse:
             mechanism="R01",
             sponsor_deadline=now + timedelta(days=30),
             internal_deadline=now + timedelta(days=25),
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.DRAFTING,
             priority=DeadlinePriority.HIGH,
             url="https://grants.nih.gov/example",
             notes="Important notes here",
@@ -515,7 +520,7 @@ class TestDeadlineResponse:
             mechanism=None,
             sponsor_deadline=naive_future.replace(tzinfo=timezone.utc),  # Add TZ for test
             internal_deadline=None,
-            status=DeadlineStatus.ACTIVE,
+            status=DeadlineStatus.NOT_STARTED,
             priority=DeadlinePriority.MEDIUM,
             url=None,
             notes=None,
@@ -550,7 +555,7 @@ class TestDeadlineList:
                 mechanism=None,
                 sponsor_deadline=now + timedelta(days=30 + i),
                 internal_deadline=None,
-                status=DeadlineStatus.ACTIVE,
+                status=DeadlineStatus.NOT_STARTED,
                 priority=DeadlinePriority.MEDIUM,
                 url=None,
                 notes=None,
@@ -579,7 +584,7 @@ class TestDeadlineList:
                 mechanism=None,
                 sponsor_deadline=now + timedelta(days=30),
                 internal_deadline=None,
-                status=DeadlineStatus.ACTIVE,
+                status=DeadlineStatus.NOT_STARTED,
                 priority=DeadlinePriority.MEDIUM,
                 url=None,
                 notes=None,
