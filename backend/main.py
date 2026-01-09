@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import aims, alerts, analytics, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, similar, stats, team, team_collaboration, templates, workflow_analytics, writing
+from backend.api import admin_analytics, aims, alerts, analytics, api_keys, audit, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, sharing, similar, stats, team, team_collaboration, templates, workflow_analytics, writing
 from backend.core.config import settings
 from backend.core.rate_limit import (
     RateLimitMiddleware,
@@ -240,9 +240,12 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 app.include_router(health.router)
 
 # Include all API routers
+app.include_router(admin_analytics.router)
 app.include_router(aims.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
+app.include_router(api_keys.router)
+app.include_router(audit.router)
 app.include_router(auth.router)
 app.include_router(budgets.router)
 app.include_router(calendar.router)
@@ -276,6 +279,7 @@ app.include_router(reminders.router)
 app.include_router(research.router)
 app.include_router(reviews.router)
 app.include_router(saved_searches.router)
+app.include_router(sharing.router)
 app.include_router(similar.router)
 app.include_router(stats.router)
 app.include_router(team.router)

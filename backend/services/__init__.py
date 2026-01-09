@@ -58,6 +58,11 @@ from backend.services.specific_aims import (
     get_funded_examples,
     MECHANISM_GUIDELINES,
 )
+from backend.services.audit import (
+    AuditService,
+    audit_action,
+    log_audit_action,
+)
 
 # ML forecast requires pandas/prophet - optional dependency
 try:
@@ -129,4 +134,8 @@ __all__ = [
     "get_mechanism_template",
     "get_funded_examples",
     "MECHANISM_GUIDELINES",
+    # Audit service
+    "AuditService",
+    "audit_action",
+    "log_audit_action",
 ]

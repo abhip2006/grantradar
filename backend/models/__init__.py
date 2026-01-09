@@ -70,6 +70,9 @@ TeamNotification = _models_py.TeamNotification
 
 # Import models from submodules
 from backend.models.mechanisms import GrantMechanism, FundedProject, CompetitionSnapshot
+from backend.models.api_key import APIKey
+from backend.models.resource_permission import ResourcePermission, ShareLink
+from backend.models.audit import AuditLog, AuditAction, AuditResourceType
 
 # Clean up module namespace
 del importlib, os, _models_py_path, _spec, _models_py
@@ -123,4 +126,13 @@ __all__ = [
     "GrantMechanism",
     "FundedProject",
     "CompetitionSnapshot",
+    # API Key management
+    "APIKey",
+    # Resource Permission models
+    "ResourcePermission",
+    "ShareLink",
+    # Audit logging
+    "AuditLog",
+    "AuditAction",
+    "AuditResourceType",
 ]

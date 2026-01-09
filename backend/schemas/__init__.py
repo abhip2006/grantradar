@@ -222,6 +222,20 @@ from backend.schemas.aims import (
     AimsFollowUpRequest,
     AimsFollowUpResponse,
 )
+from backend.schemas.audit import (
+    AuditAction,
+    AuditResourceType,
+    AuditLogBase,
+    AuditLogCreate,
+    AuditLogResponse,
+    AuditLogListResponse,
+    AuditLogFilters,
+    UserActivitySummary,
+    ResourceHistory,
+    AuditExportFormat,
+    AuditExportRequest,
+    AuditStats,
+)
 
 __all__ = [
     # Common response schemas
@@ -422,4 +436,17 @@ __all__ = [
     "FundedExampleSummary",
     "AimsFollowUpRequest",
     "AimsFollowUpResponse",
+    # Audit
+    "AuditAction",
+    "AuditResourceType",
+    "AuditLogBase",
+    "AuditLogCreate",
+    "AuditLogResponse",
+    "AuditLogListResponse",
+    "AuditLogFilters",
+    "UserActivitySummary",
+    "ResourceHistory",
+    "AuditExportFormat",
+    "AuditExportRequest",
+    "AuditStats",
 ]
