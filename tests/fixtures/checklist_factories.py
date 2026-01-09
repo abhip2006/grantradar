@@ -413,19 +413,28 @@ class ReviewWorkflowFactory:
     @classmethod
     def create_quick(cls, user_id: uuid.UUID, **kwargs) -> ReviewWorkflow:
         """Create a quick review workflow."""
+        # Extract name from kwargs if provided, otherwise use default
+        name = kwargs.pop("name", "Quick Review Workflow")
+        description = kwargs.pop("description", "Expedited review for simple applications")
+        stages = kwargs.pop("stages", cls.QUICK_STAGES)
         return cls.create(
             user_id=user_id,
-            name="Quick Review Workflow",
-            description="Expedited review for simple applications",
-            stages=cls.QUICK_STAGES,
+            name=name,
+            description=description,
+            stages=stages,
             **kwargs,
         )
 
     @classmethod
     def create_default(cls, user_id: uuid.UUID, **kwargs) -> ReviewWorkflow:
         """Create a default workflow for a user."""
+        # Extract name and stages from kwargs if provided
+        name = kwargs.pop("name", None)
+        stages = kwargs.pop("stages", None)
         return cls.create(
             user_id=user_id,
+            name=name,
+            stages=stages,
             is_default=True,
             **kwargs,
         )
