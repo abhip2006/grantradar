@@ -36,9 +36,25 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 # Create Socket.IO server with CORS support
+# SECURITY: Never use wildcard "*" for CORS - always specify allowed origins
+def get_socketio_cors_origins() -> list:
+    """Get allowed origins for Socket.IO CORS."""
+    origins = [settings.frontend_url]
+    if settings.debug:
+        # In debug mode, also allow common development ports
+        origins.extend([
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ])
+    return origins
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=[settings.frontend_url] if not settings.debug else "*",
+    cors_allowed_origins=get_socketio_cors_origins(),
     logger=settings.debug,
     engineio_logger=settings.debug,
 )
@@ -86,12 +102,68 @@ async def notify_new_match(user_id: str, match_data: dict) -> None:
 # =============================================================================
 
 
+def validate_security_settings() -> None:
+    """
+    Validate critical security settings at startup.
+    Raises RuntimeError if insecure configuration detected in production.
+    """
+    import os
+
+    is_production = settings.environment.lower() in ("production", "prod")
+    warnings = []
+    errors = []
+
+    # Check secret key
+    insecure_keys = [
+        "dev-secret-key-change-in-production",
+        "CHANGE-THIS-IN-PRODUCTION-REQUIRED",
+        "secret",
+        "changeme",
+    ]
+    if settings.secret_key in insecure_keys or len(settings.secret_key) < 32:
+        msg = "SECRET_KEY is insecure or too short (minimum 32 characters required)"
+        if is_production:
+            errors.append(msg)
+        else:
+            warnings.append(msg)
+
+    # Check debug mode in production
+    if is_production and settings.debug:
+        errors.append("DEBUG mode must be disabled in production (set DEBUG=false)")
+
+    # Check DEV_BYPASS_AUTH
+    dev_bypass = os.getenv("DEV_BYPASS_AUTH", "false").lower() == "true"
+    if is_production and dev_bypass:
+        errors.append("DEV_BYPASS_AUTH must be disabled in production")
+
+    # Check SSL in production
+    if is_production and not settings.ssl_enabled:
+        warnings.append("SSL_ENABLED is false - ensure HTTPS is handled by reverse proxy")
+
+    # Check cookie security in production with SSL
+    if is_production and settings.ssl_enabled and not settings.cookie_secure:
+        warnings.append("COOKIE_SECURE should be true when SSL is enabled")
+
+    # Log warnings
+    for warning in warnings:
+        logger.warning(f"SECURITY WARNING: {warning}")
+
+    # Raise errors in production
+    if errors:
+        for error in errors:
+            logger.error(f"SECURITY ERROR: {error}")
+        raise RuntimeError(
+            f"Cannot start in production with insecure configuration: {'; '.join(errors)}"
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Handle application startup and shutdown events.
 
     Startup:
+    - Validate security settings
     - Initialize database connection
     - Create tables if needed (dev only)
 
@@ -104,6 +176,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
     logger.info(f"Version: {settings.app_version}")
+
+    # Validate security settings before anything else
+    validate_security_settings()
 
     # Initialize Sentry error tracking
     if init_sentry():

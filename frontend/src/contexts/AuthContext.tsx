@@ -22,8 +22,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// DEV BYPASS: Set to true to skip authentication
-const DEV_BYPASS_AUTH = true;
+// DEV BYPASS: Set to true to skip authentication (DEVELOPMENT ONLY)
+// SECURITY: This must be false in production builds
+const DEV_BYPASS_AUTH = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 const MOCK_USER: User = {
   id: 'dev-user-123',
   email: 'dev@grantradar.com',

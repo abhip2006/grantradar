@@ -20,8 +20,10 @@ class Settings(BaseSettings):
     app_name: str = "GrantRadar"
     app_version: str = "1.0.0"
     environment: str = "development"
-    debug: bool = True
-    secret_key: str = "dev-secret-key-change-in-production"
+    # SECURITY: Debug mode disabled by default - enable explicitly in .env for development
+    debug: bool = False
+    # SECURITY: Must be set in .env - validated at startup
+    secret_key: str = "CHANGE-THIS-IN-PRODUCTION-REQUIRED"
     backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
 

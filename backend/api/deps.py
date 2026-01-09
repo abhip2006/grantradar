@@ -20,7 +20,8 @@ from backend.models import User
 from backend.schemas.auth import TokenData
 
 # DEV BYPASS: Set to True to skip authentication (uses first user in DB)
-DEV_BYPASS_AUTH = os.getenv("DEV_BYPASS_AUTH", "true").lower() == "true"
+# SECURITY: Default is FALSE - must explicitly enable in development only
+DEV_BYPASS_AUTH = os.getenv("DEV_BYPASS_AUTH", "false").lower() == "true"
 
 # =============================================================================
 # Password Hashing
