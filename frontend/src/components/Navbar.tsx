@@ -18,8 +18,11 @@ import {
   RectangleStackIcon,
   ViewColumnsIcon,
   HomeIcon,
+  UserGroupIcon,
+  BriefcaseIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { NotificationBellContainer } from './notifications';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -41,8 +44,10 @@ export function Navbar() {
   // Core navigation - always visible
   const coreNavigation: NavItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+    { name: 'Portfolio', href: '/portfolio', icon: BriefcaseIcon },
     { name: 'Pipeline', href: '/pipeline', icon: RectangleStackIcon },
     { name: 'Board', href: '/kanban', icon: ViewColumnsIcon },
+    { name: 'Team', href: '/team', icon: UserGroupIcon },
   ];
 
   // Tools dropdown items
@@ -213,6 +218,9 @@ export function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            {isAuthenticated && (
+              <NotificationBellContainer />
+            )}
             {isAuthenticated ? (
               <Menu as="div" className="relative">
                 <Menu.Button className="flex items-center gap-2 rounded-lg px-3 py-2 text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] hover:bg-[var(--gr-bg-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gr-blue-500)] transition-all">

@@ -149,6 +149,16 @@ class ApplicationStage(enum.Enum):
     REJECTED = "rejected"
 
 
+class InvitationStatus(enum.Enum):
+    """Enum for team member invitation status."""
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
 class Base(DeclarativeBase):
     """Base class for all database models."""
 
@@ -252,6 +262,64 @@ class Grant(Base):
         nullable=False,
         default=datetime.utcnow,
         doc="Record creation timestamp",
+    )
+
+    # Advanced filter fields
+    eligible_career_stages: Mapped[Optional[list[str]]] = mapped_column(
+        StringArray(),
+        nullable=True,
+        doc="Eligible career stages (e.g., 'early_career', 'mid_career', 'senior', 'postdoc', 'graduate_student')",
+    )
+    citizenship_requirements: Mapped[Optional[list[str]]] = mapped_column(
+        StringArray(),
+        nullable=True,
+        doc="Citizenship/residency requirements (e.g., 'us_citizen', 'permanent_resident', 'no_restriction')",
+    )
+    eligible_institution_types: Mapped[Optional[list[str]]] = mapped_column(
+        StringArray(),
+        nullable=True,
+        doc="Eligible institution types (e.g., 'university', 'nonprofit', 'government', 'industry')",
+    )
+    award_type: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Type of award (e.g., 'grant', 'fellowship', 'contract', 'cooperative_agreement')",
+    )
+    award_duration_min_months: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Minimum award duration in months",
+    )
+    award_duration_max_months: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Maximum award duration in months",
+    )
+    geographic_scope: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Geographic scope of the grant (e.g., 'national', 'international', 'regional', 'state')",
+    )
+    geographic_regions: Mapped[Optional[list[str]]] = mapped_column(
+        StringArray(),
+        nullable=True,
+        doc="Specific geographic regions where grant is available or focused",
+    )
+    is_limited_submission: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Whether the grant has limited submissions per institution",
+    )
+    submission_types: Mapped[Optional[list[str]]] = mapped_column(
+        StringArray(),
+        nullable=True,
+        doc="Types of submissions accepted (e.g., 'new', 'renewal', 'resubmission', 'supplement')",
+    )
+    indirect_cost_policy: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Indirect cost policy (e.g., 'full_rate', 'capped', 'not_allowed', 'negotiable')",
     )
 
     # Relationships
@@ -434,6 +502,16 @@ class User(Base):
         back_populates="lab_owner",
         cascade="all, delete-orphan",
     )
+    permission_templates: Mapped[List["PermissionTemplate"]] = relationship(
+        "PermissionTemplate",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
+    notifications: Mapped[List["Notification"]] = relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email='{self.email}')>"
@@ -475,6 +553,21 @@ class LabProfile(Base):
         Text,
         nullable=True,
         doc="Career stage (e.g., 'early_career', 'established', 'senior')",
+    )
+    citizenship_status: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Citizenship/visa status (e.g., 'us_citizen', 'permanent_resident', 'visa_holder')",
+    )
+    institution_type: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        doc="Type of institution (e.g., 'r1_university', 'nonprofit', 'hbcu')",
+    )
+    is_pi_eligible: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        doc="Whether user is eligible to be a Principal Investigator",
     )
     past_grants: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSONB,
@@ -622,6 +715,33 @@ class Match(Base):
         JSONB,
         nullable=True,
         doc="Detailed user feedback for model improvement",
+    )
+
+    # Application outcome tracking
+    application_status: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Application status: 'not_applied', 'in_progress', 'submitted', 'awarded', 'rejected', 'withdrawn'",
+    )
+    application_submitted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the application was submitted",
+    )
+    outcome_received_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the outcome was received",
+    )
+    award_amount: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        doc="Actual award amount if funded",
+    )
+    outcome_notes: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="User notes about the outcome",
     )
 
     # Relationships
@@ -1000,6 +1120,38 @@ class Deadline(Base):
         nullable=False,
         doc="Hex color code for calendar display",
     )
+    # Recurring deadline support
+    is_recurring: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Whether this is a recurring deadline template",
+    )
+    recurrence_rule: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        doc="RRULE format recurrence rule (RFC 5545)",
+    )
+    parent_deadline_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("deadlines.id", ondelete="CASCADE"),
+        nullable=True,
+        doc="Reference to parent recurring deadline template",
+    )
+    # Per-deadline reminder configuration
+    reminder_config: Mapped[Optional[List[int]]] = mapped_column(
+        JSONB,
+        default=[30, 14, 7, 3, 1],
+        nullable=True,
+        doc="Days before deadline to send reminders",
+    )
+    # Escalation tracking
+    escalation_sent: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Whether escalation alert has been sent",
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -1025,15 +1177,102 @@ class Deadline(Base):
         back_populates="deadline",
         cascade="all, delete-orphan",
     )
+    # Self-referential relationship for recurring deadlines
+    parent_deadline: Mapped[Optional["Deadline"]] = relationship(
+        "Deadline",
+        remote_side="Deadline.id",
+        back_populates="recurring_instances",
+        foreign_keys=[parent_deadline_id],
+    )
+    recurring_instances: Mapped[List["Deadline"]] = relationship(
+        "Deadline",
+        back_populates="parent_deadline",
+        foreign_keys="Deadline.parent_deadline_id",
+        cascade="all, delete-orphan",
+    )
+    status_history: Mapped[List["DeadlineStatusHistory"]] = relationship(
+        "DeadlineStatusHistory",
+        back_populates="deadline",
+        cascade="all, delete-orphan",
+        order_by="DeadlineStatusHistory.changed_at.desc()",
+    )
 
     __table_args__ = (
         Index("ix_deadlines_user_id", user_id),
         Index("ix_deadlines_sponsor_deadline", sponsor_deadline),
         Index("ix_deadlines_status", status),
+        Index("ix_deadlines_parent_id", parent_deadline_id),
+        Index("ix_deadlines_is_recurring", is_recurring),
     )
 
     def __repr__(self) -> str:
         return f"<Deadline(id={self.id}, title='{self.title[:50]}...')>"
+
+
+class DeadlineStatusHistory(Base):
+    """
+    Audit trail for deadline status changes.
+
+    Records every status transition with timestamp, user, and optional notes
+    for compliance and progress tracking.
+    """
+
+    __tablename__ = "deadline_status_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the status history entry",
+    )
+    deadline_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("deadlines.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the deadline",
+    )
+    previous_status: Mapped[Optional[str]] = mapped_column(
+        String(30),
+        nullable=True,
+        doc="Status before the change (null for initial creation)",
+    )
+    new_status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        doc="New status after the change",
+    )
+    changed_by: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="User who made the status change",
+    )
+    changed_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="When the status was changed",
+    )
+    notes: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Optional notes about the status change",
+    )
+
+    # Relationships
+    deadline: Mapped["Deadline"] = relationship(
+        "Deadline",
+        back_populates="status_history",
+    )
+    changed_by_user: Mapped[Optional["User"]] = relationship("User")
+
+    __table_args__ = (
+        Index("ix_deadline_status_history_deadline_id", deadline_id),
+        Index("ix_deadline_status_history_changed_at", changed_at),
+    )
+
+    def __repr__(self) -> str:
+        return f"<DeadlineStatusHistory(deadline_id={self.deadline_id}, {self.previous_status} -> {self.new_status})>"
 
 
 class CalendarIntegration(Base):
@@ -2130,7 +2369,8 @@ class LabMember(Base):
     Lab team member invited by a PI.
 
     Tracks team members who can collaborate on grant applications
-    within a lab/research group.
+    within a lab/research group. Includes invitation tracking and
+    role-based permissions.
     """
 
     __tablename__ = "lab_members"
@@ -2173,12 +2413,54 @@ class LabMember(Base):
         nullable=True,
         doc="When the invitation was accepted",
     )
+    # New invitation tracking columns
+    invitation_token: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        unique=True,
+        nullable=True,
+        doc="Secure token for accepting invitation via email link",
+    )
+    invitation_expires_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the invitation expires (7 days from creation)",
+    )
+    invitation_status: Mapped[str] = mapped_column(
+        String(20),
+        default="pending",
+        doc="Status of the invitation (pending, accepted, declined, expired, cancelled)",
+    )
+    declined_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the invitation was declined",
+    )
+    permissions: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        default={
+            "can_view": True,
+            "can_edit": False,
+            "can_create": False,
+            "can_delete": False,
+            "can_invite": False,
+        },
+        doc="Role-based permissions for the team member",
+    )
+    permission_template_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("permission_templates.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Reference to custom permission template if applied",
+    )
 
     __table_args__ = (
         UniqueConstraint("lab_owner_id", "member_email", name="uq_lab_member"),
         Index("ix_lab_members_lab_owner_id", lab_owner_id),
         Index("ix_lab_members_member_email", member_email),
         Index("ix_lab_members_member_user_id", member_user_id),
+        Index("ix_lab_members_invitation_token", invitation_token),
+        Index("ix_lab_members_invitation_status", invitation_status),
+        Index("ix_lab_members_permission_template_id", permission_template_id),
     )
 
     # Relationships
@@ -2191,9 +2473,13 @@ class LabMember(Base):
         "User",
         foreign_keys=[member_user_id],
     )
+    permission_template: Mapped[Optional["PermissionTemplate"]] = relationship(
+        "PermissionTemplate",
+        back_populates="members",
+    )
 
     def __repr__(self) -> str:
-        return f"<LabMember(id={self.id}, email='{self.member_email}')>"
+        return f"<LabMember(id={self.id}, email='{self.member_email}', status='{self.invitation_status}')>"
 
 
 class ApplicationAssignee(Base):
@@ -2251,3 +2537,243 @@ class ApplicationAssignee(Base):
 
     def __repr__(self) -> str:
         return f"<ApplicationAssignee(application_id={self.application_id}, user_id={self.user_id})>"
+
+
+class TeamActivityLog(Base):
+    """
+    Activity log for team collaboration events.
+
+    Tracks all team-related activities including invitations,
+    role changes, permission updates, and member actions for
+    audit trail and activity feed display.
+    """
+
+    __tablename__ = "team_activity_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the activity log entry",
+    )
+    lab_owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="PI/lab owner whose team this activity belongs to",
+    )
+    actor_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("users.id"),
+        nullable=True,
+        doc="User who performed the action (null for system actions)",
+    )
+    action_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        doc="Type of action (e.g., 'invitation_sent', 'role_changed', 'member_removed')",
+    )
+    entity_type: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        doc="Type of entity affected (e.g., 'member', 'invitation', 'permission')",
+    )
+    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        nullable=True,
+        doc="ID of the affected entity",
+    )
+    entity_name: Mapped[Optional[str]] = mapped_column(
+        String(500),
+        nullable=True,
+        doc="Human-readable name or description of the affected entity",
+    )
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        doc="Additional metadata about the activity (e.g., old/new values)",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="When the activity occurred",
+    )
+
+    __table_args__ = (
+        Index("ix_team_activity_log_lab_owner_id", lab_owner_id),
+        Index("ix_team_activity_log_created_at", created_at),
+        Index("ix_team_activity_log_action_type", action_type),
+        Index("ix_team_activity_log_entity_type", entity_type),
+    )
+
+    # Relationships
+    lab_owner: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[lab_owner_id],
+    )
+    actor: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[actor_id],
+    )
+
+    def __repr__(self) -> str:
+        return f"<TeamActivityLog(id={self.id}, action='{self.action_type}', entity='{self.entity_type}')>"
+
+
+class PermissionTemplate(Base):
+    """
+    Custom permission templates that can be applied to team members.
+
+    Allows lab owners/PIs to create reusable permission configurations
+    with named templates that can be quickly applied to new or existing
+    team members, streamlining role-based access control management.
+    """
+
+    __tablename__ = "permission_templates"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the permission template",
+    )
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="PI/lab owner who created this template",
+    )
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        doc="Template name for easy identification",
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Description of when to use this template",
+    )
+    permissions: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+        doc="Permission configuration: {can_view, can_edit, can_create, can_delete, can_invite, can_manage_grants, can_export}",
+    )
+    is_default: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        doc="Whether this is the default template for new invitations",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Template creation timestamp",
+    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        onupdate=func.now(),
+        doc="Last update timestamp",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("owner_id", "name", name="uq_permission_template_owner_name"),
+        Index("ix_permission_template_owner", owner_id),
+    )
+
+    # Relationships
+    owner: Mapped["User"] = relationship(
+        "User",
+        back_populates="permission_templates",
+    )
+    members: Mapped[List["LabMember"]] = relationship(
+        "LabMember",
+        back_populates="permission_template",
+    )
+
+    def __repr__(self) -> str:
+        return f"<PermissionTemplate(id={self.id}, name='{self.name}')>"
+
+
+class Notification(Base):
+    """
+    In-app notifications for users.
+
+    Stores notifications for various team and system events including
+    team invitations, role changes, member joins, deadline reminders,
+    and other actionable alerts that users need to be aware of.
+    """
+
+    __tablename__ = "notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the notification",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="User who should receive this notification",
+    )
+    type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        doc="Notification type (e.g., 'team_invite', 'role_changed', 'member_joined', 'deadline_reminder')",
+    )
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+        doc="Notification title for display",
+    )
+    message: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Notification message content",
+    )
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        doc="Additional context (e.g., inviter_id, team_id, grant_id)",
+    )
+    read: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        doc="Whether the notification has been read",
+    )
+    read_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the notification was marked as read",
+    )
+    action_url: Mapped[Optional[str]] = mapped_column(
+        String(500),
+        nullable=True,
+        doc="URL to navigate to when notification is clicked",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Notification creation timestamp",
+    )
+
+    __table_args__ = (
+        Index("ix_notification_user_id", user_id),
+        Index("ix_notification_user_read", user_id, read),
+        Index("ix_notification_created", created_at),
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="notifications",
+    )
+
+    def __repr__(self) -> str:
+        return f"<Notification(id={self.id}, type='{self.type}', read={self.read})>"

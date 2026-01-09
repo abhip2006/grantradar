@@ -64,6 +64,7 @@ import type {
   FundingAlertPreferences,
   FilterOptions,
   AdvancedGrantFilters,
+  OutcomeUpdate,
 } from '../types';
 import type {
   KanbanBoard,
@@ -90,6 +91,12 @@ import type {
   TeamInviteRequest,
   TeamMemberUpdate,
   TeamActivityFilters,
+  PermissionTemplate,
+  PermissionTemplateCreate,
+  PermissionTemplateUpdate,
+  Notification,
+  BulkInviteRequest,
+  BulkInviteResponse,
 } from '../types/team';
 
 // API base URL - connects to FastAPI backend
@@ -343,11 +350,15 @@ export const grantsApi = {
   } = {}): Promise<PaginatedResponse<GrantMatch>> => {
     const { advancedFilters, ...baseParams } = params;
 
+    // Determine min_score: prioritize advancedFilters.min_score, then baseParams.min_score
+    const effectiveMinScore = advancedFilters?.min_score ?? baseParams.min_score;
+
     // Build params object
     const queryParams: Record<string, unknown> = {
       page: baseParams.page || 1,
       page_size: baseParams.per_page || 20,
-      min_score: baseParams.min_score ? baseParams.min_score / 100 : undefined,
+      min_score: effectiveMinScore ? effectiveMinScore / 100 : undefined,
+      max_score: advancedFilters?.max_score ? advancedFilters.max_score / 100 : undefined,
       user_action: baseParams.status,
       exclude_dismissed: baseParams.status !== 'dismissed',
       source: advancedFilters?.agencies ? undefined : baseParams.source,
@@ -355,6 +366,7 @@ export const grantsApi = {
       max_amount: advancedFilters?.max_amount,
       deadline_after: advancedFilters?.deadline_after,
       deadline_before: advancedFilters?.deadline_before,
+      deadline_proximity: advancedFilters?.deadline_proximity ? parseInt(advancedFilters.deadline_proximity) : undefined,
     };
 
     const response = await api.get('/matches', {
@@ -451,6 +463,15 @@ export const grantsApi = {
       },
     });
     return response.data;
+  },
+
+  // Update match outcome tracking
+  updateOutcome: async (
+    matchId: string,
+    outcome: OutcomeUpdate
+  ): Promise<GrantMatch> => {
+    const response = await api.post(`/matches/${matchId}/outcome`, outcome);
+    return transformMatch(response.data);
   },
 };
 
@@ -1230,67 +1251,173 @@ export const kanbanApi = {
 
 // Team API - Team collaboration and member management
 export const teamApi = {
-  // Get all team members
+  // Get all team members (returns members list with stats)
   getMembers: async (): Promise<TeamMember[]> => {
-    const response = await api.get<TeamMember[]>('/team/members');
-    return response.data;
+    const response = await api.get<{ members: TeamMember[] }>('/team');
+    return response.data.members || [];
   },
 
   // Get a single team member
   getMember: async (memberId: string): Promise<TeamMember> => {
-    const response = await api.get<TeamMember>(`/team/members/${memberId}`);
+    const response = await api.get<TeamMember>(`/team/${memberId}`);
     return response.data;
   },
 
   // Update team member role/permissions
   updateMember: async (memberId: string, data: TeamMemberUpdate): Promise<TeamMember> => {
-    const response = await api.patch<TeamMember>(`/team/members/${memberId}`, data);
+    const response = await api.patch<TeamMember>(`/team/${memberId}`, data);
     return response.data;
   },
 
   // Remove a team member
   removeMember: async (memberId: string): Promise<void> => {
-    await api.delete(`/team/members/${memberId}`);
+    await api.delete(`/team/${memberId}`);
   },
 
   // Invite a new team member
   inviteMember: async (data: TeamInviteRequest): Promise<TeamMember> => {
-    const response = await api.post<TeamMember>('/team/invite', data);
-    return response.data;
+    const response = await api.post<{ member: TeamMember }>('/team/invite', data);
+    return response.data.member;
   },
 
   // Resend invitation email
   resendInvitation: async (memberId: string): Promise<TeamMember> => {
-    const response = await api.post<TeamMember>(`/team/members/${memberId}/resend`);
-    return response.data;
+    const response = await api.post<{ member: TeamMember }>(`/team/invite/resend/${memberId}`);
+    return response.data.member;
   },
 
-  // Cancel a pending invitation
+  // Cancel a pending invitation (same as remove member for pending invitations)
   cancelInvitation: async (memberId: string): Promise<void> => {
-    await api.delete(`/team/invitations/${memberId}`);
+    await api.delete(`/team/${memberId}`);
   },
 
   // Accept invitation (uses token from email link)
   acceptInvitation: async (token: string): Promise<TeamMember> => {
-    const response = await api.post<TeamMember>('/team/invitations/accept', { token });
-    return response.data;
+    const response = await api.post<{ member: TeamMember }>('/team/invite/accept', { token });
+    return response.data.member;
   },
 
   // Decline invitation (uses token from email link)
   declineInvitation: async (token: string, reason?: string): Promise<void> => {
-    await api.post('/team/invitations/decline', { token, reason });
+    await api.post('/team/invite/decline', { token, reason });
   },
 
   // Get team activity feed
   getActivities: async (filters?: TeamActivityFilters): Promise<TeamActivity[]> => {
-    const response = await api.get<TeamActivity[]>('/team/activities', { params: filters });
-    return response.data;
+    const response = await api.get<{ activities: TeamActivity[] }>('/team/activity', { params: filters });
+    return response.data.activities || [];
   },
 
   // Get team statistics
   getStats: async (): Promise<TeamStats> => {
     const response = await api.get<TeamStats>('/team/stats');
     return response.data;
+  },
+
+  // Bulk invite multiple team members
+  bulkInvite: async (data: BulkInviteRequest): Promise<BulkInviteResponse> => {
+    const response = await api.post<BulkInviteResponse>('/team/invite/bulk', data);
+    return response.data;
+  },
+
+  // Search team members
+  searchMembers: async (query: string, includePending = true): Promise<TeamMember[]> => {
+    const response = await api.get<{ members: TeamMember[] }>('/team', {
+      params: { search: query, include_pending: includePending },
+    });
+    return response.data.members || [];
+  },
+};
+
+// ============================================
+// Permission Templates API
+// ============================================
+
+export const permissionTemplatesApi = {
+  // List all permission templates for the current user
+  list: async (): Promise<PermissionTemplate[]> => {
+    const response = await api.get<{ templates: PermissionTemplate[] }>('/team/permission-templates');
+    return response.data.templates || [];
+  },
+
+  // Get default permission templates
+  getDefaults: async (): Promise<PermissionTemplate[]> => {
+    const response = await api.get<{ templates: PermissionTemplate[] }>('/team/permission-templates/defaults');
+    return response.data.templates || [];
+  },
+
+  // Create a new permission template
+  create: async (data: PermissionTemplateCreate): Promise<PermissionTemplate> => {
+    const response = await api.post<PermissionTemplate>('/team/permission-templates', data);
+    return response.data;
+  },
+
+  // Get a single permission template by ID
+  get: async (id: string): Promise<PermissionTemplate> => {
+    const response = await api.get<PermissionTemplate>(`/team/permission-templates/${id}`);
+    return response.data;
+  },
+
+  // Update a permission template
+  update: async (id: string, data: PermissionTemplateUpdate): Promise<PermissionTemplate> => {
+    const response = await api.patch<PermissionTemplate>(`/team/permission-templates/${id}`, data);
+    return response.data;
+  },
+
+  // Delete a permission template
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/team/permission-templates/${id}`);
+  },
+
+  // Apply a permission template to a team member
+  applyToMember: async (templateId: string, memberId: string): Promise<TeamMember> => {
+    const response = await api.post<TeamMember>(`/team/permission-templates/${templateId}/apply/${memberId}`);
+    return response.data;
+  },
+};
+
+// ============================================
+// Notifications API
+// ============================================
+
+export interface NotificationsListResponse {
+  notifications: Notification[];
+  total: number;
+  unread_count: number;
+}
+
+export const notificationsApi = {
+  // List notifications with optional filtering
+  list: async (
+    unreadOnly = false,
+    limit = 50,
+    offset = 0
+  ): Promise<NotificationsListResponse> => {
+    const response = await api.get<NotificationsListResponse>('/notifications', {
+      params: { unread_only: unreadOnly, limit, offset },
+    });
+    return response.data;
+  },
+
+  // Get unread notification count
+  getUnreadCount: async (): Promise<number> => {
+    const response = await api.get<{ count: number }>('/notifications/unread-count');
+    return response.data.count;
+  },
+
+  // Mark a single notification as read
+  markAsRead: async (id: string): Promise<void> => {
+    await api.patch(`/notifications/${id}/read`);
+  },
+
+  // Mark all notifications as read
+  markAllAsRead: async (): Promise<void> => {
+    await api.post('/notifications/mark-all-read');
+  },
+
+  // Delete a notification
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/notifications/${id}`);
   },
 };
 

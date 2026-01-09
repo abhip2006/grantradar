@@ -29,6 +29,10 @@ import { Integrations } from './pages/Integrations';
 import { Templates } from './pages/Templates';
 import { AITools } from './pages/AITools';
 import { Kanban } from './pages/Kanban';
+import { Team } from './pages/Team';
+import { InvitationAccept } from './pages/InvitationAccept';
+import { InvitationDecline } from './pages/InvitationDecline';
+import { GrantPortfolio } from './components/GrantPortfolio';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -185,6 +189,30 @@ function App() {
                       <AITools />
                     </ProtectedRoute>
                   }
+                />
+                <Route
+                  path="/team"
+                  element={
+                    <ProtectedRoute>
+                      <Team />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/portfolio"
+                  element={
+                    <ProtectedRoute>
+                      <GrantPortfolio />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/team/invite/accept"
+                  element={<InvitationAccept />}
+                />
+                <Route
+                  path="/team/invite/decline"
+                  element={<InvitationDecline />}
                 />
               </Route>
 
