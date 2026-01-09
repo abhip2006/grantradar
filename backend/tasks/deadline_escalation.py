@@ -29,7 +29,7 @@ ACTIVE_STATUSES = {
 ESCALATION_THRESHOLD_DAYS = 14
 
 
-@celery_app.task(queue="default")
+@celery_app.task(queue="normal")
 def check_deadline_escalations() -> dict:
     """
     Check for stale deadlines and send escalation alerts.
@@ -191,7 +191,7 @@ def _send_escalation_alert(deadline: Deadline, user: User, days_until: int) -> N
         raise
 
 
-@celery_app.task(queue="default")
+@celery_app.task(queue="normal")
 def reset_escalation_flags() -> dict:
     """
     Reset escalation flags for deadlines that have moved past NOT_STARTED status.

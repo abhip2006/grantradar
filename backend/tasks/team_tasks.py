@@ -186,7 +186,7 @@ def send_invitation_email(
 # =============================================================================
 
 
-@celery_app.task(queue="default")
+@celery_app.task(queue="normal")
 def send_invitation_reminder(member_id: str) -> dict:
     """
     Send a reminder email for a pending invitation.
@@ -344,7 +344,7 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
 # =============================================================================
 
 
-@celery_app.task(queue="default")
+@celery_app.task(queue="normal")
 def expire_old_invitations() -> dict:
     """
     Mark expired invitations as expired.

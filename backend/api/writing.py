@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user
+from backend.core.rate_limit import RateLimitAI
 from backend.database import get_db
 from backend.models import User
 from backend.schemas.writing import (
@@ -29,6 +30,7 @@ async def analyze_draft(
     request: AnalyzeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
 ) -> AnalyzeResponse:
     """
     Analyze draft text against a grant's review criteria.
@@ -103,6 +105,7 @@ async def get_draft_feedback(
     request: FeedbackRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
 ) -> FeedbackResponse:
     """
     Get AI-powered feedback on a draft section.
@@ -143,6 +146,7 @@ async def get_improvement_suggestions(
     request: SuggestionsRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
 ) -> SuggestionsResponse:
     """
     Get specific improvement suggestions based on criteria gaps.

@@ -14,7 +14,7 @@ from sqlalchemy import select
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(name="funding_alerts.send_user_alert")
+@celery_app.task(name="backend.tasks.funding_alerts.send_user_alert")
 def send_funding_alert(user_id: str):
     """Send funding alert to a specific user."""
     import asyncio
@@ -89,7 +89,7 @@ def send_funding_alert(user_id: str):
     asyncio.run(_send())
 
 
-@celery_app.task(name="funding_alerts.send_scheduled_alerts")
+@celery_app.task(name="backend.tasks.funding_alerts.send_scheduled_alerts")
 def send_scheduled_alerts():
     """Send scheduled funding alerts based on user preferences."""
     import asyncio

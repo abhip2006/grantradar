@@ -1,0 +1,86 @@
+# GrantRadar Frontend Dockerfile
+# Production-ready multi-stage build with nginx for static file serving
+
+# ==============================================================================
+# Stage 1: Dependencies Installation
+# ==============================================================================
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Install dependencies with clean install for reproducibility
+RUN npm ci --only=production=false
+
+# ==============================================================================
+# Stage 2: Build Application
+# ==============================================================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
+COPY frontend/ .
+
+# Build arguments for environment configuration
+ARG VITE_API_URL=http://localhost:8000
+ARG VITE_WS_URL=ws://localhost:8000
+
+# Set environment variables for build
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_WS_URL=${VITE_WS_URL}
+ENV NODE_ENV=production
+
+# Build the application
+RUN npm run build
+
+# ==============================================================================
+# Stage 3: Production with Nginx
+# ==============================================================================
+FROM nginx:1.25-alpine AS production
+
+# Labels for container identification
+LABEL maintainer="GrantRadar Team"
+LABEL description="GrantRadar Frontend Web Server"
+LABEL version="1.0.0"
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Remove default nginx configuration
+RUN rm -rf /etc/nginx/conf.d/default.conf
+
+# Copy custom nginx configuration for SPA
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+
+# Copy built static files from builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Create necessary directories and set permissions for non-root user
+RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run && \
+    chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    touch /var/run/nginx.pid && \
+    chown nginx:nginx /var/run/nginx.pid && \
+    # Create temp directories needed by nginx
+    mkdir -p /var/lib/nginx/tmp && \
+    chown -R nginx:nginx /var/lib/nginx
+
+# Switch to non-root user
+USER nginx
+
+# Expose port 80
+EXPOSE 80
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
+
+# Start nginx in foreground
+CMD ["nginx", "-g", "daemon off;"]

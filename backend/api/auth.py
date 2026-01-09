@@ -7,7 +7,7 @@ import secrets
 from datetime import timedelta
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -22,6 +22,7 @@ from backend.api.deps import (
     verify_refresh_token,
 )
 from backend.core.config import settings
+from backend.core.rate_limit import RateLimitAuth, RateLimitTier, RateLimitDependency
 from backend.models import LabProfile, User
 from backend.schemas.auth import (
     ForgotPasswordRequest,
@@ -58,6 +59,7 @@ class RefreshTokenRequest(BaseModel):
 async def register(
     user_data: UserCreate,
     db: AsyncSessionDep,
+    _rate_limit: RateLimitAuth = None,
 ) -> Token:
     """
     Register a new user account.
@@ -118,6 +120,7 @@ async def register(
 async def login(
     credentials: UserLogin,
     db: AsyncSessionDep,
+    _rate_limit: RateLimitAuth = None,
 ) -> Token:
     """
     Authenticate a user with email and password.
@@ -263,6 +266,7 @@ async def _get_redis_client() -> aioredis.Redis:
 async def forgot_password(
     request: ForgotPasswordRequest,
     db: AsyncSessionDep,
+    _rate_limit: RateLimitAuth = None,
 ) -> ForgotPasswordResponse:
     """
     Request a password reset.

@@ -13,6 +13,11 @@ from fastapi.responses import JSONResponse
 
 from backend.api import aims, alerts, analytics, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, similar, stats, team, team_collaboration, templates, workflow_analytics, writing
 from backend.core.config import settings
+from backend.core.rate_limit import (
+    RateLimitMiddleware,
+    close_rate_limiter,
+    rate_limit_exception_handler,
+)
 from backend.database import close_db, init_db
 
 # =============================================================================
@@ -116,6 +121,8 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down GrantRadar API...")
+    await close_rate_limiter()
+    logger.info("Rate limiter closed")
     await close_db()
     logger.info("Database connections closed")
 
@@ -176,8 +183,22 @@ app.add_middleware(
 )
 
 # =============================================================================
+# Rate Limiting Middleware
+# =============================================================================
+
+# Add rate limit middleware to include headers in responses
+if settings.rate_limit_enabled:
+    app.add_middleware(RateLimitMiddleware)
+    logger.info("Rate limiting middleware enabled")
+else:
+    logger.info("Rate limiting middleware disabled")
+
+# =============================================================================
 # Exception Handlers
 # =============================================================================
+
+# Register rate limit exception handler for 429 responses
+app.add_exception_handler(429, rate_limit_exception_handler)
 
 
 @app.exception_handler(HTTPException)

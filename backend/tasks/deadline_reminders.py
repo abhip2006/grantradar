@@ -26,7 +26,7 @@ REMINDER_ELIGIBLE_STATUSES = {
 }
 
 
-@celery_app.task(queue="default")
+@celery_app.task(queue="normal")
 def check_and_send_deadline_reminders() -> dict:
     """
     Check for pending deadline reminders and send them.
@@ -83,7 +83,7 @@ def check_and_send_deadline_reminders() -> dict:
     return {"sent": reminders_sent, "errors": errors}
 
 
-@celery_app.task(queue="default")
+@celery_app.task(queue="normal")
 def check_reminder_config_reminders() -> dict:
     """
     Check deadlines' reminder_config and create/send reminders.

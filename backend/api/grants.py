@@ -11,6 +11,7 @@ from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.orm import joinedload
 
 from backend.api.deps import AsyncSessionDep, OptionalUser
+from backend.core.rate_limit import RateLimitSearch, RateLimitStandard
 from backend.models import Grant, Match
 from backend.schemas.grants import GrantDetail, GrantList, GrantResponse, GrantSearch
 
@@ -34,6 +35,7 @@ async def list_grants(
     deadline_after: Optional[datetime] = Query(default=None, description="Deadline after date"),
     deadline_before: Optional[datetime] = Query(default=None, description="Deadline before date"),
     active_only: bool = Query(default=True, description="Only show grants with future deadlines"),
+    _rate_limit: RateLimitStandard = None,
 ) -> GrantList:
     """
     Get a paginated list of grants.
@@ -138,6 +140,7 @@ async def search_grants(
     db: AsyncSessionDep,
     q: str = Query(..., min_length=1, max_length=500, description="Search query"),
     limit: int = Query(default=20, ge=1, le=100, description="Number of results"),
+    _rate_limit: RateLimitSearch = None,
 ) -> GrantList:
     """
     Search grants by title, description, and agency.

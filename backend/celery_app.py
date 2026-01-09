@@ -110,6 +110,7 @@ def create_celery_app() -> Celery:
             "backend.tasks.matching",
             "backend.tasks.notifications",
             "backend.tasks.deadline_reminders",
+            "backend.tasks.deadline_escalation",
             "backend.tasks.funding_alerts",
             "backend.tasks.polling",
             "backend.tasks.indexing",
@@ -118,6 +119,7 @@ def create_celery_app() -> Celery:
             "backend.tasks.cleanup",
             "backend.tasks.workflow_analytics",
             "backend.tasks.compliance_tasks",
+            "backend.tasks.team_tasks",
         ],
     )
 
@@ -227,7 +229,7 @@ def create_celery_app() -> Celery:
                 "options": {"queue": "normal"},
             },
             "send-funding-alerts": {
-                "task": "funding_alerts.send_scheduled_alerts",
+                "task": "backend.tasks.funding_alerts.send_scheduled_alerts",
                 "schedule": timedelta(hours=24),  # Daily at the same time
                 "options": {"queue": "normal"},
             },

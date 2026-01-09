@@ -72,6 +72,25 @@ class Settings(BaseSettings):
     llm_model: str = "claude-sonnet-4-20250514"
     llm_max_tokens: int = 4096
 
+    # ===== Rate Limiting =====
+    rate_limit_enabled: bool = True  # Set to False to disable rate limiting
+
+    # Auth endpoints (login, register) - strict limits
+    rate_limit_auth_requests: int = 5
+    rate_limit_auth_window: int = 60  # 5 requests per minute
+
+    # AI endpoints (chat, writing, insights) - moderate limits
+    rate_limit_ai_requests: int = 30
+    rate_limit_ai_window: int = 60  # 30 requests per minute
+
+    # Search endpoints - higher limits
+    rate_limit_search_requests: int = 60
+    rate_limit_search_window: int = 60  # 60 requests per minute
+
+    # Standard API endpoints - default limits
+    rate_limit_standard_requests: int = 120
+    rate_limit_standard_window: int = 60  # 120 requests per minute
+
 
 @lru_cache
 def get_settings() -> Settings:

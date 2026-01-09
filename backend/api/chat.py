@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
 from backend.api.deps import get_current_user
+from backend.core.rate_limit import RateLimitAI
 from backend.models import User, ChatSession
 from backend.schemas.chat import (
     ChatSessionCreate,
@@ -26,6 +27,7 @@ async def create_chat_session(
     request: ChatSessionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
 ) -> ChatSessionResponse:
     """Create a new chat session."""
     session = await chat_service.create_session(
@@ -87,6 +89,7 @@ async def send_chat_message(
     request: ChatMessageCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
 ) -> ChatMessageResponse:
     """Send a message in a chat session and get AI response."""
     try:

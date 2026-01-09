@@ -262,39 +262,71 @@ Transformative Potential
 
 
 async def seed_templates():
-    """Seed initial categories and system templates."""
+    """Seed initial categories and system templates.
+
+    This function is idempotent - it will skip existing categories and templates.
+    """
+    from sqlalchemy import select
+
     async with get_async_session() as session:
-        # Create categories
-        category_map = {}
-        for cat_data in CATEGORIES:
-            category = TemplateCategory(
-                id=uuid4(),
-                name=cat_data["name"],
-                description=cat_data["description"],
-                display_order=cat_data["display_order"],
-            )
-            session.add(category)
-            category_map[cat_data["name"]] = category.id
+        # Check if categories already exist
+        result = await session.execute(
+            select(TemplateCategory).limit(1)
+        )
+        existing_category = result.scalar_one_or_none()
 
-        await session.flush()
+        if existing_category:
+            logger.info("Template categories already exist, skipping category creation")
+            # Build category map from existing categories
+            result = await session.execute(select(TemplateCategory))
+            categories = result.scalars().all()
+            category_map = {cat.name: cat.id for cat in categories}
+        else:
+            # Create categories
+            category_map = {}
+            for cat_data in CATEGORIES:
+                category = TemplateCategory(
+                    id=uuid4(),
+                    name=cat_data["name"],
+                    description=cat_data["description"],
+                    display_order=cat_data["display_order"],
+                )
+                session.add(category)
+                category_map[cat_data["name"]] = category.id
 
-        # Create system templates
-        for tmpl_data in SYSTEM_TEMPLATES:
-            template = Template(
-                id=uuid4(),
-                user_id=None,  # System templates have no user
-                category_id=category_map.get(tmpl_data["category"]),
-                title=tmpl_data["title"],
-                description=tmpl_data["description"],
-                content=tmpl_data["content"],
-                variables=tmpl_data["variables"],
-                is_public=True,
-                is_system=True,
-            )
-            session.add(template)
+            await session.flush()
+            logger.info(f"Created {len(CATEGORIES)} template categories")
+
+        # Check if system templates already exist
+        result = await session.execute(
+            select(Template).where(Template.is_system == True).limit(1)
+        )
+        existing_template = result.scalar_one_or_none()
+
+        if existing_template:
+            logger.info("System templates already exist, skipping template creation")
+        else:
+            # Create system templates
+            templates_created = 0
+            for tmpl_data in SYSTEM_TEMPLATES:
+                template = Template(
+                    id=uuid4(),
+                    user_id=None,  # System templates have no user
+                    category_id=category_map.get(tmpl_data["category"]),
+                    title=tmpl_data["title"],
+                    description=tmpl_data["description"],
+                    content=tmpl_data["content"],
+                    variables=tmpl_data["variables"],
+                    is_public=True,
+                    is_system=True,
+                )
+                session.add(template)
+                templates_created += 1
+
+            logger.info(f"Created {templates_created} system templates")
 
         await session.commit()
-        logger.info(f"Seeded {len(CATEGORIES)} categories and {len(SYSTEM_TEMPLATES)} system templates")
+        logger.info("Template seeding complete")
 
 
 if __name__ == "__main__":

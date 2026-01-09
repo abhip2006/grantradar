@@ -1,0 +1,371 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy to"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  # ============================================
+  # Build and push Docker images to GHCR
+  # ============================================
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_image: ${{ steps.meta-backend.outputs.tags }}
+      frontend_image: ${{ steps.meta-frontend.outputs.tags }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate version
+        id: version
+        run: |
+          VERSION=$(date +%Y%m%d)-${GITHUB_SHA::8}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Backend Dockerfile
+        run: |
+          cat > Dockerfile.backend << 'EOF'
+          FROM python:3.11-slim
+
+          WORKDIR /app
+
+          # Install system dependencies
+          RUN apt-get update && apt-get install -y \
+              build-essential \
+              libpq-dev \
+              curl \
+              && rm -rf /var/lib/apt/lists/*
+
+          # Copy requirements and install Python dependencies
+          COPY requirements.txt .
+          RUN pip install --no-cache-dir -r requirements.txt
+
+          # Install Playwright browsers (optional, for scraping)
+          RUN playwright install chromium --with-deps || true
+
+          # Copy application code
+          COPY backend/ ./backend/
+          COPY agents/ ./agents/
+          COPY alembic/ ./alembic/
+          COPY alembic.ini .
+
+          # Create non-root user
+          RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+          USER appuser
+
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+              CMD curl -f http://localhost:8000/health || exit 1
+
+          EXPOSE 8000
+
+          CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          EOF
+
+      - name: Create Frontend Dockerfile
+        run: |
+          cat > frontend/Dockerfile << 'EOF'
+          # Build stage
+          FROM node:20-alpine AS builder
+
+          WORKDIR /app
+
+          # Copy package files
+          COPY package*.json ./
+          RUN npm ci --only=production=false
+
+          # Copy source and build
+          COPY . .
+          RUN npm run build
+
+          # Production stage
+          FROM nginx:alpine
+
+          # Copy built assets
+          COPY --from=builder /app/dist /usr/share/nginx/html
+
+          # Create nginx config for SPA
+          RUN echo 'server { \
+              listen 80; \
+              server_name _; \
+              root /usr/share/nginx/html; \
+              index index.html; \
+              location / { \
+                  try_files $uri $uri/ /index.html; \
+              } \
+              location /api { \
+                  proxy_pass http://backend:8000; \
+                  proxy_http_version 1.1; \
+                  proxy_set_header Upgrade $http_upgrade; \
+                  proxy_set_header Connection "upgrade"; \
+                  proxy_set_header Host $host; \
+                  proxy_set_header X-Real-IP $remote_addr; \
+              } \
+          }' > /etc/nginx/conf.d/default.conf
+
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+              CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
+
+          EXPOSE 80
+
+          CMD ["nginx", "-g", "daemon off;"]
+          EOF
+
+      - name: Extract metadata for backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+          tags: |
+            type=sha,prefix=
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+          tags: |
+            type=sha,prefix=
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_SHA=${{ github.sha }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_SHA=${{ github.sha }}
+
+      - name: Generate deployment manifest
+        run: |
+          cat > deployment-manifest.json << EOF
+          {
+            "version": "${{ steps.version.outputs.version }}",
+            "commit_sha": "${{ github.sha }}",
+            "backend_image": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ steps.version.outputs.version }}",
+            "frontend_image": "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.version.outputs.version }}",
+            "built_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "built_by": "${{ github.actor }}"
+          }
+          EOF
+          cat deployment-manifest.json
+
+      - name: Upload deployment manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-manifest
+          path: deployment-manifest.json
+          retention-days: 30
+
+  # ============================================
+  # Deploy to Staging
+  # ============================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: staging
+      url: https://staging.grantradar.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download deployment manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-manifest
+
+      - name: Display deployment info
+        run: |
+          echo "Deploying to STAGING environment"
+          echo "================================"
+          cat deployment-manifest.json
+          echo ""
+          echo "Backend Image: ${{ needs.build-and-push.outputs.backend_image }}"
+          echo "Frontend Image: ${{ needs.build-and-push.outputs.frontend_image }}"
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+
+      # Placeholder for actual deployment
+      # Replace with your deployment method (e.g., kubectl, docker-compose, AWS ECS, etc.)
+      - name: Deploy to staging server
+        run: |
+          echo "TODO: Implement staging deployment"
+          echo ""
+          echo "Example deployment commands:"
+          echo "  - SSH to staging server and pull new images"
+          echo "  - Use kubectl to update deployment"
+          echo "  - Use AWS ECS task definition update"
+          echo "  - Use docker-compose pull && docker-compose up -d"
+          echo ""
+          echo "Required secrets to configure:"
+          echo "  - STAGING_HOST: Staging server hostname"
+          echo "  - STAGING_SSH_KEY: SSH private key for deployment"
+          echo "  - STAGING_USER: SSH user for deployment"
+
+      - name: Run smoke tests
+        run: |
+          echo "TODO: Implement staging smoke tests"
+          echo "Example: curl -f https://staging.grantradar.com/health"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "Staging deployment successful!"
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+
+  # ============================================
+  # Deploy to Production (requires approval)
+  # ============================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    environment:
+      name: production
+      url: https://grantradar.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download deployment manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-manifest
+
+      - name: Display deployment info
+        run: |
+          echo "Deploying to PRODUCTION environment"
+          echo "===================================="
+          cat deployment-manifest.json
+          echo ""
+          echo "Backend Image: ${{ needs.build-and-push.outputs.backend_image }}"
+          echo "Frontend Image: ${{ needs.build-and-push.outputs.frontend_image }}"
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+
+      # Placeholder for actual production deployment
+      - name: Deploy to production server
+        run: |
+          echo "TODO: Implement production deployment"
+          echo ""
+          echo "Production deployment should include:"
+          echo "  1. Database migration (if needed)"
+          echo "  2. Blue-green or rolling deployment"
+          echo "  3. Health check verification"
+          echo "  4. Automatic rollback on failure"
+          echo ""
+          echo "Required secrets to configure:"
+          echo "  - PRODUCTION_HOST: Production server hostname"
+          echo "  - PRODUCTION_SSH_KEY: SSH private key for deployment"
+          echo "  - PRODUCTION_USER: SSH user for deployment"
+          echo "  - DATABASE_URL: Production database connection string"
+
+      - name: Run production health checks
+        run: |
+          echo "TODO: Implement production health checks"
+          echo "Example: curl -f https://grantradar.com/health"
+
+      - name: Create deployment record
+        run: |
+          echo "Recording deployment..."
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+          echo "Deployed at: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "Deployed by: ${{ github.actor }}"
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "Production deployment successful!"
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+          # TODO: Add Slack/Discord/Email notification
+
+  # ============================================
+  # Rollback job (manual trigger only)
+  # ============================================
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && failure()
+    needs: deploy-production
+    environment:
+      name: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Rollback to previous version
+        run: |
+          echo "Rolling back production deployment..."
+          echo ""
+          echo "TODO: Implement rollback logic"
+          echo "Options:"
+          echo "  1. Deploy previous Docker image tag"
+          echo "  2. Use Kubernetes rollout undo"
+          echo "  3. Switch load balancer to previous deployment"
+          echo ""
+          echo "Example:"
+          echo "  kubectl rollout undo deployment/grantradar-backend"
+          echo "  kubectl rollout undo deployment/grantradar-frontend"
+
+      - name: Notify rollback
+        run: |
+          echo "Production rollback initiated"
+          echo "Triggered by: ${{ github.actor }}"
+          # TODO: Add urgent notification for rollback
