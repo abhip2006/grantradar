@@ -28,6 +28,14 @@ from backend.services.win_probability import (
     NSF_SUCCESS_RATES,
     DEFAULT_RATES,
 )
+from backend.services.effort_estimation import (
+    EffortEstimate,
+    estimate_effort,
+    format_effort_display,
+    extract_mechanism_from_grant,
+    MECHANISM_EFFORT,
+    DEFAULT_EFFORT,
+)
 
 # ML forecast requires pandas/prophet - optional dependency
 try:

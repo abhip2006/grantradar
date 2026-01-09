@@ -1066,3 +1066,33 @@ export interface FundingAlertPreferences {
   preferred_funders?: string[];
   last_sent_at?: string;
 }
+
+// ===== Competition & Mechanism Types =====
+
+export type CompetitionLevel = 'low' | 'medium' | 'high' | 'very_high';
+
+export interface MechanismInfo {
+  code: string;
+  name: string;
+  success_rate_overall: number;
+  competition_level: CompetitionLevel;
+  estimated_applicants_per_cycle: number;
+  typical_duration_months: number;
+  typical_budget_min: number;
+  typical_budget_max: number;
+}
+
+export interface CompetitionData {
+  competition_score: number; // 0-1
+  competition_level: CompetitionLevel;
+  estimated_applicants: number;
+  factors: string[];
+}
+
+export type EffortComplexity = 'simple' | 'moderate' | 'complex';
+
+export interface EffortData {
+  hours_estimate?: number;
+  weeks_estimate?: string; // e.g., "2-3 weeks"
+  complexity: EffortComplexity;
+}

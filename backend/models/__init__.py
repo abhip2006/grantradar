@@ -61,6 +61,9 @@ TeamActivityLog = _models_py.TeamActivityLog
 PermissionTemplate = _models_py.PermissionTemplate
 Notification = _models_py.Notification
 
+# Import models from submodules
+from backend.models.mechanisms import GrantMechanism
+
 # Clean up module namespace
 del importlib, os, _models_py_path, _spec, _models_py
 
@@ -103,4 +106,6 @@ __all__ = [
     "TeamActivityLog",
     "PermissionTemplate",
     "Notification",
+    # Additional models from submodules
+    "GrantMechanism",
 ]
