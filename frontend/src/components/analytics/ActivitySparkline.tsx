@@ -209,7 +209,7 @@ export function StageChangesSparkline() {
     <ActivitySparkline
       metric="stage_changes"
       title="Stage Changes"
-      color="#3b82f6" // blue-500
+      color="#2d5a47" // forest-500
     />
   );
 }

@@ -11,7 +11,7 @@ interface SuccessRateChartProps {
 const STAGE_COLORS: Record<string, string> = {
   researching: '#06b6d4', // cyan-500
   writing: '#f59e0b', // amber-500
-  submitted: '#3b82f6', // blue-500
+  submitted: '#2d5a47', // forest-500
   awarded: '#22c55e', // green-500
   rejected: '#64748b', // slate-500
 };
@@ -20,12 +20,12 @@ const STAGE_COLORS: Record<string, string> = {
 const SUCCESS_COLORS = {
   awarded: '#22c55e', // green-500
   rejected: '#ef4444', // red-500
-  pending: '#3b82f6', // blue-500
+  pending: '#2d5a47', // forest-500
 };
 
 // Color palette for dynamic data - exported for potential reuse
 export const CHART_COLOR_PALETTE = [
-  '#3b82f6', // blue
+  '#2d5a47', // forest
   '#22c55e', // green
   '#f59e0b', // amber
   '#8b5cf6', // violet

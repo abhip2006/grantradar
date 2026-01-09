@@ -53,9 +53,11 @@ function App() {
           <BrowserRouter>
             <PageErrorBoundary>
             <Routes>
-              {/* Public routes */}
+              {/* Landing page - no layout wrapper (has its own nav) */}
+              <Route path="/" element={<Landing />} />
+
+              {/* Public routes with layout */}
               <Route element={<Layout />}>
-                <Route path="/" element={<Landing />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/contact" element={<Contact />} />

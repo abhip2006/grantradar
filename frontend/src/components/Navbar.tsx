@@ -82,10 +82,10 @@ export function Navbar() {
         <>
           <Popover.Button
             className={classNames(
-              'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 outline-none',
+              'inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-body font-medium transition-all duration-150 outline-none',
               open || isActive
-                ? 'text-[var(--gr-blue-600)] bg-[var(--gr-blue-50)]'
-                : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] hover:bg-[var(--gr-bg-hover)]'
+                ? 'text-[var(--gr-forest-700)] bg-[var(--gr-forest-50)]'
+                : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] hover:bg-[var(--gr-paper-dark)]'
             )}
           >
             {label}
@@ -107,7 +107,7 @@ export function Navbar() {
             leaveTo="opacity-0 translate-y-1"
           >
             <Popover.Panel className="absolute left-0 z-50 mt-2 w-64 origin-top-left">
-              <div className="overflow-hidden rounded-xl bg-white shadow-lg ring-1 ring-black/5">
+              <div className="overflow-hidden rounded-lg bg-[var(--gr-paper)] shadow-lg ring-1 ring-[var(--gr-border-editorial)] border border-[var(--gr-border-editorial)]">
                 <div className="p-2">
                   {items.map((item) => {
                     const Icon = item.icon;
@@ -117,22 +117,22 @@ export function Navbar() {
                         key={item.name}
                         to={item.href}
                         className={classNames(
-                          'flex items-start gap-3 rounded-lg p-3 transition-colors',
+                          'flex items-start gap-3 rounded-md p-3 transition-colors',
                           isItemActive
-                            ? 'bg-[var(--gr-blue-50)] text-[var(--gr-blue-700)]'
-                            : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]'
+                            ? 'bg-[var(--gr-forest-50)] text-[var(--gr-forest-700)]'
+                            : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]'
                         )}
                       >
                         {Icon && (
                           <Icon className={classNames(
                             'w-5 h-5 flex-shrink-0 mt-0.5',
-                            isItemActive ? 'text-[var(--gr-blue-600)]' : ''
+                            isItemActive ? 'text-[var(--gr-forest-600)]' : 'text-[var(--gr-gold-500)]'
                           )} />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{item.name}</p>
+                          <p className="text-sm font-medium font-body">{item.name}</p>
                           {item.description && (
-                            <p className="text-xs text-[var(--gr-text-tertiary)] mt-0.5">{item.description}</p>
+                            <p className="text-xs text-[var(--gr-text-tertiary)] mt-0.5 font-body">{item.description}</p>
                           )}
                         </div>
                       </Link>
@@ -148,16 +148,16 @@ export function Navbar() {
   );
 
   return (
-    <nav className="bg-white border-b border-[var(--gr-border-default)] sticky top-0 z-50">
+    <nav className="bg-[var(--gr-paper)] border-b border-[var(--gr-border-editorial)] sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and main nav */}
           <div className="flex items-center gap-8">
             <Link to="/" className="flex items-center flex-shrink-0 gap-2.5 group">
-              <div className="h-9 w-9 bg-gradient-to-br from-[var(--gr-blue-500)] to-[var(--gr-blue-700)] rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-                <span className="text-white font-bold text-lg font-display">G</span>
+              <div className="h-9 w-9 bg-gradient-to-br from-[var(--gr-forest-500)] to-[var(--gr-forest-700)] rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-200 group-hover:scale-105">
+                <span className="text-[var(--gr-paper)] font-bold text-lg font-display">G</span>
               </div>
-              <span className="text-xl font-display font-semibold text-[var(--gr-text-primary)] hidden sm:block">
+              <span className="text-xl font-display font-semibold text-[var(--gr-forest-700)] hidden sm:block tracking-tight">
                 GrantRadar
               </span>
             </Link>
@@ -171,10 +171,10 @@ export function Navbar() {
                     key={item.name}
                     to={item.href}
                     className={classNames(
-                      'inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+                      'inline-flex items-center px-3 py-2 rounded-md text-sm font-body font-medium transition-all duration-150',
                       location.pathname === item.href
-                        ? 'text-[var(--gr-blue-600)] bg-[var(--gr-blue-50)]'
-                        : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] hover:bg-[var(--gr-bg-hover)]'
+                        ? 'text-[var(--gr-forest-700)] bg-[var(--gr-forest-50)]'
+                        : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] hover:bg-[var(--gr-paper-dark)]'
                     )}
                   >
                     {item.name}
@@ -221,13 +221,13 @@ export function Navbar() {
             )}
             {isAuthenticated ? (
               <Menu as="div" className="relative">
-                <Menu.Button className="flex items-center gap-2 rounded-lg px-3 py-2 text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] hover:bg-[var(--gr-bg-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gr-blue-500)] transition-all">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--gr-blue-400)] to-[var(--gr-blue-600)] flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
+                <Menu.Button className="flex items-center gap-2 rounded-md px-3 py-2 text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] hover:bg-[var(--gr-paper-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gr-forest-500)] transition-all">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--gr-forest-400)] to-[var(--gr-forest-600)] flex items-center justify-center ring-2 ring-[var(--gr-gold-300)]">
+                    <span className="text-[var(--gr-paper)] text-sm font-display font-semibold">
                       {user?.organization_name?.charAt(0).toUpperCase() || 'U'}
                     </span>
                   </div>
-                  <span className="hidden md:block text-sm font-medium max-w-[150px] truncate">
+                  <span className="hidden md:block text-sm font-body font-medium max-w-[150px] truncate">
                     {user?.organization_name || 'Account'}
                   </span>
                   <ChevronDownIcon className="w-4 h-4 hidden md:block" />
@@ -241,10 +241,10 @@ export function Navbar() {
                   leaveFrom="transform opacity-100 scale-100"
                   leaveTo="transform opacity-0 scale-95"
                 >
-                  <Menu.Items className="absolute right-0 mt-2 w-60 origin-top-right rounded-xl bg-white border border-[var(--gr-border-default)] shadow-lg py-1 focus:outline-none">
-                    <div className="px-4 py-3 border-b border-[var(--gr-border-subtle)]">
-                      <p className="text-sm font-medium text-[var(--gr-text-primary)]">{user?.organization_name}</p>
-                      <p className="text-xs text-[var(--gr-text-tertiary)] truncate mt-0.5">{user?.email}</p>
+                  <Menu.Items className="absolute right-0 mt-2 w-60 origin-top-right rounded-lg bg-[var(--gr-paper)] border border-[var(--gr-border-editorial)] shadow-lg py-1 focus:outline-none">
+                    <div className="px-4 py-3 border-b border-[var(--gr-border-editorial)]">
+                      <p className="text-sm font-display font-semibold text-[var(--gr-forest-700)]">{user?.organization_name}</p>
+                      <p className="text-xs text-[var(--gr-text-tertiary)] font-body truncate mt-0.5">{user?.email}</p>
                     </div>
                     <div className="py-1">
                       <Menu.Item>
@@ -252,11 +252,11 @@ export function Navbar() {
                           <Link
                             to="/settings"
                             className={classNames(
-                              active ? 'bg-[var(--gr-bg-hover)]' : '',
-                              'flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)]'
+                              active ? 'bg-[var(--gr-paper-dark)]' : '',
+                              'flex items-center gap-3 px-4 py-2.5 text-sm font-body text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)]'
                             )}
                           >
-                            <Cog6ToothIcon className="h-5 w-5" />
+                            <Cog6ToothIcon className="h-5 w-5 text-[var(--gr-gold-500)]" />
                             Settings
                           </Link>
                         )}
@@ -266,11 +266,11 @@ export function Navbar() {
                           <button
                             onClick={logout}
                             className={classNames(
-                              active ? 'bg-[var(--gr-bg-hover)]' : '',
-                              'flex w-full items-center gap-3 px-4 py-2.5 text-sm text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)]'
+                              active ? 'bg-[var(--gr-paper-dark)]' : '',
+                              'flex w-full items-center gap-3 px-4 py-2.5 text-sm font-body text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)]'
                             )}
                           >
-                            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                            <ArrowRightOnRectangleIcon className="h-5 w-5 text-[var(--gr-gold-500)]" />
                             Sign out
                           </button>
                         )}
@@ -283,7 +283,7 @@ export function Navbar() {
               <>
                 <Link
                   to="/auth"
-                  className="text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[var(--gr-bg-hover)] transition-all"
+                  className="text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] text-sm font-body font-medium px-4 py-2 rounded-md hover:bg-[var(--gr-paper-dark)] transition-all"
                 >
                   Sign in
                 </Link>
@@ -300,7 +300,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)] hover:bg-[var(--gr-bg-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gr-blue-500)]"
+              className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] hover:bg-[var(--gr-paper-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--gr-forest-500)]"
             >
               <span className="sr-only">Open main menu</span>
               {mobileMenuOpen ? (
@@ -324,12 +324,12 @@ export function Navbar() {
         leaveFrom="opacity-100 translate-y-0"
         leaveTo="opacity-0 -translate-y-4"
       >
-        <div className="lg:hidden border-t border-[var(--gr-border-subtle)] bg-white">
+        <div className="lg:hidden border-t border-[var(--gr-border-editorial)] bg-[var(--gr-paper)]">
           {isAuthenticated ? (
             <div className="py-3 px-4 space-y-1 max-h-[calc(100vh-8rem)] overflow-y-auto">
               {/* Core navigation */}
-              <div className="pb-2 mb-2 border-b border-[var(--gr-border-subtle)]">
-                <p className="px-3 py-2 text-xs font-semibold text-[var(--gr-text-tertiary)] uppercase tracking-wider">
+              <div className="pb-2 mb-2 border-b border-[var(--gr-border-editorial)]">
+                <p className="px-3 py-2 text-xs font-display font-semibold text-[var(--gr-gold-600)] uppercase tracking-wider">
                   Main
                 </p>
                 {coreNavigation.map((item) => {
@@ -341,12 +341,12 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={classNames(
                         location.pathname === item.href
-                          ? 'bg-[var(--gr-blue-50)] text-[var(--gr-blue-700)]'
-                          : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]',
-                        'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium'
+                          ? 'bg-[var(--gr-forest-50)] text-[var(--gr-forest-700)]'
+                          : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]',
+                        'flex items-center gap-3 px-3 py-3 rounded-md text-sm font-body font-medium'
                       )}
                     >
-                      {Icon && <Icon className="w-5 h-5" />}
+                      {Icon && <Icon className={classNames('w-5 h-5', location.pathname === item.href ? 'text-[var(--gr-forest-600)]' : 'text-[var(--gr-gold-500)]')} />}
                       {item.name}
                     </Link>
                   );
@@ -354,8 +354,8 @@ export function Navbar() {
               </div>
 
               {/* Tools */}
-              <div className="pb-2 mb-2 border-b border-[var(--gr-border-subtle)]">
-                <p className="px-3 py-2 text-xs font-semibold text-[var(--gr-text-tertiary)] uppercase tracking-wider">
+              <div className="pb-2 mb-2 border-b border-[var(--gr-border-editorial)]">
+                <p className="px-3 py-2 text-xs font-display font-semibold text-[var(--gr-gold-600)] uppercase tracking-wider">
                   Tools
                 </p>
                 {toolsNavigation.map((item) => {
@@ -367,12 +367,12 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={classNames(
                         location.pathname === item.href
-                          ? 'bg-[var(--gr-blue-50)] text-[var(--gr-blue-700)]'
-                          : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]',
-                        'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium'
+                          ? 'bg-[var(--gr-forest-50)] text-[var(--gr-forest-700)]'
+                          : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]',
+                        'flex items-center gap-3 px-3 py-3 rounded-md text-sm font-body font-medium'
                       )}
                     >
-                      {Icon && <Icon className="w-5 h-5" />}
+                      {Icon && <Icon className={classNames('w-5 h-5', location.pathname === item.href ? 'text-[var(--gr-forest-600)]' : 'text-[var(--gr-gold-500)]')} />}
                       {item.name}
                     </Link>
                   );
@@ -381,7 +381,7 @@ export function Navbar() {
 
               {/* Resources */}
               <div className="pb-2">
-                <p className="px-3 py-2 text-xs font-semibold text-[var(--gr-text-tertiary)] uppercase tracking-wider">
+                <p className="px-3 py-2 text-xs font-display font-semibold text-[var(--gr-gold-600)] uppercase tracking-wider">
                   Resources
                 </p>
                 {resourcesNavigation.map((item) => {
@@ -393,12 +393,12 @@ export function Navbar() {
                       onClick={() => setMobileMenuOpen(false)}
                       className={classNames(
                         location.pathname === item.href
-                          ? 'bg-[var(--gr-blue-50)] text-[var(--gr-blue-700)]'
-                          : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]',
-                        'flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium'
+                          ? 'bg-[var(--gr-forest-50)] text-[var(--gr-forest-700)]'
+                          : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]',
+                        'flex items-center gap-3 px-3 py-3 rounded-md text-sm font-body font-medium'
                       )}
                     >
-                      {Icon && <Icon className="w-5 h-5" />}
+                      {Icon && <Icon className={classNames('w-5 h-5', location.pathname === item.href ? 'text-[var(--gr-forest-600)]' : 'text-[var(--gr-gold-500)]')} />}
                       {item.name}
                     </Link>
                   );
@@ -406,18 +406,18 @@ export function Navbar() {
               </div>
 
               {/* User section */}
-              <div className="pt-3 mt-2 border-t border-[var(--gr-border-subtle)]">
+              <div className="pt-3 mt-2 border-t border-[var(--gr-border-editorial)]">
                 <div className="flex items-center gap-3 px-3 py-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--gr-blue-400)] to-[var(--gr-blue-600)] flex items-center justify-center">
-                    <span className="text-white font-medium">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--gr-forest-400)] to-[var(--gr-forest-600)] flex items-center justify-center ring-2 ring-[var(--gr-gold-300)]">
+                    <span className="text-[var(--gr-paper)] font-display font-semibold">
                       {user?.organization_name?.charAt(0).toUpperCase() || 'U'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--gr-text-primary)] truncate">
+                    <p className="text-sm font-display font-semibold text-[var(--gr-forest-700)] truncate">
                       {user?.organization_name}
                     </p>
-                    <p className="text-xs text-[var(--gr-text-tertiary)] truncate">
+                    <p className="text-xs font-body text-[var(--gr-text-tertiary)] truncate">
                       {user?.email}
                     </p>
                   </div>
@@ -425,9 +425,9 @@ export function Navbar() {
                 <Link
                   to="/settings"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]"
+                  className="flex items-center gap-3 px-3 py-3 rounded-md text-sm font-body font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]"
                 >
-                  <Cog6ToothIcon className="h-5 w-5" />
+                  <Cog6ToothIcon className="h-5 w-5 text-[var(--gr-gold-500)]" />
                   Settings
                 </Link>
                 <button
@@ -435,9 +435,9 @@ export function Navbar() {
                     logout();
                     setMobileMenuOpen(false);
                   }}
-                  className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]"
+                  className="flex w-full items-center gap-3 px-3 py-3 rounded-md text-sm font-body font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]"
                 >
-                  <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                  <ArrowRightOnRectangleIcon className="h-5 w-5 text-[var(--gr-gold-500)]" />
                   Sign out
                 </button>
               </div>
@@ -449,16 +449,16 @@ export function Navbar() {
                   key={item.name}
                   to={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-3 rounded-lg text-sm font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]"
+                  className="block px-3 py-3 rounded-md text-sm font-body font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]"
                 >
                   {item.name}
                 </Link>
               ))}
-              <div className="pt-3 mt-2 border-t border-[var(--gr-border-subtle)] space-y-2">
+              <div className="pt-3 mt-2 border-t border-[var(--gr-border-editorial)] space-y-2">
                 <Link
                   to="/auth"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-3 rounded-lg text-sm font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-hover)] hover:text-[var(--gr-text-primary)]"
+                  className="block px-3 py-3 rounded-md text-sm font-body font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]"
                 >
                   Sign in
                 </Link>

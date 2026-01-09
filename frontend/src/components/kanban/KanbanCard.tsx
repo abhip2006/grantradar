@@ -170,7 +170,7 @@ export function KanbanCard({ card, isDragging, onClick }: KanbanCardProps) {
             <motion.span
               className="text-xs font-semibold text-gray-700"
               key={`progress-${card.subtask_progress.completed}`}
-              initial={{ scale: 1.2, color: '#3b82f6' }}
+              initial={{ scale: 1.2, color: '#2d5a47' }}
               animate={{ scale: 1, color: '#374151' }}
               transition={{ duration: 0.3 }}
             >

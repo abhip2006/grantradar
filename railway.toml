@@ -1,0 +1,12 @@
+# GrantRadar Railway Configuration
+# This project requires multiple services - see RAILWAY_DEPLOYMENT.md for setup instructions
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

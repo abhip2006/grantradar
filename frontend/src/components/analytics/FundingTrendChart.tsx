@@ -22,9 +22,9 @@ interface FundingTrendChartProps {
 type ChartView = 'amount' | 'count' | 'both';
 
 const CHART_COLORS = {
-  applied: '#3b82f6', // blue
+  applied: '#2d5a47', // forest
   awarded: '#22c55e', // green
-  appliedLight: 'rgba(59, 130, 246, 0.1)',
+  appliedLight: 'rgba(45, 90, 71, 0.1)',
   awardedLight: 'rgba(34, 197, 94, 0.1)',
 };
 

@@ -23,7 +23,7 @@ const STAGE_COLORS: Record<string, string> = {
   researching: '#06b6d4', // cyan-500
   writing: '#f59e0b', // amber-500
   internal_review: '#8b5cf6', // violet-500
-  submitted: '#3b82f6', // blue-500
+  submitted: '#2d5a47', // forest-500
   under_review: '#f97316', // orange-500
   awarded: '#22c55e', // green-500
   rejected: '#64748b', // slate-500

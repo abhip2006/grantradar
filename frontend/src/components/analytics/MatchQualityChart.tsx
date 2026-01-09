@@ -25,13 +25,13 @@ type ViewType = 'distribution' | 'actions';
 
 const ACTION_COLORS: Record<string, string> = {
   saved: '#22c55e',     // green
-  applied: '#3b82f6',   // blue
+  applied: '#2d5a47',   // forest
   dismissed: '#64748b', // slate
   viewed: '#f59e0b',    // amber
   new: '#8b5cf6',       // violet
 };
 
-const PIE_COLORS = ['#22c55e', '#f59e0b', '#3b82f6', '#64748b', '#8b5cf6'];
+const PIE_COLORS = ['#22c55e', '#f59e0b', '#2d5a47', '#64748b', '#8b5cf6'];
 
 interface CustomTooltipProps {
   active?: boolean;

@@ -141,11 +141,11 @@ export function Auth() {
 
   return (
     <div className="min-h-screen bg-[var(--gr-bg-primary)] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      {/* Background gradient */}
+      {/* Background gradient - Editorial forest green */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.08) 0%, transparent 50%)',
+          background: 'radial-gradient(ellipse 80% 50% at 50% -20%, rgba(26, 58, 47, 0.08) 0%, transparent 50%)',
         }}
       />
 

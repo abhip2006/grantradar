@@ -45,7 +45,7 @@ function ProgressRing({ percentage, size = 100, strokeWidth = 8 }: { percentage:
   // Determine color based on percentage
   const getColor = () => {
     if (percentage >= 80) return '#22c55e'; // green-500
-    if (percentage >= 60) return '#3b82f6'; // blue-500
+    if (percentage >= 60) return '#2d5a47'; // forest-500
     if (percentage >= 40) return '#f59e0b'; // amber-500
     return '#ef4444'; // red-500
   };

@@ -17,7 +17,7 @@ interface StageConversionFunnelProps {
 const STAGE_COLORS: Record<string, string> = {
   researching: '#06b6d4', // cyan-500
   writing: '#f59e0b', // amber-500
-  submitted: '#3b82f6', // blue-500
+  submitted: '#2d5a47', // forest-500
   awarded: '#22c55e', // green-500
   rejected: '#64748b', // slate-500
 };
