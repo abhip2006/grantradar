@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
 
+    # ===== Development Auth Bypass =====
+    # SECURITY: These must be False in production - only enable for local development
+    dev_bypass_auth: bool = False  # Backend auth bypass
+    vite_dev_bypass_auth: bool = False  # Frontend auth bypass (passed through for reference)
+
     # ===== SSL/HTTPS Configuration =====
     # Set to True when running behind HTTPS reverse proxy
     ssl_enabled: bool = False

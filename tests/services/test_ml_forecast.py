@@ -20,6 +20,49 @@ from backend.services.ml_forecast import (
 
 
 # =============================================================================
+# Prophet ML Availability Check
+# =============================================================================
+
+def _check_prophet_ml_available():
+    """
+    Check if Prophet ML functionality is available.
+
+    Prophet requires cmdstan/stan backend to be properly configured.
+    This function tests if Prophet can actually fit a model.
+    """
+    try:
+        from prophet import Prophet
+        import pandas as pd
+
+        # Create minimal test data
+        df = pd.DataFrame({
+            'ds': pd.date_range('2020-01-01', periods=10, freq='M'),
+            'y': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        })
+
+        # Try to create and fit a model
+        model = Prophet(
+            yearly_seasonality=True,
+            weekly_seasonality=False,
+            daily_seasonality=False,
+        )
+        model.fit(df)
+        return True
+    except Exception:
+        return False
+
+
+# Check Prophet availability once at module load
+PROPHET_ML_AVAILABLE = _check_prophet_ml_available()
+
+# Skip marker for tests requiring Prophet ML
+requires_prophet_ml = pytest.mark.skipif(
+    not PROPHET_ML_AVAILABLE,
+    reason="Prophet ML functionality not available (stan backend issue)"
+)
+
+
+# =============================================================================
 # Fixtures
 # =============================================================================
 
@@ -239,6 +282,7 @@ class TestDataPreparation:
 # =============================================================================
 
 
+@requires_prophet_ml
 class TestProphetModelCreation:
     """Tests for Prophet model configuration."""
 
@@ -270,6 +314,7 @@ class TestProphetModelCreation:
 # =============================================================================
 
 
+@requires_prophet_ml
 class TestTrainFunderModel:
     """Tests for training funder models."""
 
@@ -357,6 +402,7 @@ class TestPredictNextDeadline:
         with pytest.raises(ValueError, match="No trained model"):
             predictor.predict_next_deadline("Unknown Funder")
 
+    @requires_prophet_ml
     @pytest.mark.asyncio
     async def test_predict_returns_tuple(
         self, async_session: AsyncSession, sample_grants_for_ml, predictor
@@ -377,6 +423,7 @@ class TestPredictNextDeadline:
         assert isinstance(bounds, tuple)
         assert len(bounds) == 2
 
+    @requires_prophet_ml
     @pytest.mark.asyncio
     async def test_predict_date_is_future(
         self, async_session: AsyncSession, sample_grants_for_ml, predictor
@@ -392,6 +439,7 @@ class TestPredictNextDeadline:
 
         assert predicted_date >= date.today()
 
+    @requires_prophet_ml
     @pytest.mark.asyncio
     async def test_predict_confidence_in_range(
         self, async_session: AsyncSession, sample_grants_for_ml, predictor
@@ -416,6 +464,7 @@ class TestPredictNextDeadline:
 class TestGetPredictionWithFallback:
     """Tests for prediction with rule-based fallback."""
 
+    @requires_prophet_ml
     @pytest.mark.asyncio
     async def test_returns_ml_prediction_with_sufficient_data(
         self, async_session: AsyncSession, sample_grants_for_ml
