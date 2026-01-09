@@ -17,6 +17,7 @@ import {
   SparklesIcon,
   DocumentTextIcon,
   ShieldCheckIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon, RocketLaunchIcon as RocketLaunchSolidIcon, StarIcon } from '@heroicons/react/24/solid';
 import { grantsApi, pipelineApi } from '../services/api';
@@ -27,6 +28,172 @@ import { SimilarGrants } from '../components/SimilarGrants';
 import { StageBadge } from '../components/PipelineCard';
 import { GrantInsights } from '../components/GrantInsights';
 import { OutcomeTracker } from '../components/OutcomeTracker';
+import { CompetitionBadge, CompetitionBar } from '../components/CompetitionBadge';
+import { EffortEstimateCard } from '../components/EffortEstimate';
+import type { CompetitionLevel, EffortComplexity, Grant } from '../types';
+
+// Helper to estimate competition level based on grant source and characteristics
+function estimateCompetitionLevel(grant: Grant): CompetitionLevel {
+  const source = grant.source?.toLowerCase() || '';
+  const agency = grant.agency?.toLowerCase() || '';
+  const funder = grant.funder_name?.toLowerCase() || '';
+
+  // NIH R01 and major federal grants are typically very competitive
+  if (agency.includes('nih') || funder.includes('nih')) {
+    return 'very_high';
+  }
+
+  // NSF is highly competitive
+  if (agency.includes('nsf') || funder.includes('nsf') || agency.includes('national science foundation')) {
+    return 'high';
+  }
+
+  // Federal grants are generally competitive
+  if (source === 'federal') {
+    return 'high';
+  }
+
+  // Large foundations tend to be competitive
+  if (source === 'foundation') {
+    // Check for well-known competitive foundations
+    const competitiveFunders = ['gates', 'ford', 'rockefeller', 'macarthur', 'hewlett', 'packard'];
+    if (competitiveFunders.some(f => funder.includes(f))) {
+      return 'high';
+    }
+    return 'medium';
+  }
+
+  // State grants often have less competition
+  if (source === 'state') {
+    return 'medium';
+  }
+
+  // Corporate grants vary
+  if (source === 'corporate') {
+    return 'medium';
+  }
+
+  // Default to medium
+  return 'medium';
+}
+
+// Helper to estimate effort complexity based on grant characteristics
+function estimateEffortComplexity(grant: Grant): EffortComplexity {
+  const source = grant.source?.toLowerCase() || '';
+  const amount = grant.funding_amount_max || grant.amount_max || 0;
+
+  // Large federal grants are complex
+  if (source === 'federal' && amount > 500000) {
+    return 'complex';
+  }
+
+  // Medium federal or large foundation grants
+  if (source === 'federal' || (source === 'foundation' && amount > 250000)) {
+    return 'moderate';
+  }
+
+  // Smaller grants tend to be simpler
+  if (amount < 50000) {
+    return 'simple';
+  }
+
+  return 'moderate';
+}
+
+// Competition & Effort Section Component
+function CompetitionEffortSection({ grant }: { grant: Grant }) {
+  const competitionLevel = estimateCompetitionLevel(grant);
+  const effortComplexity = estimateEffortComplexity(grant);
+
+  // Estimate hours based on complexity
+  const hoursEstimate = effortComplexity === 'simple' ? 20 : effortComplexity === 'moderate' ? 60 : 120;
+
+  // Estimate competition score (0-1) based on level
+  const competitionScore = {
+    low: 0.25,
+    medium: 0.5,
+    high: 0.75,
+    very_high: 0.95,
+  }[competitionLevel];
+
+  return (
+    <section className="bg-white rounded-2xl border border-[var(--gr-border-default)] shadow-sm overflow-hidden animate-fade-in-up stagger-5">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-lg bg-violet-50">
+            <UsersIcon className="h-5 w-5 text-violet-600" />
+          </div>
+          <h2 className="text-xl font-display font-medium text-[var(--gr-text-primary)]">
+            Competition & Effort
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Competition Card */}
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-4 border border-slate-200">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-slate-200/50">
+                <UsersIcon className="h-5 w-5 text-slate-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs uppercase tracking-wider font-semibold text-slate-600 mb-2">
+                  Competition Level
+                </p>
+                <div className="mb-3">
+                  <CompetitionBadge
+                    level={competitionLevel}
+                    score={competitionScore}
+                    size="md"
+                  />
+                </div>
+                <CompetitionBar
+                  level={competitionLevel}
+                  score={competitionScore}
+                  showLabel={false}
+                />
+                <p className="text-xs text-[var(--gr-text-tertiary)] mt-2">
+                  Based on {grant.source} grant patterns and funder history
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Effort Estimate Card */}
+          <EffortEstimateCard
+            complexity={effortComplexity}
+            hoursEstimate={hoursEstimate}
+          />
+        </div>
+
+        {/* Tips based on competition */}
+        <div className="mt-4 p-3 rounded-lg bg-[var(--gr-gray-50)] border border-[var(--gr-border-subtle)]">
+          <p className="text-sm text-[var(--gr-text-secondary)]">
+            {competitionLevel === 'very_high' && (
+              <>
+                <strong className="text-[var(--gr-text-primary)]">Tip:</strong> This is a highly competitive opportunity. Consider having your proposal reviewed by colleagues and start well ahead of the deadline.
+              </>
+            )}
+            {competitionLevel === 'high' && (
+              <>
+                <strong className="text-[var(--gr-text-primary)]">Tip:</strong> Competition is strong for this grant. A well-crafted proposal with clear objectives and strong preliminary data will stand out.
+              </>
+            )}
+            {competitionLevel === 'medium' && (
+              <>
+                <strong className="text-[var(--gr-text-primary)]">Tip:</strong> Moderate competition level. Focus on alignment with the funder's priorities and clear articulation of impact.
+              </>
+            )}
+            {competitionLevel === 'low' && (
+              <>
+                <strong className="text-[var(--gr-text-primary)]">Tip:</strong> Lower competition means good odds. Ensure your proposal meets all requirements and clearly demonstrates fit with funder goals.
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function GrantDetail() {
   const { id } = useParams<{ id: string }>();
@@ -459,6 +626,9 @@ export function GrantDetail() {
                 </div>
               </section>
             )}
+
+            {/* Competition & Effort Section */}
+            <CompetitionEffortSection grant={grant} />
 
             {/* Match Reasoning */}
             {reasoning && (

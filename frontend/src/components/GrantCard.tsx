@@ -10,7 +10,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon, CheckIcon } from '@heroicons/react/24/solid';
 import { MatchScoreBadge } from './MatchScore';
-import type { GrantMatch } from '../types';
+import { CompetitionBadge } from './CompetitionBadge';
+import type { GrantMatch, CompetitionLevel } from '../types';
 
 interface GrantCardProps {
   match: GrantMatch;
@@ -22,6 +23,9 @@ interface GrantCardProps {
   isSelectedForCompare?: boolean;
   compareDisabled?: boolean;
   delay?: number;
+  // Competition data - optional, show when available
+  competitionLevel?: CompetitionLevel | null;
+  competitionScore?: number;
 }
 
 export function GrantCard({
@@ -33,7 +37,9 @@ export function GrantCard({
   showFindSimilar = false,
   isSelectedForCompare = false,
   compareDisabled = false,
-  delay = 0
+  delay = 0,
+  competitionLevel,
+  competitionScore,
 }: GrantCardProps) {
   const { grant, score, status } = match;
   const isSaved = status === 'saved';
@@ -127,11 +133,19 @@ export function GrantCard({
         {/* Header with score */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center flex-wrap gap-2 mb-3">
               <span className={`badge ${getSourceBadgeColor(grant.source)}`}>
                 {grant.source}
               </span>
               <MatchScoreBadge score={score} />
+              {competitionLevel && (
+                <CompetitionBadge
+                  level={competitionLevel}
+                  score={competitionScore}
+                  size="sm"
+                  showLabel={true}
+                />
+              )}
             </div>
             <h3 className="text-lg font-display font-medium text-[var(--gr-text-primary)] group-hover:text-[var(--gr-blue-600)] transition-colors line-clamp-2 pr-8">
               {grant.title}

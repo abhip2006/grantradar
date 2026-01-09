@@ -91,7 +91,7 @@ export function EffortEstimate({
   mechanism,
   hoursEstimate,
   complexity,
-  showDetails = false,
+  showDetails: _showDetails = false, // Reserved for future extended tooltip
   size = 'sm',
 }: EffortEstimateProps) {
   const [showTooltip, setShowTooltip] = useState(false);
