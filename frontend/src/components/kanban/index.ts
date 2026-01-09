@@ -9,3 +9,8 @@ export { ActivityTimeline } from './ActivityTimeline';
 export { AttachmentList } from './AttachmentList';
 export { CustomFieldsEditor } from './CustomFieldsEditor';
 export { AssigneeSelector } from './AssigneeSelector';
+
+// Deadline Kanban Components
+export { DeadlineKanbanBoard } from './DeadlineKanbanBoard';
+export { DeadlineKanbanColumn } from './DeadlineKanbanColumn';
+export { DeadlineKanbanCard } from './DeadlineKanbanCard';

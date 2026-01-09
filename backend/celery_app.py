@@ -84,6 +84,9 @@ TASK_ROUTES = {
     "backend.tasks.cleanup.cleanup_redis_streams": {"queue": "normal"},
     "backend.tasks.cleanup.cleanup_failed_tasks": {"queue": "normal"},
     "backend.tasks.cleanup.archive_old_grants": {"queue": "normal"},
+    # Compliance tasks
+    "backend.tasks.compliance_tasks.run_compliance_scan_async": {"queue": "normal"},
+    "backend.tasks.compliance_tasks.cleanup_old_scans": {"queue": "normal"},
 }
 
 
@@ -113,6 +116,8 @@ def create_celery_app() -> Celery:
             "backend.tasks.analytics",
             "backend.tasks.embeddings",
             "backend.tasks.cleanup",
+            "backend.tasks.workflow_analytics",
+            "backend.tasks.compliance_tasks",
         ],
     )
 
@@ -224,6 +229,16 @@ def create_celery_app() -> Celery:
             "send-funding-alerts": {
                 "task": "funding_alerts.send_scheduled_alerts",
                 "schedule": timedelta(hours=24),  # Daily at the same time
+                "options": {"queue": "normal"},
+            },
+            "precalculate-workflow-analytics": {
+                "task": "backend.tasks.workflow_analytics.precalculate_analytics",
+                "schedule": timedelta(hours=1),  # Hourly pre-calculation
+                "options": {"queue": "normal"},
+            },
+            "aggregate-workflow-analytics": {
+                "task": "backend.tasks.workflow_analytics.aggregate_workflow_analytics",
+                "schedule": timedelta(hours=24),  # Daily aggregation
                 "options": {"queue": "normal"},
             },
         },

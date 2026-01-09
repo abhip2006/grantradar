@@ -18,11 +18,20 @@ from backend.models import Deadline, ReminderSchedule, User
 logger = logging.getLogger(__name__)
 
 
+# Statuses that should receive reminders (not terminal/completed)
+REMINDER_ELIGIBLE_STATUSES = {
+    "not_started",
+    "drafting",
+    "internal_review",
+}
+
+
 @celery_app.task(queue="default")
 def check_and_send_deadline_reminders() -> dict:
     """
     Check for pending deadline reminders and send them.
 
+    Uses both ReminderSchedule table and per-deadline reminder_config.
     Runs every 5 minutes via Celery Beat.
 
     Returns:
@@ -33,8 +42,7 @@ def check_and_send_deadline_reminders() -> dict:
     errors = 0
 
     with get_sync_session() as session:
-        # Find unsent reminders where it's time to send
-        # reminder_time = deadline.sponsor_deadline - remind_before_minutes
+        # Method 1: Check ReminderSchedule table for pending reminders
         result = session.execute(
             select(ReminderSchedule, Deadline, User)
             .join(Deadline, ReminderSchedule.deadline_id == Deadline.id)
@@ -42,7 +50,7 @@ def check_and_send_deadline_reminders() -> dict:
             .where(
                 and_(
                     ReminderSchedule.is_sent == False,
-                    Deadline.status == "active",
+                    Deadline.status.in_(REMINDER_ELIGIBLE_STATUSES),
                 )
             )
         )
@@ -73,6 +81,95 @@ def check_and_send_deadline_reminders() -> dict:
 
     logger.info(f"Deadline reminders: sent={reminders_sent}, errors={errors}")
     return {"sent": reminders_sent, "errors": errors}
+
+
+@celery_app.task(queue="default")
+def check_reminder_config_reminders() -> dict:
+    """
+    Check deadlines' reminder_config and create/send reminders.
+
+    This task uses the per-deadline reminder_config (days before deadline)
+    to send reminders. It creates ReminderSchedule entries for tracking.
+
+    Runs every hour via Celery Beat.
+
+    Returns:
+        Dictionary with reminder statistics.
+    """
+    now = datetime.now(timezone.utc)
+    reminders_created = 0
+    errors = 0
+
+    with get_sync_session() as session:
+        # Find deadlines with reminder_config that are eligible for reminders
+        result = session.execute(
+            select(Deadline, User)
+            .join(User, Deadline.user_id == User.id)
+            .where(
+                and_(
+                    Deadline.status.in_(REMINDER_ELIGIBLE_STATUSES),
+                    Deadline.reminder_config.isnot(None),
+                    Deadline.sponsor_deadline > now,  # Future deadlines only
+                )
+            )
+        )
+
+        deadlines_users = result.all()
+
+        for deadline, user in deadlines_users:
+            if not deadline.reminder_config:
+                continue
+
+            for days_before in deadline.reminder_config:
+                # Calculate when this reminder should be sent
+                reminder_time = deadline.sponsor_deadline - timedelta(days=days_before)
+                minutes_before = days_before * 24 * 60
+
+                # Skip if reminder time hasn't arrived yet
+                if now < reminder_time:
+                    continue
+
+                # Check if we already have a reminder for this config
+                existing = session.execute(
+                    select(ReminderSchedule).where(
+                        and_(
+                            ReminderSchedule.deadline_id == deadline.id,
+                            ReminderSchedule.remind_before_minutes == minutes_before,
+                        )
+                    )
+                ).scalar_one_or_none()
+
+                if existing:
+                    # Already created this reminder
+                    continue
+
+                try:
+                    # Create and immediately send email reminder
+                    schedule = ReminderSchedule(
+                        deadline_id=deadline.id,
+                        remind_before_minutes=minutes_before,
+                        reminder_type="email",
+                        is_sent=False,
+                    )
+                    session.add(schedule)
+                    session.flush()
+
+                    # Send the reminder
+                    _send_reminder(schedule, deadline, user)
+
+                    # Mark as sent
+                    schedule.is_sent = True
+                    schedule.sent_at = now
+                    reminders_created += 1
+
+                except Exception as e:
+                    logger.error(f"Failed to create/send config reminder for deadline {deadline.id}: {e}")
+                    errors += 1
+
+        session.commit()
+
+    logger.info(f"Config-based reminders: created/sent={reminders_created}, errors={errors}")
+    return {"reminders_created": reminders_created, "errors": errors}
 
 
 def _send_reminder(

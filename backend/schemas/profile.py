@@ -27,6 +27,20 @@ class LabProfileCreate(BaseModel):
         pattern="^(early_career|mid_career|established|senior)$",
         description="Career stage"
     )
+    citizenship_status: Optional[str] = Field(
+        None,
+        pattern="^(us_citizen|permanent_resident|visa_holder|international)$",
+        description="Citizenship/visa status for eligibility filtering"
+    )
+    institution_type: Optional[str] = Field(
+        None,
+        pattern="^(r1_university|r2_university|liberal_arts|community_college|nonprofit|industry|government|hbcu|msi|other)$",
+        description="Type of institution"
+    )
+    is_pi_eligible: Optional[bool] = Field(
+        False,
+        description="Whether user is eligible to be a Principal Investigator"
+    )
     past_grants: Optional[dict[str, Any]] = Field(
         None,
         description="Historical grant awards"
@@ -60,6 +74,20 @@ class LabProfileUpdate(BaseModel):
         pattern="^(early_career|mid_career|established|senior)$",
         description="Career stage"
     )
+    citizenship_status: Optional[str] = Field(
+        None,
+        pattern="^(us_citizen|permanent_resident|visa_holder|international)$",
+        description="Citizenship/visa status for eligibility filtering"
+    )
+    institution_type: Optional[str] = Field(
+        None,
+        pattern="^(r1_university|r2_university|liberal_arts|community_college|nonprofit|industry|government|hbcu|msi|other)$",
+        description="Type of institution"
+    )
+    is_pi_eligible: Optional[bool] = Field(
+        None,
+        description="Whether user is eligible to be a Principal Investigator"
+    )
     past_grants: Optional[dict[str, Any]] = Field(
         None,
         description="Historical grant awards"
@@ -83,6 +111,9 @@ class LabProfileResponse(BaseModel):
     research_areas: Optional[list[str]] = Field(None, description="Research areas")
     methods: Optional[list[str]] = Field(None, description="Methods")
     career_stage: Optional[str] = Field(None, description="Career stage")
+    citizenship_status: Optional[str] = Field(None, description="Citizenship/visa status")
+    institution_type: Optional[str] = Field(None, description="Type of institution")
+    is_pi_eligible: bool = Field(default=False, description="Whether user is PI eligible")
     past_grants: Optional[dict[str, Any]] = Field(None, description="Past grants")
     publications: Optional[dict[str, Any]] = Field(None, description="Publications")
     orcid: Optional[str] = Field(None, description="ORCID")
@@ -112,6 +143,20 @@ class OnboardingData(BaseModel):
     career_stage: Optional[str] = Field(
         None,
         pattern="^(early_career|mid_career|established|senior)$"
+    )
+    citizenship_status: Optional[str] = Field(
+        None,
+        pattern="^(us_citizen|permanent_resident|visa_holder|international)$",
+        description="Citizenship/visa status for eligibility filtering"
+    )
+    institution_type: Optional[str] = Field(
+        None,
+        pattern="^(r1_university|r2_university|liberal_arts|community_college|nonprofit|industry|government|hbcu|msi|other)$",
+        description="Type of institution"
+    )
+    is_pi_eligible: Optional[bool] = Field(
+        False,
+        description="Whether user is eligible to be a Principal Investigator"
     )
     past_grants: Optional[dict[str, Any]] = Field(None, description="Past grants")
     publications: Optional[dict[str, Any]] = Field(None, description="Publications")

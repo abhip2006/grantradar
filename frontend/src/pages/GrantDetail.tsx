@@ -25,6 +25,8 @@ import { MatchScore } from '../components/MatchScore';
 import { CalendarSync } from '../components/CalendarSync';
 import { SimilarGrants } from '../components/SimilarGrants';
 import { StageBadge } from '../components/PipelineCard';
+import { GrantInsights } from '../components/GrantInsights';
+import { OutcomeTracker } from '../components/OutcomeTracker';
 
 export function GrantDetail() {
   const { id } = useParams<{ id: string }>();
@@ -474,6 +476,15 @@ export function GrantDetail() {
                 </div>
               </section>
             )}
+
+            {/* AI Grant Insights */}
+            <div className="animate-fade-in-up stagger-6">
+              <GrantInsights
+                grantId={grant.id}
+                grantTitle={grant.title}
+                funderName={grant.agency}
+              />
+            </div>
           </div>
 
           {/* Right Column - Actions & Sidebar */}
@@ -604,12 +615,22 @@ export function GrantDetail() {
                 <p className="text-sm text-[var(--gr-text-secondary)]">Match Score</p>
               </div>
             </section>
+
+            {/* Outcome Tracker - Show for saved or applied grants */}
+            {(isSaved || isApplied) && (
+              <div className="animate-fade-in-up stagger-5">
+                <OutcomeTracker
+                  matchId={match.id}
+                  initialStatus={isApplied ? 'submitted' : 'not_applied'}
+                />
+              </div>
+            )}
           </div>
         </div>
 
         {/* Similar Grants */}
         {grant.id && (
-          <div className="mt-8 animate-fade-in-up stagger-6">
+          <div className="mt-8 animate-fade-in-up stagger-7">
             <SimilarGrants grantId={grant.id} limit={6} />
           </div>
         )}

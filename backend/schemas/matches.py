@@ -16,6 +16,7 @@ class MatchResponse(BaseModel):
     match_score: float = Field(..., ge=0, le=1, description="Match score (0-1)")
     predicted_success: Optional[float] = Field(None, description="Predicted success probability")
     user_action: Optional[str] = Field(None, description="User action")
+    application_status: Optional[str] = Field(None, description="Application status")
     created_at: datetime = Field(..., description="Match creation timestamp")
 
     # Embedded grant info
@@ -41,6 +42,13 @@ class MatchDetail(BaseModel):
     user_action: Optional[str] = Field(None, description="User action")
     user_feedback: Optional[dict[str, Any]] = Field(None, description="User feedback")
     created_at: datetime = Field(..., description="Match timestamp")
+
+    # Application outcome tracking
+    application_status: Optional[str] = Field(None, description="Application status")
+    application_submitted_at: Optional[datetime] = Field(None, description="Submission date")
+    outcome_received_at: Optional[datetime] = Field(None, description="Outcome date")
+    award_amount: Optional[int] = Field(None, description="Award amount if funded")
+    outcome_notes: Optional[str] = Field(None, description="Notes about the outcome")
 
     # Full grant details
     grant_title: str = Field(..., description="Grant title")
@@ -95,6 +103,20 @@ class MatchFeedback(BaseModel):
         None,
         description="List of quality issues (e.g., 'wrong_field', 'ineligible', 'too_small')"
     )
+
+
+class OutcomeUpdate(BaseModel):
+    """Schema for updating application outcome."""
+
+    application_status: str = Field(
+        ...,
+        description="Status: not_applied, in_progress, submitted, awarded, rejected, withdrawn",
+        pattern="^(not_applied|in_progress|submitted|awarded|rejected|withdrawn)$",
+    )
+    application_submitted_at: Optional[datetime] = Field(None, description="Submission date")
+    outcome_received_at: Optional[datetime] = Field(None, description="Outcome date")
+    award_amount: Optional[int] = Field(None, ge=0, description="Award amount if funded")
+    outcome_notes: Optional[str] = Field(None, max_length=2000, description="Notes")
 
 
 class MatchList(BaseModel):

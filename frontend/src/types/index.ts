@@ -275,6 +275,24 @@ export interface PipelineItemUpdate {
   target_date?: string;
 }
 
+// Match score range options for filtering
+export type MatchScoreRange = 'all' | 'excellent' | 'good' | 'moderate';
+
+export interface MatchScoreRangeOption {
+  value: MatchScoreRange;
+  label: string;
+  description: string;
+  minScore?: number;
+  maxScore?: number;
+}
+
+export const MATCH_SCORE_RANGES: MatchScoreRangeOption[] = [
+  { value: 'all', label: 'All Matches', description: 'Show all matching grants' },
+  { value: 'excellent', label: 'Excellent (90%+)', description: 'Highest relevance to your profile', minScore: 90 },
+  { value: 'good', label: 'Good (75-89%)', description: 'Strong alignment with your focus', minScore: 75, maxScore: 89 },
+  { value: 'moderate', label: 'Moderate (50-74%)', description: 'Partial match to your profile', minScore: 50, maxScore: 74 },
+];
+
 // Advanced filter types for dashboard
 export interface AdvancedGrantFilters {
   agencies?: string[];
@@ -283,10 +301,24 @@ export interface AdvancedGrantFilters {
   max_amount?: number;
   deadline_after?: string;
   deadline_before?: string;
-  // Phase 2 filters (require migration)
+  deadline_proximity?: string; // Days until deadline (e.g., "30", "60", "90", "180")
+  // Match score filter
+  score_range?: MatchScoreRange;
+  min_score?: number;
+  max_score?: number;
+  // Eligibility filters
   career_stages?: string[];
   citizenship?: string[];
+  institution_types?: string[];
+  postdocs_eligible?: boolean;
+  students_eligible?: boolean;
+  // Phase 2 filters (require migration)
   geographic_scope?: string;
+  // Award details filters
+  award_types?: string[];
+  award_duration?: string;
+  indirect_cost_policy?: string;
+  submission_types?: string[];
 }
 
 export interface FilterOptionItem {
@@ -302,10 +334,14 @@ export interface FilterOptions {
     min: number;
     max: number;
   };
-  // Predefined options for future filters
+  // Predefined options for advanced filters
   career_stages: FilterOptionItem[];
   citizenship_options: FilterOptionItem[];
+  institution_types: FilterOptionItem[];
+  award_types: FilterOptionItem[];
+  award_durations: FilterOptionItem[];
   geographic_scopes: FilterOptionItem[];
+  indirect_cost_policies: FilterOptionItem[];
 }
 
 // Saved search types
@@ -643,7 +679,7 @@ export type DeadlineStatus =
 
 export type DeadlinePriority = 'low' | 'medium' | 'high' | 'critical';
 
-export type UrgencyLevel = 'none' | 'low' | 'medium' | 'high' | 'critical' | 'overdue';
+export type DeadlineUrgencyLevel = 'none' | 'low' | 'medium' | 'high' | 'critical' | 'overdue';
 
 // Status display configuration
 export const DEADLINE_STATUS_CONFIG: Record<DeadlineStatus, { label: string; color: string; bgColor: string; order: number }> = {
@@ -688,7 +724,7 @@ export interface Deadline {
   // Computed fields
   days_until_deadline: number;
   is_overdue: boolean;
-  urgency_level: UrgencyLevel;
+  urgency_level: DeadlineUrgencyLevel;
   status_config: { label: string; color: string; order: number };
   grant?: Grant;
   created_at: string;
@@ -992,6 +1028,32 @@ export interface ResearchSession {
 
 // Funding Alerts
 export type AlertFrequency = 'daily' | 'weekly' | 'monthly';
+
+// Application Outcome Tracking
+export type ApplicationStatus =
+  | 'not_applied'
+  | 'in_progress'
+  | 'submitted'
+  | 'awarded'
+  | 'rejected'
+  | 'withdrawn';
+
+export interface OutcomeUpdate {
+  application_status: ApplicationStatus;
+  application_submitted_at?: string;
+  outcome_received_at?: string;
+  award_amount?: number;
+  outcome_notes?: string;
+}
+
+export const APPLICATION_STATUS_CONFIG: Record<ApplicationStatus, { label: string; color: string; bgColor: string }> = {
+  not_applied: { label: 'Not Applied', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  in_progress: { label: 'In Progress', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  submitted: { label: 'Submitted', color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  awarded: { label: 'Awarded', color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
+  rejected: { label: 'Rejected', color: 'text-red-600', bgColor: 'bg-red-100' },
+  withdrawn: { label: 'Withdrawn', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+};
 
 export interface FundingAlertPreferences {
   id: string;

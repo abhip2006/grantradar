@@ -50,8 +50,9 @@ export function CardDetailModal({ applicationId, onClose }: CardDetailModalProps
     updateCardMutation.mutate({ appId: applicationId, data: { priority } });
   };
 
-  const grantTitle = card.grant?.title || 'Untitled Application';
-  const grantAgency = card.grant?.agency || card.grant?.funder_name;
+  // API returns flat fields: grant_title, grant_agency
+  const grantTitle = card.grant_title || card.grant?.title || 'Untitled Application';
+  const grantAgency = card.grant_agency || card.grant?.agency;
 
   const tabs = [
     { name: 'Details', count: null },

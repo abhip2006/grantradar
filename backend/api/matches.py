@@ -2,7 +2,7 @@
 Match API Endpoints
 List matches, get details, perform actions, and submit feedback.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
 
@@ -20,6 +20,7 @@ from backend.schemas.matches import (
     MatchFeedback,
     MatchList,
     MatchResponse,
+    OutcomeUpdate,
 )
 
 router = APIRouter(prefix="/api/matches", tags=["Matches"])
@@ -48,6 +49,7 @@ async def list_matches(
     max_amount: Optional[int] = Query(default=None, ge=0, description="Maximum funding amount"),
     deadline_after: Optional[datetime] = Query(default=None, description="Deadline on or after date"),
     deadline_before: Optional[datetime] = Query(default=None, description="Deadline on or before date"),
+    deadline_proximity: Optional[int] = Query(default=None, ge=1, le=365, description="Filter grants with deadlines within X days from now (e.g., 30, 60, 90, 180)"),
 ) -> MatchList:
     """
     Get a paginated list of grant matches for the authenticated user.
@@ -130,6 +132,13 @@ async def list_matches(
     if deadline_before is not None:
         grant_filters.append(Grant.deadline <= deadline_before)
 
+    # Deadline proximity filter: deadline is between now and now + X days
+    if deadline_proximity is not None:
+        now = datetime.now(timezone.utc)
+        deadline_limit = now + timedelta(days=deadline_proximity)
+        grant_filters.append(Grant.deadline >= now)
+        grant_filters.append(Grant.deadline <= deadline_limit)
+
     # Combine all filters
     all_filters = match_filters + grant_filters
 
@@ -158,6 +167,7 @@ async def list_matches(
             match_score=m.match_score,
             predicted_success=m.predicted_success,
             user_action=m.user_action,
+            application_status=m.application_status,
             created_at=m.created_at,
             grant_title=m.grant.title,
             grant_agency=m.grant.agency,
@@ -223,6 +233,11 @@ async def get_match(
         user_action=match.user_action,
         user_feedback=match.user_feedback,
         created_at=match.created_at,
+        application_status=match.application_status,
+        application_submitted_at=match.application_submitted_at,
+        outcome_received_at=match.outcome_received_at,
+        award_amount=match.award_amount,
+        outcome_notes=match.outcome_notes,
         grant_title=match.grant.title,
         grant_description=match.grant.description,
         grant_agency=match.grant.agency,
@@ -286,6 +301,11 @@ async def match_action(
         user_action=match.user_action,
         user_feedback=match.user_feedback,
         created_at=match.created_at,
+        application_status=match.application_status,
+        application_submitted_at=match.application_submitted_at,
+        outcome_received_at=match.outcome_received_at,
+        award_amount=match.award_amount,
+        outcome_notes=match.outcome_notes,
         grant_title=match.grant.title,
         grant_description=match.grant.description,
         grant_agency=match.grant.agency,
@@ -355,6 +375,85 @@ async def match_feedback(
         user_action=match.user_action,
         user_feedback=match.user_feedback,
         created_at=match.created_at,
+        application_status=match.application_status,
+        application_submitted_at=match.application_submitted_at,
+        outcome_received_at=match.outcome_received_at,
+        award_amount=match.award_amount,
+        outcome_notes=match.outcome_notes,
+        grant_title=match.grant.title,
+        grant_description=match.grant.description,
+        grant_agency=match.grant.agency,
+        grant_deadline=match.grant.deadline,
+        grant_amount_min=match.grant.amount_min,
+        grant_amount_max=match.grant.amount_max,
+        grant_url=match.grant.url,
+        grant_eligibility=match.grant.eligibility,
+        grant_categories=match.grant.categories,
+    )
+
+
+@router.post(
+    "/{match_id}/outcome",
+    response_model=MatchDetail,
+    summary="Update application outcome",
+    description="Track application status and outcome for data improvement.",
+)
+async def update_outcome(
+    match_id: UUID,
+    outcome: OutcomeUpdate,
+    db: AsyncSessionDep,
+    current_user: CurrentUser,
+) -> MatchDetail:
+    """
+    Update application outcome for a match.
+
+    Tracks application status and outcome information for the data flywheel.
+    Only the match owner can update the outcome.
+    """
+    # Fetch match with grant
+    result = await db.execute(
+        select(Match)
+        .options(joinedload(Match.grant))
+        .where(
+            and_(
+                Match.id == match_id,
+                Match.user_id == current_user.id
+            )
+        )
+    )
+    match = result.unique().scalar_one_or_none()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    # Update outcome fields
+    match.application_status = outcome.application_status
+    match.application_submitted_at = outcome.application_submitted_at
+    match.outcome_received_at = outcome.outcome_received_at
+    match.award_amount = outcome.award_amount
+    match.outcome_notes = outcome.outcome_notes
+
+    await db.flush()
+    await db.refresh(match)
+
+    return MatchDetail(
+        id=match.id,
+        grant_id=match.grant_id,
+        user_id=match.user_id,
+        match_score=match.match_score,
+        reasoning=match.reasoning,
+        predicted_success=match.predicted_success,
+        user_action=match.user_action,
+        user_feedback=match.user_feedback,
+        created_at=match.created_at,
+        application_status=match.application_status,
+        application_submitted_at=match.application_submitted_at,
+        outcome_received_at=match.outcome_received_at,
+        award_amount=match.award_amount,
+        outcome_notes=match.outcome_notes,
         grant_title=match.grant.title,
         grant_description=match.grant.description,
         grant_agency=match.grant.agency,

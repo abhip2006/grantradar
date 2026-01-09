@@ -1,5 +1,5 @@
 """
-Backend services for external integrations.
+Backend services for external integrations and business logic.
 """
 from backend.services.deadline_history import (
     add_deadline_record,
@@ -12,6 +12,22 @@ from backend.services.deadline_history import (
     predict_next_deadline,
 )
 from backend.services.deep_research import DeepResearchService
+from backend.services.notification_service import (
+    InAppNotificationService,
+    NotificationType,
+)
+from backend.services.permission_template_service import (
+    PermissionTemplateService,
+    DEFAULT_TEMPLATES,
+)
+from backend.services.win_probability import (
+    WinProbabilityEstimate,
+    calculate_win_probability,
+    extract_mechanism,
+    NIH_SUCCESS_RATES,
+    NSF_SUCCESS_RATES,
+    DEFAULT_RATES,
+)
 
 # ML forecast requires pandas/prophet - optional dependency
 try:
@@ -39,6 +55,19 @@ __all__ = [
     "get_deadline_history_stats",
     # Deep research service
     "DeepResearchService",
+    # In-app notification service
+    "InAppNotificationService",
+    "NotificationType",
+    # Permission template service
+    "PermissionTemplateService",
+    "DEFAULT_TEMPLATES",
+    # Win probability service
+    "WinProbabilityEstimate",
+    "calculate_win_probability",
+    "extract_mechanism",
+    "NIH_SUCCESS_RATES",
+    "NSF_SUCCESS_RATES",
+    "DEFAULT_RATES",
     # ML forecast (optional)
     "GrantDeadlinePredictor",
     "MLPredictionResult",

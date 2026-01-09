@@ -124,6 +124,10 @@ export interface KanbanCard {
   grant_id?: string;
   match_id?: string;
   grant?: Grant;
+  // Flat fields returned by API (in addition to nested grant object)
+  grant_title?: string;
+  grant_agency?: string;
+  grant_deadline?: string;
   stage: ApplicationStage;
   position: number;
   priority: Priority;

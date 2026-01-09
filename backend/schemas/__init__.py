@@ -2,6 +2,24 @@
 GrantRadar Pydantic Schemas
 Request/Response models for API endpoints.
 """
+# Common response schemas
+from backend.schemas.common import (
+    PaginatedResponse,
+    PaginationInfo,
+    create_paginated_response,
+)
+# TypedDict definitions for JSONB fields
+from backend.schemas.jsonb_types import (
+    ChecklistItemDict,
+    WorkflowStageDict,
+    TeamMemberPermissionsDict,
+    ComplianceRuleItemDict,
+    ComplianceScanResultDict,
+    WorkflowEventMetadataDict,
+    WorkflowMetricsDict,
+    ReviewActionMetadataDict,
+    StageTimeMetricsDict,
+)
 from backend.schemas.alerts import (
     AlertDeadlineSummary,
     AlertFrequency,
@@ -166,8 +184,39 @@ from backend.schemas.kanban import (
     BoardTotals,
     KanbanBoardResponse,
 )
+from backend.schemas.team import (
+    InvitationStatus as TeamInvitationStatus,
+    MemberRole as TeamMemberRole,
+    ActivityType,
+    EntityType,
+    MemberPermissions,
+    TeamInviteRequest,
+    InvitationAcceptRequest,
+    InvitationDeclineRequest,
+    TeamMemberResponse,
+    TeamMemberUpdate,
+    TeamActivityResponse,
+    TeamActivityFilters,
+    TeamStatsResponse,
+    TeamMembersListResponse,
+    TeamActivitiesListResponse,
+)
 
 __all__ = [
+    # Common response schemas
+    "PaginatedResponse",
+    "PaginationInfo",
+    "create_paginated_response",
+    # JSONB TypedDict definitions
+    "ChecklistItemDict",
+    "WorkflowStageDict",
+    "TeamMemberPermissionsDict",
+    "ComplianceRuleItemDict",
+    "ComplianceScanResultDict",
+    "WorkflowEventMetadataDict",
+    "WorkflowMetricsDict",
+    "ReviewActionMetadataDict",
+    "StageTimeMetricsDict",
     # Alerts
     "AlertDeadlineSummary",
     "AlertFrequency",
@@ -316,4 +365,20 @@ __all__ = [
     "SubtaskReorderRequest",
     "BoardTotals",
     "KanbanBoardResponse",
+    # Team
+    "TeamInvitationStatus",
+    "TeamMemberRole",
+    "ActivityType",
+    "EntityType",
+    "MemberPermissions",
+    "TeamInviteRequest",
+    "InvitationAcceptRequest",
+    "InvitationDeclineRequest",
+    "TeamMemberResponse",
+    "TeamMemberUpdate",
+    "TeamActivityResponse",
+    "TeamActivityFilters",
+    "TeamStatsResponse",
+    "TeamMembersListResponse",
+    "TeamActivitiesListResponse",
 ]

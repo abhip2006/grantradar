@@ -85,3 +85,31 @@ export const useExportDeadlinesIcs = () => {
     },
   });
 };
+
+export const useChangeDeadlineStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status, notes }: { id: string; status: string; notes?: string }) =>
+      deadlinesApi.changeStatus(id, status as import('../types').DeadlineStatus, notes),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: ['deadlines'] });
+      queryClient.invalidateQueries({ queryKey: ['deadline', id] });
+    },
+  });
+};
+
+export const useDeadlineStats = () => {
+  return useQuery({
+    queryKey: ['deadline-stats'],
+    queryFn: () => deadlinesApi.getStats(),
+  });
+};
+
+export const useDeadlineStatusHistory = (id: string) => {
+  return useQuery({
+    queryKey: ['deadline-history', id],
+    queryFn: () => deadlinesApi.getStatusHistory(id),
+    enabled: !!id,
+  });
+};

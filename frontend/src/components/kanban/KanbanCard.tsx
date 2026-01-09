@@ -40,9 +40,9 @@ export function KanbanCard({ card, isDragging, onClick }: KanbanCardProps) {
   const isOverdue = card.target_date && new Date(card.target_date) < new Date() &&
     card.stage !== 'awarded' && card.stage !== 'rejected';
 
-  // Get grant title from grant object or card itself
-  const grantTitle = card.grant?.title || 'Untitled Application';
-  const grantAgency = card.grant?.agency || card.grant?.funder_name;
+  // Get grant title from card - API returns flat fields
+  const grantTitle = card.grant_title || card.grant?.title || 'Untitled Application';
+  const grantAgency = card.grant_agency || card.grant?.agency;
 
   const priorityConfig = PRIORITY_CONFIG[card.priority];
   const subtaskProgress = card.subtask_progress?.total > 0
