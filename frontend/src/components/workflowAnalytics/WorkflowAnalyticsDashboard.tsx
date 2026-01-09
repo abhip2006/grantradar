@@ -221,7 +221,7 @@ export const WorkflowAnalyticsDashboard = React.memo(function WorkflowAnalyticsD
           </p>
         </div>
         <button
-          onClick={() => recalculateMutation.mutate()}
+          onClick={() => recalculateMutation.mutate({})}
           disabled={recalculateMutation.isPending}
           className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[var(--gr-border-default)] rounded-lg text-sm font-medium text-[var(--gr-text-secondary)] hover:bg-[var(--gr-bg-secondary)] disabled:opacity-50"
         >

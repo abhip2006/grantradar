@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   ArrowRightIcon,
   SparklesIcon,
@@ -8,6 +8,7 @@ import {
   CheckIcon,
   SignalIcon,
 } from '@heroicons/react/24/outline';
+import { useAuth } from '../contexts/AuthContext';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    GRANTRADAR LANDING PAGE
@@ -146,6 +147,13 @@ const pricingTiers = [
 ];
 
 export function Landing() {
+  const { isAuthenticated } = useAuth();
+
+  // Redirect authenticated users to dashboard - they don't need the marketing page
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}

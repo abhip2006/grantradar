@@ -351,14 +351,14 @@ function StatusGroup({ status, grants, expanded = true, onToggleExpand }: Status
   );
 }
 
-// Summary Metrics Component
-interface SummaryMetricsProps {
+// Summary Stats Card Component
+interface SummaryStatsProps {
   grants: GrantMatch[];
   isLoading: boolean;
 }
 
-function SummaryMetrics({ grants, isLoading }: SummaryMetricsProps) {
-  const metrics = useMemo(() => {
+function SummaryStats({ grants, isLoading }: SummaryStatsProps) {
+  const stats = useMemo(() => {
     const totalPotentialFunding = grants.reduce((sum, match) => {
       const amount = match.grant.funding_amount_max || match.grant.amount_max || 0;
       return sum + amount;
@@ -377,62 +377,102 @@ function SummaryMetrics({ grants, isLoading }: SummaryMetricsProps) {
       return days !== null && days <= 7 && days >= 0;
     }).length;
 
+    // Count by source
+    const bySource = grants.reduce((acc, match) => {
+      const source = match.grant.source || 'other';
+      acc[source] = (acc[source] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Average match score
+    const avgScore = grants.length > 0
+      ? Math.round(grants.reduce((sum, m) => sum + m.score, 0) / grants.length)
+      : 0;
+
     return {
       totalGrants: grants.length,
       totalPotentialFunding,
       upcomingThisMonth,
       urgentCount,
+      bySource,
+      avgScore,
     };
   }, [grants]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-[var(--gr-text-tertiary)]">
-        <div className="skeleton h-4 w-32" />
-        <span className="text-[var(--gr-text-muted)]">|</span>
-        <div className="skeleton h-4 w-40" />
-        <span className="text-[var(--gr-text-muted)]">|</span>
-        <div className="skeleton h-4 w-36" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="card p-5">
+            <div className="skeleton w-10 h-10 rounded-xl mb-3" />
+            <div className="skeleton h-8 w-16 mb-1" />
+            <div className="skeleton h-4 w-24" />
+          </div>
+        ))}
       </div>
     );
   }
 
+  const statCards = [
+    {
+      label: 'Active Grants',
+      value: stats.totalGrants,
+      icon: BookmarkSolidIcon,
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+      subtext: stats.urgentCount > 0 ? `${stats.urgentCount} need attention` : 'All on track',
+      subtextColor: stats.urgentCount > 0 ? 'text-amber-600' : 'text-emerald-600',
+    },
+    {
+      label: 'Total Potential',
+      value: formatCurrency(stats.totalPotentialFunding),
+      icon: CurrencyDollarIcon,
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      subtext: `${stats.avgScore}% avg match`,
+      subtextColor: 'text-[var(--gr-text-tertiary)]',
+    },
+    {
+      label: 'Due This Month',
+      value: stats.upcomingThisMonth,
+      icon: CalendarIcon,
+      iconBg: 'bg-cyan-50',
+      iconColor: 'text-cyan-600',
+      subtext: stats.upcomingThisMonth === 0 ? 'No deadlines' : `${stats.urgentCount} within 7 days`,
+      subtextColor: stats.urgentCount > 0 ? 'text-red-500' : 'text-[var(--gr-text-tertiary)]',
+    },
+    {
+      label: 'Sources',
+      value: Object.keys(stats.bySource).length,
+      icon: BuildingLibraryIcon,
+      iconBg: 'bg-purple-50',
+      iconColor: 'text-purple-600',
+      subtext: Object.entries(stats.bySource).slice(0, 2).map(([k]) => k).join(', ') || 'None',
+      subtextColor: 'text-[var(--gr-text-tertiary)]',
+    },
+  ];
+
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-      <span className="flex items-center gap-1.5 text-[var(--gr-text-secondary)]">
-        <BookmarkSolidIcon className="w-4 h-4 text-[var(--gr-blue-500)]" />
-        <span className="font-medium text-[var(--gr-text-primary)]">{metrics.totalGrants}</span>
-        Active Grants
-      </span>
-
-      <span className="text-[var(--gr-text-muted)]">|</span>
-
-      <span className="flex items-center gap-1.5 text-[var(--gr-text-secondary)]">
-        <CurrencyDollarIcon className="w-4 h-4 text-[var(--gr-yellow-500)]" />
-        <span className="font-medium text-[var(--gr-text-primary)]">
-          {formatCurrency(metrics.totalPotentialFunding)}
-        </span>
-        Total Potential
-      </span>
-
-      <span className="text-[var(--gr-text-muted)]">|</span>
-
-      <span className="flex items-center gap-1.5 text-[var(--gr-text-secondary)]">
-        <CalendarIcon className="w-4 h-4 text-[var(--gr-cyan-500)]" />
-        <span className="font-medium text-[var(--gr-text-primary)]">{metrics.upcomingThisMonth}</span>
-        Due This Month
-      </span>
-
-      {metrics.urgentCount > 0 && (
-        <>
-          <span className="text-[var(--gr-text-muted)]">|</span>
-          <span className="flex items-center gap-1.5 text-[var(--gr-danger)]">
-            <ExclamationTriangleIcon className="w-4 h-4" />
-            <span className="font-medium">{metrics.urgentCount}</span>
-            Urgent
-          </span>
-        </>
-      )}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {statCards.map((stat, i) => {
+        const Icon = stat.icon;
+        return (
+          <div
+            key={stat.label}
+            className="card p-5 animate-fade-in-up hover:border-[var(--gr-blue-200)] transition-all"
+            style={{ animationDelay: `${i * 0.05}s` }}
+          >
+            <div className={`w-10 h-10 rounded-xl ${stat.iconBg} flex items-center justify-center mb-3`}>
+              <Icon className={`w-5 h-5 ${stat.iconColor}`} />
+            </div>
+            <div className="text-2xl font-display font-semibold text-[var(--gr-text-primary)] mb-0.5">
+              {stat.value}
+            </div>
+            <div className="text-sm text-[var(--gr-text-secondary)] mb-1">{stat.label}</div>
+            <div className={`text-xs ${stat.subtextColor}`}>{stat.subtext}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -527,11 +567,10 @@ export function GrantPortfolio() {
             </h1>
           </div>
 
-          {/* Summary metrics */}
-          <div className="mt-4">
-            <SummaryMetrics grants={allGrants} isLoading={isLoading} />
-          </div>
         </div>
+
+        {/* Summary Stats Cards */}
+        <SummaryStats grants={allGrants} isLoading={isLoading} />
 
         {/* Timeline */}
         {!isLoading && allGrants.length > 0 && (

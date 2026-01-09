@@ -9,6 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import { motion, AnimatePresence } from 'motion/react';
 import { useDeadlines, useChangeDeadlineStatus } from '../../hooks/useDeadlines';
 import { DeadlineKanbanColumn } from './DeadlineKanbanColumn';
 import { DeadlineKanbanCard } from './DeadlineKanbanCard';
@@ -34,7 +35,7 @@ interface DeadlineKanbanFilters {
 export function DeadlineKanbanBoard() {
   const [filters, setFilters] = useState<DeadlineKanbanFilters>({});
   const [activeDeadline, setActiveDeadline] = useState<Deadline | null>(null);
-  const [selectedDeadlineId, setSelectedDeadlineId] = useState<string | null>(null);
+  const [_selectedDeadlineId, setSelectedDeadlineId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -88,11 +89,21 @@ export function DeadlineKanbanBoard() {
     useSensor(KeyboardSensor)
   );
 
+  // Helper to find deadline by id
+  const findDeadline = (id: string): Deadline | undefined => {
+    for (const stage of DEADLINE_STAGES) {
+      const deadline = columns[stage]?.find(d => d.id === id);
+      if (deadline) return deadline;
+    }
+    return undefined;
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const deadline = findDeadline(active.id as string);
     setActiveDeadline(deadline || null);
   };
+
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -131,24 +142,44 @@ export function DeadlineKanbanBoard() {
     );
   };
 
-  const findDeadline = (id: string): Deadline | undefined => {
-    for (const stage of DEADLINE_STAGES) {
-      const deadline = columns[stage]?.find(d => d.id === id);
-      if (deadline) return deadline;
-    }
-    return undefined;
-  };
-
   if (isLoading) {
     return (
       <div className="h-full flex flex-col bg-mesh">
-        <div className="flex-1 flex gap-4 p-4 overflow-x-auto">
+        <div className="flex-1 flex gap-3 p-4 overflow-x-auto">
           {DEADLINE_STAGES.slice(0, 5).map((stage, idx) => (
-            <div
+            <motion.div
               key={stage}
-              className="w-72 flex-shrink-0 skeleton rounded-2xl h-96"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            />
+              className="w-72 flex-shrink-0 rounded-2xl overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.08, duration: 0.4 }}
+            >
+              {/* Skeleton column */}
+              <div className="bg-white/80 rounded-2xl border border-gray-100 p-4 h-96">
+                {/* Header skeleton */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl skeleton" />
+                  <div className="flex-1">
+                    <div className="h-4 w-20 skeleton rounded" />
+                  </div>
+                  <div className="w-8 h-6 skeleton rounded-lg" />
+                </div>
+                {/* Card skeletons */}
+                {[0, 1, 2].map((cardIdx) => (
+                  <motion.div
+                    key={cardIdx}
+                    className="kanban-card-skeleton p-4 mb-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.08 + cardIdx * 0.05 + 0.2 }}
+                  >
+                    <div className="kanban-card-skeleton-title" />
+                    <div className="kanban-card-skeleton-badge" />
+                    <div className="kanban-card-skeleton-meta" />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -214,30 +245,72 @@ export function DeadlineKanbanBoard() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 flex gap-3 p-4 overflow-x-auto">
+        <div className="flex-1 flex gap-3 p-4 overflow-x-auto kanban-scroll">
           {DEADLINE_STAGES.map((stage, idx) => {
             const stageConfig = DEADLINE_STATUS_CONFIG[stage];
             return (
-              <DeadlineKanbanColumn
+              <motion.div
                 key={stage}
-                stage={stage}
-                deadlines={columns[stage]}
-                count={columns[stage].length}
-                config={stageConfig}
-                style={{ animationDelay: `${idx * 0.05}s` }}
-                onCardClick={setSelectedDeadlineId}
-              />
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: idx * 0.05,
+                  duration: 0.4,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                <DeadlineKanbanColumn
+                  stage={stage}
+                  deadlines={columns[stage]}
+                  count={columns[stage].length}
+                  config={stageConfig}
+                  onCardClick={setSelectedDeadlineId}
+                />
+              </motion.div>
             );
           })}
         </div>
 
-        <DragOverlay>
-          {activeDeadline ? (
-            <DeadlineKanbanCard
-              deadline={activeDeadline}
-              isDragging
-            />
-          ) : null}
+        {/* Drag Overlay with enhanced animation */}
+        <DragOverlay dropAnimation={{
+          duration: 300,
+          easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+          keyframes: ({ transform }) => [
+            { transform: `${transform.initial} rotate(3deg) scale(1.05)`, opacity: 0.95 },
+            { transform: `${transform.final} rotate(0deg) scale(0.98)`, opacity: 1 },
+            { transform: `${transform.final} rotate(0deg) scale(1.02)`, opacity: 1 },
+            { transform: `${transform.final} rotate(0deg) scale(1)`, opacity: 1 },
+          ],
+        }}>
+          <AnimatePresence>
+            {activeDeadline && (
+              <motion.div
+                className="kanban-drag-overlay"
+                initial={{ scale: 1, rotate: 0, opacity: 1 }}
+                animate={{
+                  scale: 1.05,
+                  rotate: 3,
+                  opacity: 0.95,
+                  boxShadow: '0 24px 48px rgba(0, 0, 0, 0.2), 0 12px 24px rgba(0, 0, 0, 0.15)',
+                }}
+                exit={{
+                  scale: 1,
+                  rotate: 0,
+                  opacity: 1,
+                }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 20,
+                }}
+              >
+                <DeadlineKanbanCard
+                  deadline={activeDeadline}
+                  isDragging
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </DragOverlay>
       </DndContext>
     </div>

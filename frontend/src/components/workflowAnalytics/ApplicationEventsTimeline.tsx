@@ -5,7 +5,6 @@ import {
   FlagIcon,
   BoltIcon,
   ClockIcon,
-  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { ApplicationEventsResponse, WorkflowEvent } from '../../types/workflowAnalytics';
 
@@ -109,7 +108,7 @@ function formatRelativeTime(dateString: string): string {
   return `${Math.floor(diffDays / 30)} months ago`;
 }
 
-function TimelineEvent({ event, isFirst, isLast }: { event: WorkflowEvent; isFirst: boolean; isLast: boolean }) {
+function TimelineEvent({ event, isFirst: _isFirst, isLast }: { event: WorkflowEvent; isFirst: boolean; isLast: boolean }) {
   const config = EVENT_TYPE_CONFIG[event.event_type];
 
   return (

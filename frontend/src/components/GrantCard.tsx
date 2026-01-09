@@ -147,7 +147,7 @@ export function GrantCard({
                 />
               )}
             </div>
-            <h3 className="text-lg font-display font-medium text-[var(--gr-text-primary)] group-hover:text-[var(--gr-blue-600)] transition-colors line-clamp-2 pr-8">
+            <h3 className="text-base font-display font-semibold text-[var(--gr-text-primary)] group-hover:text-[var(--gr-blue-600)] transition-colors line-clamp-3 leading-snug">
               {grant.title}
             </h3>
           </div>
@@ -160,9 +160,11 @@ export function GrantCard({
         </div>
 
         {/* Description */}
-        <p className="text-sm text-[var(--gr-text-tertiary)] line-clamp-2 mb-4">
-          {grant.description}
-        </p>
+        {grant.description && (
+          <p className="text-sm text-[var(--gr-text-tertiary)] line-clamp-3 mb-4 leading-relaxed">
+            {grant.description}
+          </p>
+        )}
 
         {/* Meta info */}
         <div className="flex flex-wrap items-center gap-4 text-sm mb-4">

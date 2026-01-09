@@ -15,7 +15,6 @@ import {
   DocumentTextIcon,
   SparklesIcon,
   PuzzlePieceIcon,
-  RectangleStackIcon,
   ViewColumnsIcon,
   HomeIcon,
   UserGroupIcon,
@@ -45,8 +44,7 @@ export function Navbar() {
   const coreNavigation: NavItem[] = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Portfolio', href: '/portfolio', icon: BriefcaseIcon },
-    { name: 'Pipeline', href: '/pipeline', icon: RectangleStackIcon },
-    { name: 'Board', href: '/kanban', icon: ViewColumnsIcon },
+    { name: 'Pipeline', href: '/kanban', icon: ViewColumnsIcon },
     { name: 'Team', href: '/team', icon: UserGroupIcon },
   ];
 

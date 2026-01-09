@@ -8,7 +8,7 @@ import {
   ChevronUpDownIcon,
 } from '@heroicons/react/24/outline';
 import { useAddTeamMember, useAvailableUsers } from '../../hooks/useReviews';
-import { ROLE_CONFIGS, TeamMemberRole } from '../../types/reviews';
+import { ROLE_CONFIGS, type TeamMemberRole } from '../../types/reviews';
 
 interface AddTeamMemberModalProps {
   cardId: string;

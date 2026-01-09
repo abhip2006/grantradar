@@ -1,9 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Layout, AuthLayout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { PageErrorBoundary } from './components/common';
 
 // Pages
 import { Landing } from './pages/Landing';
@@ -11,7 +12,6 @@ import { Auth } from './pages/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { GrantDetail } from './pages/GrantDetail';
 import { Compare } from './pages/Compare';
-import { Pipeline } from './pages/Pipeline';
 import { Settings } from './pages/Settings';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { Terms } from './pages/Terms';
@@ -51,6 +51,7 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <BrowserRouter>
+            <PageErrorBoundary>
             <Routes>
               {/* Public routes */}
               <Route element={<Layout />}>
@@ -102,13 +103,10 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                {/* Redirect old /pipeline to /kanban */}
                 <Route
                   path="/pipeline"
-                  element={
-                    <ProtectedRoute>
-                      <Pipeline />
-                    </ProtectedRoute>
-                  }
+                  element={<Navigate to="/kanban" replace />}
                 />
                 <Route
                   path="/kanban"
@@ -232,6 +230,7 @@ function App() {
                 }
               />
             </Routes>
+            </PageErrorBoundary>
           </BrowserRouter>
         </AuthProvider>
       </ToastProvider>

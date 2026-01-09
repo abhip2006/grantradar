@@ -88,44 +88,8 @@ function formatDaysRemaining(days: number): string {
   return `${days} days left`;
 }
 
-function RiskScoreGauge({ score }: { score: number }) {
-  // Score 0-100, higher = more risky
-  const getColor = () => {
-    if (score >= 75) return '#ef4444'; // red-500
-    if (score >= 50) return '#f97316'; // orange-500
-    if (score >= 25) return '#f59e0b'; // amber-500
-    return '#22c55e'; // green-500
-  };
-
-  const rotation = (score / 100) * 180 - 90;
-
-  return (
-    <div className="relative w-16 h-8 overflow-hidden">
-      {/* Background arc */}
-      <div className="absolute bottom-0 left-0 w-16 h-16 rounded-full border-4 border-gray-200" />
-      {/* Colored arc */}
-      <div
-        className="absolute bottom-0 left-0 w-16 h-16 rounded-full border-4 border-transparent"
-        style={{
-          borderTopColor: getColor(),
-          borderRightColor: getColor(),
-          transform: 'rotate(-45deg)',
-          clipPath: 'polygon(0 50%, 100% 50%, 100% 0, 0 0)',
-        }}
-      />
-      {/* Needle */}
-      <div
-        className="absolute bottom-0 left-1/2 w-0.5 h-6 origin-bottom bg-gray-800"
-        style={{
-          transform: `translateX(-50%) rotate(${rotation}deg)`,
-          transition: 'transform 0.5s ease-out',
-        }}
-      />
-      {/* Center dot */}
-      <div className="absolute bottom-0 left-1/2 w-2 h-2 -translate-x-1/2 translate-y-1/2 rounded-full bg-gray-800" />
-    </div>
-  );
-}
+// RiskScoreGauge component removed - kept for potential future use
+// See git history for implementation
 
 function RiskCard({
   risk,

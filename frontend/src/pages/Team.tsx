@@ -31,7 +31,6 @@ import {
   useUpdateMember,
   useRemoveMember,
   useBulkInvite,
-  useSearchMembers,
 } from '../hooks/useTeam';
 import { usePermissionTemplates } from '../hooks/usePermissionTemplates';
 import { useAuth } from '../contexts/AuthContext';
@@ -376,7 +375,7 @@ export function Team() {
         onClose={() => setBulkInviteModalOpen(false)}
         onInvite={handleBulkInvite}
         isLoading={bulkInvite.isPending}
-        templates={templates}
+        permissionTemplates={templates}
       />
 
       {/* Edit Role Modal */}

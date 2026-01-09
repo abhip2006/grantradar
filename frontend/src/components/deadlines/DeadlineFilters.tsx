@@ -5,7 +5,7 @@ interface DeadlineFiltersProps {
   onChange: (filters: FiltersType) => void;
 }
 
-const STATUSES: DeadlineStatus[] = ['active', 'completed', 'archived'];
+const STATUSES: DeadlineStatus[] = ['not_started', 'drafting', 'internal_review', 'submitted', 'under_review', 'awarded', 'rejected'];
 const FUNDERS = ['NIH', 'NSF', 'DOE', 'DOD', 'NASA', 'Private Foundation'];
 
 export function DeadlineFilters({ filters, onChange }: DeadlineFiltersProps) {

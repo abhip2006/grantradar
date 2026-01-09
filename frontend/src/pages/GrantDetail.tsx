@@ -30,6 +30,7 @@ import { GrantInsights } from '../components/GrantInsights';
 import { OutcomeTracker } from '../components/OutcomeTracker';
 import { CompetitionBadge, CompetitionBar } from '../components/CompetitionBadge';
 import { EffortEstimateCard } from '../components/EffortEstimate';
+import { GrantDetailSkeleton } from '../components/common/Skeleton';
 import type { CompetitionLevel, EffortComplexity, Grant } from '../types';
 
 // Helper to estimate competition level based on grant source and characteristics
@@ -284,35 +285,7 @@ export function GrantDetail() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[var(--gr-bg-secondary)]">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          {/* Back button skeleton */}
-          <div className="skeleton h-10 w-24 mb-8 rounded-lg" />
-
-          {/* Hero skeleton */}
-          <div className="bg-white rounded-2xl border border-[var(--gr-border-default)] p-8 mb-6">
-            <div className="skeleton h-6 w-32 mb-4 rounded-full" />
-            <div className="skeleton h-12 w-3/4 mb-4" />
-            <div className="skeleton h-6 w-1/3 mb-6" />
-            <div className="flex gap-4">
-              <div className="skeleton h-20 w-40 rounded-xl" />
-              <div className="skeleton h-20 w-40 rounded-xl" />
-              <div className="skeleton h-20 w-40 rounded-xl" />
-            </div>
-          </div>
-
-          {/* Content skeleton */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl border border-[var(--gr-border-default)] p-6">
-                <div className="skeleton h-6 w-32 mb-4" />
-                <div className="skeleton h-32 w-full" />
-              </div>
-            </div>
-            <div className="space-y-6">
-              <div className="skeleton h-48 w-full rounded-2xl" />
-            </div>
-          </div>
-        </div>
+        <GrantDetailSkeleton />
       </div>
     );
   }

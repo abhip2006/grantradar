@@ -20,7 +20,6 @@ import {
 import {
   mergeChecklistItems,
   groupItemsByCategory,
-  type ChecklistItem as ChecklistItemType,
   type ChecklistCategory,
   CHECKLIST_CATEGORY_CONFIGS,
 } from '../../types/checklists';
@@ -47,7 +46,7 @@ type FilterMode = 'all' | 'incomplete' | 'required';
 export const ChecklistPanel = React.memo(function ChecklistPanel({
   cardId,
   funderHint,
-  mode = 'panel',
+  mode: _mode = 'panel',
   onChecklistCreated,
   className = '',
 }: ChecklistPanelProps) {

@@ -24,13 +24,19 @@ from backend.models import Base, Grant, User, LabProfile, Match, AlertSent
 # =============================================================================
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
-    """Create an instance of the default event loop for the test session."""
+    """Create a new event loop for each test function.
+
+    Using function scope ensures proper isolation between tests and prevents
+    event loop state pollution from causing cascading test failures.
+    """
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
+    asyncio.set_event_loop(None)
 
 
 @pytest_asyncio.fixture(scope="function")

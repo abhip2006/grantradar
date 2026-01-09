@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '../../services/api';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { format, parseISO } from 'date-fns';
+import { motion } from 'motion/react';
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
 
 type MetricType = 'applications_created' | 'stage_changes' | 'matches_saved';
 
@@ -42,14 +44,18 @@ function CustomTooltip({ active, payload, metric }: CustomTooltipProps) {
   const value = data[metric];
 
   return (
-    <div className="bg-white border border-[var(--gr-border-default)] rounded-lg shadow-lg px-2 py-1 text-xs">
-      <p className="font-medium text-[var(--gr-text-primary)]">
-        {format(parseISO(data.date), 'MMM d')}
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="tooltip-premium"
+    >
+      <p className="font-medium mb-0.5">
+        {format(parseISO(data.date), 'MMM d, yyyy')}
       </p>
-      <p className="text-[var(--gr-text-secondary)]">
+      <p className="text-gray-300">
         {value} {value === 1 ? 'activity' : 'activities'}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -62,26 +68,25 @@ export function ActivitySparkline({ metric, title, color }: ActivitySparklinePro
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-[var(--gr-border-default)] p-4">
-        <div className="animate-pulse">
-          <div className="flex items-center justify-between mb-2">
-            <div className="h-4 w-24 bg-[var(--gr-bg-secondary)] rounded" />
-            <div className="h-6 w-12 bg-[var(--gr-bg-secondary)] rounded" />
-          </div>
-          <div className="h-[50px] bg-[var(--gr-bg-secondary)] rounded" />
+      <div className="animate-pulse">
+        <div className="flex items-center justify-between mb-3">
+          <div className="skeleton-premium h-4 w-28" />
+          <div className="skeleton-premium h-8 w-14 rounded-lg" />
         </div>
+        <div className="skeleton-premium h-[60px] w-full rounded-lg" />
+        <div className="skeleton-premium h-3 w-20 mt-2" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-xl border border-[var(--gr-border-default)] p-4">
-        <div className="flex items-center justify-between mb-2">
+      <div>
+        <div className="flex items-center justify-between mb-3">
           <span className="text-sm text-[var(--gr-text-tertiary)]">{title}</span>
-          <span className="text-lg font-semibold text-[var(--gr-text-primary)]">--</span>
+          <span className="text-2xl font-display font-bold text-[var(--gr-text-primary)]">--</span>
         </div>
-        <div className="h-[50px] flex items-center justify-center text-xs text-[var(--gr-text-tertiary)]">
+        <div className="h-[60px] flex items-center justify-center text-xs text-[var(--gr-text-tertiary)]">
           Unable to load
         </div>
       </div>
@@ -93,68 +98,108 @@ export function ActivitySparkline({ metric, title, color }: ActivitySparklinePro
   const total = data?.totals?.[metric] || 0;
   const avg = data?.avg_daily?.[metric] || 0;
 
+  // Calculate trend (compare last 7 days to previous 7 days)
+  const last7 = chartData.slice(-7).reduce((sum, d) => sum + d[metric], 0);
+  const prev7 = chartData.slice(0, 7).reduce((sum, d) => sum + d[metric], 0);
+  const trend = prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 100) : 0;
+
   // Generate a unique gradient ID for each metric
-  const gradientId = `gradient-${metric}-${Math.random().toString(36).slice(2, 9)}`;
+  const gradientId = `gradient-sparkline-${metric}`;
 
   return (
-    <div className="bg-white rounded-xl border border-[var(--gr-border-default)] p-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-[var(--gr-text-tertiary)]">{title}</span>
-        <span className="text-lg font-display font-semibold text-[var(--gr-text-primary)]">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-[var(--gr-text-secondary)]">{title}</span>
+          {trend !== 0 && (
+            <span className={`trend-indicator ${trend > 0 ? 'positive' : 'negative'}`}>
+              {trend > 0 ? (
+                <ArrowTrendingUpIcon className="w-3 h-3" />
+              ) : (
+                <ArrowTrendingDownIcon className="w-3 h-3" />
+              )}
+              {Math.abs(trend)}%
+            </span>
+          )}
+        </div>
+        <motion.span
+          key={total}
+          initial={{ scale: 1.1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="text-2xl font-display font-bold text-[var(--gr-text-primary)]"
+        >
           {total.toLocaleString()}
-        </span>
+        </motion.span>
       </div>
 
       {chartData.length > 0 ? (
-        <ResponsiveContainer width="100%" height={50}>
-          <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="date" hide />
-            <Tooltip
-              content={({ active, payload }) => (
-                <CustomTooltip
-                  active={active}
-                  payload={payload as CustomTooltipProps['payload']}
-                  metric={metric}
-                />
-              )}
-            />
-            <Area
-              type="monotone"
-              dataKey={metric}
-              stroke={color}
-              fill={`url(#${gradientId})`}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, fill: color, strokeWidth: 0 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div className="sparkline-animated">
+          <ResponsiveContainer width="100%" height={60}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 4 }}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" hide />
+              <Tooltip
+                content={({ active, payload }) => (
+                  <CustomTooltip
+                    active={active}
+                    payload={payload as CustomTooltipProps['payload']}
+                    metric={metric}
+                  />
+                )}
+                cursor={{
+                  stroke: color,
+                  strokeWidth: 1,
+                  strokeDasharray: '4 2',
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey={metric}
+                stroke={color}
+                fill={`url(#${gradientId})`}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{
+                  r: 5,
+                  fill: color,
+                  strokeWidth: 2,
+                  stroke: '#ffffff',
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       ) : (
-        <div className="h-[50px] flex items-center justify-center text-xs text-[var(--gr-text-tertiary)]">
+        <div className="h-[60px] flex items-center justify-center text-xs text-[var(--gr-text-tertiary)]">
           No activity data
         </div>
       )}
 
-      <div className="text-xs text-[var(--gr-text-tertiary)] mt-1">
-        Avg: {avg.toFixed(1)}/day
+      <div className="flex items-center justify-between mt-2 text-xs text-[var(--gr-text-tertiary)]">
+        <span>Last 14 days</span>
+        <span>Avg: {avg.toFixed(1)}/day</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
-// Preset configurations for common metrics
+// Preset configurations for common metrics with premium colors
 export function ApplicationsCreatedSparkline() {
   return (
     <ActivitySparkline
       metric="applications_created"
       title="Applications Created"
-      color="#3b82f6"
+      color="#14b8a6" // teal-500
     />
   );
 }
@@ -164,7 +209,7 @@ export function StageChangesSparkline() {
     <ActivitySparkline
       metric="stage_changes"
       title="Stage Changes"
-      color="#f59e0b"
+      color="#3b82f6" // blue-500
     />
   );
 }
@@ -174,7 +219,7 @@ export function MatchesSavedSparkline() {
     <ActivitySparkline
       metric="matches_saved"
       title="Matches Saved"
-      color="#22c55e"
+      color="#22c55e" // green-500
     />
   );
 }

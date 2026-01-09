@@ -61,7 +61,7 @@ export class FeatureErrorBoundary extends React.Component<Props, State> {
               Something went wrong while loading this feature. Please try refreshing or contact
               support if the problem persists.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="mb-4 w-full max-w-md text-left">
                 <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
                   Error details (dev only)

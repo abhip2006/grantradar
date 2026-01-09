@@ -20,6 +20,11 @@ import { WelcomeModal } from '../components/WelcomeModal';
 import { SavedSearches } from '../components/SavedSearches';
 import { CompareBar } from '../components/CompareBar';
 import AdvancedFilters from '../components/AdvancedFilters';
+import {
+  Skeleton,
+  SkeletonText,
+  GrantCardSkeleton,
+} from '../components/common/Skeleton';
 import type { GrantMatch, GrantSource, DashboardStats, SavedSearchFilters, AdvancedGrantFilters } from '../types';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -99,20 +104,34 @@ function StatCard({
   );
 }
 
+// Stats Bar Skeleton Component
+function StatsBarSkeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-label="Loading stats" role="status">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="stat-card"
+          style={{ animationDelay: `${i * 0.1}s` }}
+        >
+          <div className="flex items-start justify-between">
+            <Skeleton width={40} height={40} rounded="xl" />
+            <SkeletonText width={40} size="xs" />
+          </div>
+          <div className="mt-4">
+            <Skeleton height={32} width={60} rounded="md" className="mb-2" />
+            <SkeletonText width={100} size="sm" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Stats Bar Component
 function StatsBar({ stats, isLoading }: { stats?: DashboardStats; isLoading: boolean }) {
   if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="stat-card">
-            <div className="skeleton w-10 h-10 rounded-xl mb-4" />
-            <div className="skeleton h-8 w-16 mb-2" />
-            <div className="skeleton h-4 w-24" />
-          </div>
-        ))}
-      </div>
-    );
+    return <StatsBarSkeleton />;
   }
 
   return (
@@ -151,7 +170,15 @@ function StatsBar({ stats, isLoading }: { stats?: DashboardStats; isLoading: boo
 }
 
 // Empty State Component
-function EmptyState({ showSavedOnly, searchQuery }: { showSavedOnly: boolean; searchQuery: string }) {
+function EmptyState({
+  showSavedOnly,
+  searchQuery,
+  onClearFilters,
+}: {
+  showSavedOnly: boolean;
+  searchQuery: string;
+  onClearFilters?: () => void;
+}) {
   if (showSavedOnly) {
     return (
       <div className="card text-center py-16">
@@ -161,9 +188,16 @@ function EmptyState({ showSavedOnly, searchQuery }: { showSavedOnly: boolean; se
         <h3 className="text-xl font-display font-medium text-[var(--gr-text-primary)] mb-2">
           No saved grants yet
         </h3>
-        <p className="text-[var(--gr-text-secondary)] max-w-sm mx-auto">
+        <p className="text-[var(--gr-text-secondary)] max-w-sm mx-auto mb-6">
           Browse your matches and click the bookmark icon to save grants you're interested in.
         </p>
+        <button
+          onClick={onClearFilters}
+          className="btn-primary inline-flex items-center gap-2"
+        >
+          <SparklesIcon className="w-4 h-4" />
+          Browse All Grants
+        </button>
       </div>
     );
   }
@@ -177,9 +211,15 @@ function EmptyState({ showSavedOnly, searchQuery }: { showSavedOnly: boolean; se
         <h3 className="text-xl font-display font-medium text-[var(--gr-text-primary)] mb-2">
           No results for "{searchQuery}"
         </h3>
-        <p className="text-[var(--gr-text-secondary)] max-w-sm mx-auto">
+        <p className="text-[var(--gr-text-secondary)] max-w-sm mx-auto mb-6">
           Try adjusting your search terms or filters to find more grants.
         </p>
+        <button
+          onClick={onClearFilters}
+          className="btn-secondary inline-flex items-center gap-2"
+        >
+          Clear Search & Filters
+        </button>
       </div>
     );
   }
@@ -196,10 +236,13 @@ function EmptyState({ showSavedOnly, searchQuery }: { showSavedOnly: boolean; se
       <p className="text-[var(--gr-text-secondary)] max-w-md mx-auto mb-6">
         We're analyzing 86,000+ grants against your profile. This typically takes <strong>2-5 minutes</strong> for first-time users.
       </p>
-      <p className="text-sm text-[var(--gr-text-tertiary)]">
-        While you wait, try searching for specific keywords above.
-      </p>
-      <div className="mt-6">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <Link
+          to="/settings"
+          className="btn-secondary inline-flex items-center gap-2"
+        >
+          Update Profile
+        </Link>
         <Link
           to="/faq"
           className="inline-flex items-center gap-2 text-sm text-[var(--gr-blue-600)] hover:text-[var(--gr-blue-700)]"
@@ -212,26 +255,16 @@ function EmptyState({ showSavedOnly, searchQuery }: { showSavedOnly: boolean; se
   );
 }
 
-// Loading Grid Component
+// Loading Grid Component - Uses GrantCardSkeleton for consistency
 function LoadingGrid() {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="grant-card">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="skeleton w-14 h-14 rounded-full" />
-            <div className="flex-1">
-              <div className="skeleton h-5 w-3/4 mb-2" />
-              <div className="skeleton h-4 w-1/2" />
-            </div>
-          </div>
-          <div className="skeleton h-4 w-full mb-2" />
-          <div className="skeleton h-4 w-5/6 mb-4" />
-          <div className="flex gap-2">
-            <div className="skeleton h-6 w-20 rounded-full" />
-            <div className="skeleton h-6 w-24 rounded-full" />
-          </div>
-        </div>
+    <div
+      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+      aria-label="Loading grants"
+      role="status"
+    >
+      {Array.from({ length: 6 }).map((_, i) => (
+        <GrantCardSkeleton key={i} delay={i} />
       ))}
     </div>
   );
@@ -240,7 +273,7 @@ function LoadingGrid() {
 export function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSource, setSelectedSource] = useState<GrantSource | 'all'>('all');
@@ -375,10 +408,11 @@ export function Dashboard() {
           };
         }
       );
-      showToast(
-        updatedMatch.status === 'saved' ? 'Grant saved!' : 'Grant dismissed',
-        updatedMatch.status === 'saved' ? 'success' : 'info'
-      );
+      if (updatedMatch.status === 'saved') {
+        toast.success('Grant saved!');
+      } else {
+        toast.info('Grant dismissed');
+      }
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     },
   });
@@ -408,7 +442,7 @@ export function Dashboard() {
           return prev.filter((g) => g.id !== grantId);
         }
         if (prev.length >= 4) {
-          showToast('You can compare up to 4 grants at a time', 'warning');
+          toast.warning('You can compare up to 4 grants at a time');
           return prev;
         }
         const match = matches.find((m) => m.grant.id === grantId);
@@ -418,7 +452,7 @@ export function Dashboard() {
         return prev;
       });
     },
-    [matches, showToast]
+    [matches, toast]
   );
 
   const handleRemoveFromCompare = useCallback((grantId: string) => {
@@ -446,12 +480,17 @@ export function Dashboard() {
           };
         }
       );
-      showToast('New matching grant found!', 'info');
+      toast.info('New matching grant found!', {
+        action: {
+          label: 'View',
+          onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+        },
+      });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     });
 
     return () => unsubscribe();
-  }, [queryClient, selectedSource, showSavedOnly, showToast]);
+  }, [queryClient, selectedSource, showSavedOnly, toast]);
 
   // Infinite scroll handler
   useEffect(() => {
@@ -602,7 +641,17 @@ export function Dashboard() {
             {grantsLoading ? (
               <LoadingGrid />
             ) : filteredMatches.length === 0 ? (
-              <EmptyState showSavedOnly={showSavedOnly} searchQuery={searchQuery} />
+              <EmptyState
+                showSavedOnly={showSavedOnly}
+                searchQuery={searchQuery}
+                onClearFilters={() => {
+                  setSelectedSource('all');
+                  setShowSavedOnly(false);
+                  setMinScore(undefined);
+                  setSearchQuery('');
+                  setAdvancedFilters({});
+                }}
+              />
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -5,7 +5,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   FolderIcon,
-  EyeIcon,
   ClipboardDocumentIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline';

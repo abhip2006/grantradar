@@ -9,6 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import { motion, AnimatePresence } from 'motion/react';
 import { useKanbanBoard, useReorderCard } from '../../hooks/useKanban';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
@@ -40,11 +41,22 @@ export function KanbanBoard() {
     useSensor(KeyboardSensor)
   );
 
+  // Helper to find card by id
+  const findCard = (id: string): KanbanCardType | undefined => {
+    if (!board) return undefined;
+    for (const stage of STAGES) {
+      const card = board.columns[stage]?.find(c => c.id === id);
+      if (card) return card;
+    }
+    return undefined;
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const card = findCard(active.id as string);
     setActiveCard(card || null);
   };
+
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -84,28 +96,47 @@ export function KanbanBoard() {
     });
   };
 
-  const findCard = (id: string): KanbanCardType | undefined => {
-    if (!board) return undefined;
-    for (const stage of STAGES) {
-      const card = board.columns[stage]?.find(c => c.id === id);
-      if (card) return card;
-    }
-    return undefined;
-  };
-
   if (isLoading) {
     return (
       <div className="h-full flex flex-col bg-mesh">
         <div className="p-4">
           <div className="skeleton h-12 rounded-xl mb-4" />
         </div>
-        <div className="flex-1 flex gap-4 p-4 overflow-x-auto">
+        <div className="flex-1 flex gap-5 p-5 overflow-x-auto">
           {STAGES.map((stage, idx) => (
-            <div
+            <motion.div
               key={stage}
-              className="w-80 flex-shrink-0 skeleton rounded-2xl h-96"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            />
+              className="w-80 flex-shrink-0 rounded-2xl overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.08, duration: 0.4 }}
+            >
+              {/* Skeleton column */}
+              <div className="bg-white/80 rounded-2xl border border-gray-100 p-4 h-96">
+                {/* Header skeleton */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-9 h-9 rounded-xl skeleton" />
+                  <div className="flex-1">
+                    <div className="h-4 w-20 skeleton rounded" />
+                  </div>
+                  <div className="w-8 h-6 skeleton rounded-lg" />
+                </div>
+                {/* Card skeletons */}
+                {[0, 1, 2].map((cardIdx) => (
+                  <motion.div
+                    key={cardIdx}
+                    className="kanban-card-skeleton p-4 mb-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.08 + cardIdx * 0.05 + 0.2 }}
+                  >
+                    <div className="kanban-card-skeleton-title" />
+                    <div className="kanban-card-skeleton-badge" />
+                    <div className="kanban-card-skeleton-meta" />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -154,31 +185,63 @@ export function KanbanBoard() {
         <div className="flex-1 overflow-x-auto kanban-scroll">
           <div className="flex gap-5 p-5 min-w-max h-full">
             {STAGES.map((stage, idx) => (
-              <div
+              <motion.div
                 key={stage}
-                className={`${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}
-                style={{ animationDelay: `${(idx + 1) * 0.05}s` }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  delay: (idx + 1) * 0.05,
+                  duration: 0.4,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
               >
                 <KanbanColumn
                   stage={stage}
                   cards={board?.columns[stage] || []}
                   onCardClick={setSelectedCardId}
                 />
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
 
-        {/* Drag Overlay with premium card preview */}
+        {/* Drag Overlay with enhanced animation */}
         <DragOverlay dropAnimation={{
-          duration: 200,
-          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          duration: 300,
+          easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+          keyframes: ({ transform }) => [
+            { transform: `${transform.initial} rotate(3deg) scale(1.05)`, opacity: 0.95 },
+            { transform: `${transform.final} rotate(0deg) scale(0.98)`, opacity: 1 },
+            { transform: `${transform.final} rotate(0deg) scale(1.02)`, opacity: 1 },
+            { transform: `${transform.final} rotate(0deg) scale(1)`, opacity: 1 },
+          ],
         }}>
-          {activeCard && (
-            <div className="kanban-card-dragging">
-              <KanbanCard card={activeCard} isDragging />
-            </div>
-          )}
+          <AnimatePresence>
+            {activeCard && (
+              <motion.div
+                className="kanban-drag-overlay"
+                initial={{ scale: 1, rotate: 0, opacity: 1 }}
+                animate={{
+                  scale: 1.05,
+                  rotate: 3,
+                  opacity: 0.95,
+                  boxShadow: '0 24px 48px rgba(0, 0, 0, 0.2), 0 12px 24px rgba(0, 0, 0, 0.15)',
+                }}
+                exit={{
+                  scale: 1,
+                  rotate: 0,
+                  opacity: 1,
+                }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 20,
+                }}
+              >
+                <KanbanCard card={activeCard} isDragging />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </DragOverlay>
       </DndContext>
 

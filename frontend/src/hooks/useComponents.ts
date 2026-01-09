@@ -131,7 +131,7 @@ export const useDeleteComponent = () => {
  * Hook to get version history for a component
  */
 export const useComponentVersions = (componentId: string) => {
-  return useQuery<DocumentVersion[]>({
+  return useQuery<DocumentComponent[]>({
     queryKey: componentKeys.versions(componentId),
     queryFn: () => componentsApi.getComponentVersions(componentId),
     enabled: !!componentId,

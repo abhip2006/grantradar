@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
-import { ToastContainer } from './Toast';
+import { ToastContainer } from './common/Toast';
 
 export function Layout() {
   return (

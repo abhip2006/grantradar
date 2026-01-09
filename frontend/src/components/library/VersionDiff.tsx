@@ -30,7 +30,6 @@ function computeSimpleDiff(textA: string, textB: string): DiffChange[] {
   const changes: DiffChange[] = [];
 
   // Use a simple LCS-based approach for visualization
-  const maxLength = Math.max(linesA.length, linesB.length);
   let indexA = 0;
   let indexB = 0;
 
@@ -385,8 +384,8 @@ function UnifiedDiffView({ diff }: { diff: DiffChange[] }) {
  * Split diff view - shows old and new content side by side
  */
 function SplitDiffView({
-  older,
-  newer,
+  older: _older,
+  newer: _newer,
   diff,
 }: {
   older: DocumentVersion;

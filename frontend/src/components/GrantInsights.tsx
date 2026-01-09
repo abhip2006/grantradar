@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   SparklesIcon,
   ShieldCheckIcon,
@@ -17,13 +17,12 @@ type InsightStatus = 'idle' | 'loading' | 'done' | 'error';
 type ActiveTab = 'eligibility' | 'writing';
 
 // Simple markdown renderer for AI-generated content
-function renderMarkdown(text: string): JSX.Element {
+function renderMarkdown(text: string): React.JSX.Element {
   if (!text) return <></>;
 
   const lines = text.split('\n');
-  const elements: JSX.Element[] = [];
+  const elements: React.JSX.Element[] = [];
   let listItems: string[] = [];
-  let inList = false;
 
   const flushList = () => {
     if (listItems.length > 0) {
@@ -36,7 +35,6 @@ function renderMarkdown(text: string): JSX.Element {
       );
       listItems = [];
     }
-    inList = false;
   };
 
   lines.forEach((line, index) => {
@@ -58,12 +56,10 @@ function renderMarkdown(text: string): JSX.Element {
     }
     // Bullet points
     else if (line.match(/^[-*]\s/)) {
-      inList = true;
       listItems.push(line.slice(2));
     }
     // Numbered lists
     else if (line.match(/^\d+\.\s/)) {
-      inList = true;
       listItems.push(line.replace(/^\d+\.\s/, ''));
     }
     // Empty line
@@ -86,7 +82,7 @@ function renderMarkdown(text: string): JSX.Element {
 }
 
 // Render inline markdown (bold, italic)
-function renderInlineMarkdown(text: string): JSX.Element {
+function renderInlineMarkdown(text: string): React.JSX.Element {
   // Handle **bold** text
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
@@ -101,7 +97,7 @@ function renderInlineMarkdown(text: string): JSX.Element {
   );
 }
 
-export function GrantInsights({ grantId, grantTitle, funderName }: GrantInsightsProps) {
+export function GrantInsights({ grantId }: GrantInsightsProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('eligibility');
   const [isGenerating, setIsGenerating] = useState(false);
   const [eligibilityContent, setEligibilityContent] = useState('');

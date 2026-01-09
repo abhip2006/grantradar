@@ -60,7 +60,6 @@ function ChecklistItemComponent({
   };
 
   const hasDescription = !!item.description;
-  const hasNotes = !!item.notes || isEditingNotes;
   const isExpandable = hasDescription || onUpdateNotes;
 
   const formatDate = (dateString?: string) => {

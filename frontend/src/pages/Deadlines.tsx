@@ -74,7 +74,7 @@ export function Deadlines() {
     if (!data?.items) return { active: 0, overdue: 0, upcoming: 0 };
     const items = data.items;
     return {
-      active: items.filter((d) => d.status === 'active').length,
+      active: items.filter((d) => d.status === 'drafting' || d.status === 'not_started' || d.status === 'internal_review').length,
       overdue: items.filter((d) => d.is_overdue).length,
       upcoming: items.filter((d) => d.days_until_deadline <= 7 && d.days_until_deadline >= 0).length,
     };
