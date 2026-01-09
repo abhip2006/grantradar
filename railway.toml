@@ -1,5 +1,12 @@
 # GrantRadar Railway Configuration
 # This project requires multiple services - see RAILWAY_DEPLOYMENT.md for setup instructions
+#
+# IMPORTANT: This config is for the BACKEND (API) service.
+# For the FRONTEND service, configure in Railway Dashboard:
+#   - Dockerfile Path: Dockerfile.frontend
+#   - Build Args: VITE_API_URL=https://your-api-url.railway.app
+#
+# See RAILWAY_DEPLOYMENT.md for full setup instructions.
 
 [build]
 builder = "dockerfile"
