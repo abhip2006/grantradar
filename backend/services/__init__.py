@@ -36,6 +36,28 @@ from backend.services.effort_estimation import (
     MECHANISM_EFFORT,
     DEFAULT_EFFORT,
 )
+from backend.services.review_criteria import (
+    ReviewCriteriaService,
+    review_criteria_service,
+    NIH_CRITERIA,
+    NSF_CRITERIA,
+)
+from backend.services.writing_assistant import (
+    WritingAssistantService,
+    writing_assistant,
+)
+from backend.services.specific_aims import (
+    SpecificAimsAnalyzer,
+    get_analyzer as get_aims_analyzer,
+    analyze_aims_structure,
+    check_aim_scope,
+    detect_common_issues,
+    suggest_improvements,
+    compare_to_funded,
+    get_mechanism_template,
+    get_funded_examples,
+    MECHANISM_GUIDELINES,
+)
 
 # ML forecast requires pandas/prophet - optional dependency
 try:
@@ -88,4 +110,23 @@ __all__ = [
     "MLPredictionResult",
     "get_predictor",
     "_ML_AVAILABLE",
+    # Review criteria service
+    "ReviewCriteriaService",
+    "review_criteria_service",
+    "NIH_CRITERIA",
+    "NSF_CRITERIA",
+    # Writing assistant service
+    "WritingAssistantService",
+    "writing_assistant",
+    # Specific aims analysis service
+    "SpecificAimsAnalyzer",
+    "get_aims_analyzer",
+    "analyze_aims_structure",
+    "check_aim_scope",
+    "detect_common_issues",
+    "suggest_improvements",
+    "compare_to_funded",
+    "get_mechanism_template",
+    "get_funded_examples",
+    "MECHANISM_GUIDELINES",
 ]

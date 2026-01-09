@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # ===== Application =====
     app_name: str = "GrantRadar"
+    app_version: str = "1.0.0"
     environment: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-key-change-in-production"

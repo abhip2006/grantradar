@@ -285,8 +285,9 @@ async def seed_mechanisms():
     """Seed the grant_mechanisms table with mechanism data."""
     from backend.database import get_async_session
     from sqlalchemy import text
+    import json
 
-    async for session in get_async_session():
+    async with get_async_session() as session:
         try:
             for mechanism in MECHANISMS_DATA:
                 # Check if already exists
@@ -336,8 +337,8 @@ async def seed_mechanisms():
                         "success_rate_resubmission": mechanism.get("success_rate_resubmission"),
                         "competition_level": mechanism.get("competition_level"),
                         "estimated_applicants_per_cycle": mechanism.get("estimated_applicants_per_cycle"),
-                        "review_criteria": mechanism.get("review_criteria"),
-                        "tips": mechanism.get("tips"),
+                        "review_criteria": json.dumps(mechanism.get("review_criteria")) if mechanism.get("review_criteria") else None,
+                        "tips": json.dumps(mechanism.get("tips")) if mechanism.get("tips") else None,
                         "last_updated": datetime.now(timezone.utc),
                         "created_at": datetime.now(timezone.utc),
                     }

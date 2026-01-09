@@ -1,8 +1,16 @@
+# GrantRadar Production Docker Ignore
+# Excludes unnecessary files from Docker build context
+
+# =============================================================================
 # Git
+# =============================================================================
 .git
 .gitignore
+.gitattributes
 
+# =============================================================================
 # Python
+# =============================================================================
 __pycache__
 *.py[cod]
 *$py.class
@@ -12,52 +20,151 @@ venv/
 env/
 .venv/
 .env
+.env.*
+!.env.example
 *.egg-info/
 dist/
 build/
 .eggs/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
 
+# =============================================================================
 # Testing
+# =============================================================================
 .pytest_cache/
 .coverage
+coverage_html/
 htmlcov/
 .tox/
+.nox/
+*.cover
+*.coverage
+.hypothesis/
 
-# IDE
+# =============================================================================
+# IDE and Editors
+# =============================================================================
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+*.sublime-workspace
+*.sublime-project
+.project
+.pydevproject
+.settings/
+*.code-workspace
 
-# OS
+# =============================================================================
+# OS Generated
+# =============================================================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
-# Node (frontend is separate)
+# =============================================================================
+# Node.js (for frontend builds)
+# =============================================================================
 frontend/node_modules/
-frontend/dist/
+frontend/.npm/
+frontend/.yarn/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
 
+# =============================================================================
 # Documentation
+# =============================================================================
 *.md
 !README.md
 docs/
+*.pdf
+*.docx
+*.doc
 
-# Railway/Docker
-Dockerfile
+# =============================================================================
+# Docker
+# =============================================================================
+Dockerfile*
 docker-compose*.yml
-railway.json
-railway.toml
-Procfile
+.docker/
+.dockerignore
 
-# Development
+# =============================================================================
+# Development Tools
+# =============================================================================
 .taskmaster/
 .claude/
-tests/
-*.log
+.cursor/
+.mcp.json
 
-# Sensitive
-.env*
-!.env.example
+# =============================================================================
+# Logs and Databases
+# =============================================================================
+*.log
+*.sqlite
+*.sqlite3
+*.db
+celerybeat-schedule.db
+
+# =============================================================================
+# Secrets and Credentials
+# =============================================================================
 *.pem
 *.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# =============================================================================
+# Test Artifacts
+# =============================================================================
+tests/
+test_*.py
+*_test.py
+conftest.py
+pytest.ini
+
+# =============================================================================
+# Build Artifacts
+# =============================================================================
+*.pyc
+*.pyo
+*.pyd
+.installed.cfg
+*.manifest
+*.spec
+
+# =============================================================================
+# Temporary Files
+# =============================================================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+uploads/
+
+# =============================================================================
+# Miscellaneous
+# =============================================================================
+Makefile
+Procfile
+railway.json
+railway.toml
+*.yml
+!docker-compose.prod.yml
+specs/
+scripts/
+!scripts/init_db.sql

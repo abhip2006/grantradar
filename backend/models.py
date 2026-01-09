@@ -2777,3 +2777,356 @@ class Notification(Base):
 
     def __repr__(self) -> str:
         return f"<Notification(id={self.id}, type='{self.type}', read={self.read})>"
+
+
+# ============================================================================
+# Team Collaboration Models
+# ============================================================================
+
+
+class AssignmentRole(enum.Enum):
+    """Enum for grant assignment roles."""
+
+    LEAD = "lead"
+    CONTRIBUTOR = "contributor"
+    REVIEWER = "reviewer"
+
+
+class AssignmentStatus(enum.Enum):
+    """Enum for grant assignment status."""
+
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+
+
+class GrantAssignment(Base):
+    """
+    Grant assignment for team collaboration.
+
+    Tracks which team members are assigned to work on specific grants
+    with defined roles, due dates, and status tracking.
+    """
+
+    __tablename__ = "grant_assignments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the assignment",
+    )
+    match_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("matches.id", ondelete="CASCADE"),
+        nullable=True,
+        doc="Reference to the match (optional)",
+    )
+    grant_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grants.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the grant",
+    )
+    assigned_to: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="User assigned to the grant",
+    )
+    assigned_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="User who made the assignment",
+    )
+    lab_owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Lab owner/PI whose team this assignment belongs to",
+    )
+    role: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="contributor",
+        doc="Role in the assignment (lead, contributor, reviewer)",
+    )
+    status: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False,
+        default="active",
+        doc="Assignment status (active, completed, paused, cancelled)",
+    )
+    due_date: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="Due date for the assignment",
+    )
+    notes: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Notes about the assignment",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Assignment creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Assignment last update timestamp",
+    )
+
+    __table_args__ = (
+        Index("ix_grant_assignments_match_id", match_id),
+        Index("ix_grant_assignments_grant_id", grant_id),
+        Index("ix_grant_assignments_assigned_to", assigned_to),
+        Index("ix_grant_assignments_lab_owner_id", lab_owner_id),
+        Index("ix_grant_assignments_status", status),
+        Index("ix_grant_assignments_due_date", due_date),
+    )
+
+    # Relationships
+    match: Mapped[Optional["Match"]] = relationship(
+        "Match",
+        foreign_keys=[match_id],
+    )
+    grant: Mapped["Grant"] = relationship(
+        "Grant",
+        foreign_keys=[grant_id],
+    )
+    assignee: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[assigned_to],
+    )
+    assigner: Mapped[Optional["User"]] = relationship(
+        "User",
+        foreign_keys=[assigned_by],
+    )
+    lab_owner: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[lab_owner_id],
+    )
+
+    def __repr__(self) -> str:
+        return f"<GrantAssignment(id={self.id}, role='{self.role}', status='{self.status}')>"
+
+
+class TeamComment(Base):
+    """
+    Threaded comments on grants for team collaboration.
+
+    Supports @mentions and threading for team discussions
+    about specific grants.
+    """
+
+    __tablename__ = "team_comments"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the comment",
+    )
+    match_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("matches.id", ondelete="CASCADE"),
+        nullable=True,
+        doc="Reference to the match (optional)",
+    )
+    grant_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("grants.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Reference to the grant",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="User who wrote the comment",
+    )
+    lab_owner_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Lab owner/PI whose team this comment belongs to",
+    )
+    comment_text: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Comment text content",
+    )
+    parent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        ForeignKey("team_comments.id", ondelete="CASCADE"),
+        nullable=True,
+        doc="Parent comment ID for threading",
+    )
+    mentions: Mapped[Optional[List[dict]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="List of mentioned user IDs",
+    )
+    is_edited: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Whether the comment has been edited",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Comment creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Comment last update timestamp",
+    )
+
+    __table_args__ = (
+        Index("ix_team_comments_match_id", match_id),
+        Index("ix_team_comments_grant_id", grant_id),
+        Index("ix_team_comments_user_id", user_id),
+        Index("ix_team_comments_lab_owner_id", lab_owner_id),
+        Index("ix_team_comments_parent_id", parent_id),
+        Index("ix_team_comments_created_at", created_at),
+    )
+
+    # Relationships
+    match: Mapped[Optional["Match"]] = relationship(
+        "Match",
+        foreign_keys=[match_id],
+    )
+    grant: Mapped["Grant"] = relationship(
+        "Grant",
+        foreign_keys=[grant_id],
+    )
+    author: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+    )
+    lab_owner: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[lab_owner_id],
+    )
+    parent: Mapped[Optional["TeamComment"]] = relationship(
+        "TeamComment",
+        remote_side="TeamComment.id",
+        back_populates="replies",
+        foreign_keys=[parent_id],
+    )
+    replies: Mapped[List["TeamComment"]] = relationship(
+        "TeamComment",
+        back_populates="parent",
+        foreign_keys="TeamComment.parent_id",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:
+        return f"<TeamComment(id={self.id}, user_id={self.user_id})>"
+
+
+class TeamNotification(Base):
+    """
+    Team-specific notifications for collaboration events.
+
+    Stores notifications for assignment changes, comments,
+    mentions, and other team collaboration events.
+    """
+
+    __tablename__ = "team_notifications"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the notification",
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="User who should receive this notification",
+    )
+    team_id: Mapped[uuid.UUID] = mapped_column(
+        GUID(),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        doc="Lab owner/team ID this notification belongs to",
+    )
+    notification_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        doc="Type of notification (assignment, comment, mention, deadline, etc.)",
+    )
+    message: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+        doc="Notification message content",
+    )
+    entity_type: Mapped[Optional[str]] = mapped_column(
+        String(30),
+        nullable=True,
+        doc="Type of entity this notification relates to",
+    )
+    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        GUID(),
+        nullable=True,
+        doc="ID of the related entity",
+    )
+    metadata_: Mapped[Optional[dict]] = mapped_column(
+        "metadata",
+        JSONB,
+        nullable=True,
+        doc="Additional notification metadata",
+    )
+    is_read: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        doc="Whether the notification has been read",
+    )
+    read_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When the notification was read",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+        doc="Notification creation timestamp",
+    )
+
+    __table_args__ = (
+        Index("ix_team_notifications_user_id", user_id),
+        Index("ix_team_notifications_team_id", team_id),
+        Index("ix_team_notifications_notification_type", notification_type),
+        Index("ix_team_notifications_is_read", is_read),
+        Index("ix_team_notifications_user_read", user_id, is_read),
+        Index("ix_team_notifications_created_at", created_at),
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+    )
+    team: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[team_id],
+    )
+
+    def __repr__(self) -> str:
+        return f"<TeamNotification(id={self.id}, type='{self.notification_type}', read={self.is_read})>"

@@ -11,9 +11,9 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import alerts, analytics, auth, calendar, chat, checklists, compare, compliance, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, insights, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, similar, stats, team, templates, workflow_analytics
+from backend.api import aims, alerts, analytics, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, similar, stats, team, team_collaboration, templates, workflow_analytics, writing
 from backend.core.config import settings
-from backend.database import check_db_connection, close_db, init_db
+from backend.database import close_db, init_db
 
 # =============================================================================
 # Logging Configuration
@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting GrantRadar API...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Version: {settings.app_version}")
 
     # Initialize database (in production, use migrations instead)
     if settings.debug:
@@ -105,6 +106,11 @@ async def lifespan(app: FastAPI):
             logger.info("Database initialized successfully")
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
+
+    # Mark startup complete for health check probes
+    from backend.api.health import mark_startup_complete
+    mark_startup_complete()
+    logger.info("Application startup complete")
 
     yield
 
@@ -138,7 +144,7 @@ app = FastAPI(
     Most endpoints require JWT authentication. Use the `/api/auth/login` endpoint
     to obtain access and refresh tokens.
     """,
-    version="1.0.0",
+    version=settings.app_version,
     docs_url="/docs" if settings.debug else None,
     redoc_url="/redoc" if settings.debug else None,
     openapi_url="/openapi.json" if settings.debug else None,
@@ -206,67 +212,24 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
 
 
 # =============================================================================
-# Health Check Endpoints
-# =============================================================================
-
-
-@app.get(
-    "/health",
-    tags=["Health"],
-    summary="Health check",
-    description="Basic health check endpoint.",
-)
-async def health_check() -> dict[str, Any]:
-    """
-    Basic health check.
-
-    Returns application status and version.
-    """
-    return {
-        "status": "healthy",
-        "app": settings.app_name,
-        "version": "1.0.0",
-        "environment": settings.environment,
-    }
-
-
-@app.get(
-    "/health/ready",
-    tags=["Health"],
-    summary="Readiness check",
-    description="Check if the application is ready to serve requests.",
-)
-async def readiness_check() -> dict[str, Any]:
-    """
-    Readiness check including database connectivity.
-
-    Returns detailed status of all dependencies.
-    """
-    db_status = await check_db_connection()
-
-    is_ready = db_status.get("status") == "healthy"
-
-    return {
-        "status": "ready" if is_ready else "not_ready",
-        "checks": {
-            "database": db_status,
-        },
-    }
-
-
-# =============================================================================
 # API Routers
 # =============================================================================
 
+# Include health router (public endpoints - no auth required)
+app.include_router(health.router)
+
 # Include all API routers
+app.include_router(aims.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
 app.include_router(auth.router)
+app.include_router(budgets.router)
 app.include_router(calendar.router)
 app.include_router(chat.router)
 app.include_router(checklists.router)
 app.include_router(compare.router)
 app.include_router(compliance.router)
+app.include_router(compliance_engine.router)
 app.include_router(components.router)
 app.include_router(contact.router)
 app.include_router(deadlines.router)
@@ -277,6 +240,7 @@ app.include_router(forecast.router)
 app.include_router(funder_insights.router)
 app.include_router(grants.router)
 app.include_router(insights.router)
+app.include_router(institution.router)
 app.include_router(integrations.router)
 app.include_router(intelligence.router)
 app.include_router(kanban.router)
@@ -294,8 +258,10 @@ app.include_router(saved_searches.router)
 app.include_router(similar.router)
 app.include_router(stats.router)
 app.include_router(team.router)
+app.include_router(team_collaboration.router)
 app.include_router(templates.router)
 app.include_router(workflow_analytics.router)
+app.include_router(writing.router)
 
 
 # =============================================================================
@@ -317,10 +283,11 @@ async def root() -> dict[str, Any]:
     """
     return {
         "name": settings.app_name,
-        "version": "1.0.0",
+        "version": settings.app_version,
         "description": "Grant Intelligence Platform API",
         "docs_url": "/docs" if settings.debug else None,
         "health_url": "/health",
+        "readiness_url": "/health/ready",
     }
 
 

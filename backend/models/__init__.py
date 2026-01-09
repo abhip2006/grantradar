@@ -61,6 +61,13 @@ TeamActivityLog = _models_py.TeamActivityLog
 PermissionTemplate = _models_py.PermissionTemplate
 Notification = _models_py.Notification
 
+# Team collaboration models
+AssignmentRole = _models_py.AssignmentRole
+AssignmentStatus = _models_py.AssignmentStatus
+GrantAssignment = _models_py.GrantAssignment
+TeamComment = _models_py.TeamComment
+TeamNotification = _models_py.TeamNotification
+
 # Import models from submodules
 from backend.models.mechanisms import GrantMechanism, FundedProject, CompetitionSnapshot
 
@@ -77,6 +84,8 @@ __all__ = [
     # Enums
     "ApplicationStage",
     "InvitationStatus",
+    "AssignmentRole",
+    "AssignmentStatus",
     # Models
     "Grant",
     "User",
@@ -106,6 +115,10 @@ __all__ = [
     "TeamActivityLog",
     "PermissionTemplate",
     "Notification",
+    # Team collaboration models
+    "GrantAssignment",
+    "TeamComment",
+    "TeamNotification",
     # Grant Intelligence Graph models
     "GrantMechanism",
     "FundedProject",

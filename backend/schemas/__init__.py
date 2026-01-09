@@ -201,6 +201,27 @@ from backend.schemas.team import (
     TeamMembersListResponse,
     TeamActivitiesListResponse,
 )
+from backend.schemas.aims import (
+    GrantMechanism,
+    ScopeStatus,
+    IssueType,
+    IssueSeverity,
+    AimsAnalysisRequest,
+    AimsAnalysisResponse,
+    ScopeCheckRequest,
+    ScopeCheckResponse,
+    CompareToFundedRequest,
+    CompareToFundedResponse,
+    MechanismTemplateResponse,
+    MechanismGuidelines,
+    AimStructure,
+    ScopeAssessment,
+    DetectedIssue,
+    ImprovementSuggestion,
+    FundedExampleSummary,
+    AimsFollowUpRequest,
+    AimsFollowUpResponse,
+)
 
 __all__ = [
     # Common response schemas
@@ -381,4 +402,24 @@ __all__ = [
     "TeamStatsResponse",
     "TeamMembersListResponse",
     "TeamActivitiesListResponse",
+    # Specific Aims Analysis
+    "GrantMechanism",
+    "ScopeStatus",
+    "IssueType",
+    "IssueSeverity",
+    "AimsAnalysisRequest",
+    "AimsAnalysisResponse",
+    "ScopeCheckRequest",
+    "ScopeCheckResponse",
+    "CompareToFundedRequest",
+    "CompareToFundedResponse",
+    "MechanismTemplateResponse",
+    "MechanismGuidelines",
+    "AimStructure",
+    "ScopeAssessment",
+    "DetectedIssue",
+    "ImprovementSuggestion",
+    "FundedExampleSummary",
+    "AimsFollowUpRequest",
+    "AimsFollowUpResponse",
 ]
