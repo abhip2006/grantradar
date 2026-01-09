@@ -3,6 +3,7 @@ Writing Assistant API Endpoints
 Provides endpoints for analyzing and improving grant application drafts.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user
@@ -139,6 +140,53 @@ async def get_draft_feedback(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Feedback generation failed: {str(e)}"
         )
+
+
+@router.post("/feedback/stream")
+async def stream_draft_feedback(
+    request: FeedbackRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
+) -> StreamingResponse:
+    """
+    Stream AI-powered feedback on a draft section using Server-Sent Events (SSE).
+
+    Provides real-time feedback streaming as the AI generates responses,
+    allowing the frontend to display feedback progressively.
+
+    SSE Event format:
+    - event: feedback_start, data: {}
+    - event: feedback_chunk, data: {"content": "..."}
+    - event: feedback_end, data: {}
+    - event: feedback_error, data: {"error": "..."} (on error)
+
+    Args:
+        request: Contains draft text, mechanism, section type, and optional focus areas
+
+    Returns:
+        StreamingResponse with text/event-stream content type
+    """
+    async def event_generator():
+        async for event in writing_assistant.stream_feedback(
+            db=db,
+            text=request.text,
+            mechanism=request.mechanism,
+            section_type=request.section_type,
+            focus_areas=request.focus_areas,
+            grant_id=request.grant_id,
+        ):
+            yield event
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
 
 
 @router.post("/suggestions", response_model=SuggestionsResponse)

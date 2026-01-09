@@ -1,12 +1,13 @@
 """
 AI-powered grant insights service with streaming support.
 Generates eligibility analysis and writing tips for grant applications.
+Uses Anthropic Claude for AI-powered analysis.
 """
 import json
 from typing import AsyncGenerator, Optional, Literal
 from uuid import UUID
 
-import openai
+import anthropic
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,11 +22,11 @@ class GrantInsightsService:
     """Service for generating AI-powered grant insights with streaming."""
 
     def __init__(self):
-        if not settings.openai_api_key:
-            logger.warning("OPENAI_API_KEY not configured - AI insights will not work")
+        if not settings.anthropic_api_key:
+            logger.warning("ANTHROPIC_API_KEY not configured - AI insights will not work")
             self.client = None
         else:
-            self.client = openai.OpenAI(api_key=settings.openai_api_key)
+            self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
     async def stream_insights(
         self,
@@ -48,7 +49,7 @@ class GrantInsightsService:
         """
         # Check if API client is configured
         if not self.client:
-            yield {"event": "error", "data": {"message": "AI insights are not available. Please configure your OPENAI_API_KEY in the .env file."}}
+            yield {"event": "error", "data": {"message": "AI insights are not available. Please configure your ANTHROPIC_API_KEY in the .env file."}}
             return
 
         # Fetch grant details
@@ -108,7 +109,7 @@ class GrantInsightsService:
         grant_context: str,
         grant: Grant,
     ) -> AsyncGenerator[str, None]:
-        """Stream eligibility analysis using OpenAI."""
+        """Stream eligibility analysis using Anthropic Claude."""
         prompt = f"""You are an expert grant eligibility advisor. Analyze whether this researcher is eligible for the given grant opportunity.
 
 RESEARCHER PROFILE:
@@ -146,17 +147,14 @@ Be honest about uncertainty. If key information is missing, clearly state what a
 
 Use markdown formatting with headers, bullet points, and bold text for emphasis."""
 
-        # Use OpenAI streaming
-        stream = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        # Use Anthropic Claude streaming
+        with self.client.messages.stream(
+            model=settings.llm_model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
-            stream=True,
-        )
-
-        for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        ) as stream:
+            for text in stream.text_stream:
+                yield text
 
     async def _stream_writing_tips(
         self,
@@ -164,7 +162,7 @@ Use markdown formatting with headers, bullet points, and bold text for emphasis.
         grant_context: str,
         grant: Grant,
     ) -> AsyncGenerator[str, None]:
-        """Stream writing tips using OpenAI."""
+        """Stream writing tips using Anthropic Claude."""
         agency = grant.agency or "this funder"
 
         prompt = f"""You are an expert grant writing consultant with deep knowledge of {agency}'s funding priorities and preferences.
@@ -200,17 +198,14 @@ Based on the researcher's profile, provide 3-5 personalized recommendations that
 
 Make all suggestions specific to this grant and researcher combination. Use markdown formatting with headers and bullet points."""
 
-        # Use OpenAI streaming
-        stream = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+        # Use Anthropic Claude streaming
+        with self.client.messages.stream(
+            model=settings.llm_model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
-            stream=True,
-        )
-
-        for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        ) as stream:
+            for text in stream.text_stream:
+                yield text
 
     def _build_researcher_context(
         self, user: User, profile: Optional[LabProfile]

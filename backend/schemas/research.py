@@ -63,3 +63,51 @@ class ResearchQuickSearch(BaseModel):
     """Quick synchronous research search."""
     query: str = Field(..., min_length=5, max_length=500)
     max_results: int = Field(default=10, ge=1, le=50)
+
+
+# SSE Event Types for streaming progress
+class ResearchPhase(str, Enum):
+    """Research phases for progress tracking."""
+    PENDING = "pending"
+    EXPANDING_QUERY = "expanding_query"
+    GENERATING_EMBEDDING = "generating_embedding"
+    SEARCHING = "searching"
+    ANALYZING = "analyzing"
+    SCORING = "scoring"
+    GENERATING_INSIGHTS = "generating_insights"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class SSEStatusEvent(BaseModel):
+    """SSE status event for research phase updates."""
+    phase: ResearchPhase
+    message: str
+
+
+class SSEGrantFoundEvent(BaseModel):
+    """SSE event when a grant is discovered."""
+    grant: ResearchGrantResult
+
+
+class SSEProgressEvent(BaseModel):
+    """SSE progress event with percentage."""
+    percent: int = Field(..., ge=0, le=100)
+    message: str
+
+
+class SSEInsightsEvent(BaseModel):
+    """SSE event with generated insights."""
+    insights: str
+
+
+class SSECompleteEvent(BaseModel):
+    """SSE event when research is complete."""
+    grants_found: int
+    processing_time_ms: int
+
+
+class SSEErrorEvent(BaseModel):
+    """SSE event for errors."""
+    error: str
+    phase: Optional[ResearchPhase] = None

@@ -2,6 +2,7 @@
 from uuid import UUID
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -15,7 +16,7 @@ from backend.schemas.chat import (
     ChatMessageCreate,
     ChatMessageResponse,
 )
-from backend.services.rag_chat import RAGChatService
+from backend.services.rag_chat import RAGChatService, StreamEvent
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -106,6 +107,54 @@ async def send_chat_message(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chat error: {str(e)}"
         )
+
+
+@router.post("/sessions/{session_id}/messages/stream")
+async def stream_chat_message(
+    session_id: UUID,
+    request: ChatMessageCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _rate_limit: RateLimitAI = None,
+) -> StreamingResponse:
+    """Stream a chat message response using Server-Sent Events (SSE).
+
+    SSE Event format:
+    - event: message_start, data: {}
+    - event: message_chunk, data: {"content": "..."}
+    - event: message_end, data: {}
+    - event: sources, data: {"sources": [...]}
+    """
+    # Verify session exists and belongs to user before starting stream
+    session = await db.get(ChatSession, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    async def event_generator():
+        """Generate SSE events from the streaming response."""
+        try:
+            async for event in chat_service.stream_message(
+                db=db,
+                user=current_user,
+                session_id=session_id,
+                content=request.content,
+            ):
+                yield event.to_sse()
+        except ValueError as e:
+            # Yield error event for client handling
+            yield StreamEvent("error", {"detail": str(e)}).to_sse()
+        except Exception as e:
+            yield StreamEvent("error", {"detail": f"Chat error: {str(e)}"}).to_sse()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+        },
+    )
 
 
 @router.delete("/sessions/{session_id}")

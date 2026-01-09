@@ -2,7 +2,7 @@
 import anthropic
 import openai
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, AsyncGenerator
 from uuid import UUID
 import json
 import structlog
@@ -15,6 +15,18 @@ from backend.models import User, Grant, ChatSession, ChatMessage, LabProfile
 from backend.schemas.chat import ChatSource, ChatMessageResponse
 
 logger = structlog.get_logger(__name__)
+
+
+class StreamEvent:
+    """Represents an SSE event for streaming responses."""
+
+    def __init__(self, event: str, data: dict):
+        self.event = event
+        self.data = data
+
+    def to_sse(self) -> str:
+        """Convert to SSE format string."""
+        return f"event: {self.event}\ndata: {json.dumps(self.data)}\n\n"
 
 
 class RAGChatService:
@@ -111,6 +123,92 @@ class RAGChatService:
             sources=sources,
             created_at=assistant_msg.created_at,
         )
+
+    async def stream_message(
+        self,
+        db: AsyncSession,
+        user: User,
+        session_id: UUID,
+        content: str,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """Process a user message and stream the AI response with RAG.
+
+        Yields SSE events:
+        - message_start: Indicates streaming has begun
+        - message_chunk: Contains content chunks as they arrive
+        - message_end: Indicates streaming is complete
+        - sources: Contains the retrieved sources
+        """
+
+        # Verify session ownership
+        session = await db.get(ChatSession, session_id)
+        if not session or session.user_id != user.id:
+            raise ValueError("Session not found")
+
+        # Save user message
+        user_msg = ChatMessage(
+            session_id=session_id,
+            role="user",
+            content=content,
+        )
+        db.add(user_msg)
+        await db.flush()
+
+        # Get conversation history
+        history = await self._get_conversation_history(db, session_id)
+
+        # Retrieve relevant documents using RAG
+        sources, context = await self._retrieve_context(db, user, content, session)
+
+        # Build system prompt with context
+        system_prompt = self._build_system_prompt(session, context, user)
+
+        # Yield message_start event
+        yield StreamEvent("message_start", {})
+
+        # Stream response using Claude
+        full_response = ""
+        messages = history.copy()
+        messages.append({"role": "user", "content": content})
+
+        try:
+            with self.anthropic.messages.stream(
+                model=settings.llm_model,
+                max_tokens=settings.llm_max_tokens,
+                system=system_prompt,
+                messages=messages,
+            ) as stream:
+                for text_chunk in stream.text_stream:
+                    full_response += text_chunk
+                    yield StreamEvent("message_chunk", {"content": text_chunk})
+        except Exception as e:
+            logger.error("Claude streaming API error", error=str(e))
+            error_message = "I apologize, but I encountered an error processing your request. Please try again."
+            full_response = error_message
+            yield StreamEvent("message_chunk", {"content": error_message})
+
+        # Yield message_end event
+        yield StreamEvent("message_end", {})
+
+        # Yield sources event
+        yield StreamEvent("sources", {
+            "sources": [s.model_dump() for s in sources] if sources else []
+        })
+
+        # Save assistant message to database
+        assistant_msg = ChatMessage(
+            session_id=session_id,
+            role="assistant",
+            content=full_response,
+            sources=[s.model_dump() for s in sources] if sources else None,
+        )
+        db.add(assistant_msg)
+
+        # Update session's updated_at timestamp
+        session.updated_at = datetime.now(timezone.utc)
+
+        await db.commit()
+        await db.refresh(assistant_msg)
 
     async def _get_conversation_history(
         self, db: AsyncSession, session_id: UUID

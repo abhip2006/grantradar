@@ -6,7 +6,7 @@ Focuses on structure and completeness rather than content quality.
 import json
 import re
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import AsyncGenerator, Dict, List, Optional
 from uuid import UUID
 
 import anthropic
@@ -583,6 +583,123 @@ Focus on structure, completeness, and alignment with review criteria. Do not cri
             scores[section_score.criterion_name] = section_score.score
 
         return scores
+
+    async def stream_feedback(
+        self,
+        db: AsyncSession,
+        text: str,
+        mechanism: str,
+        section_type: str,
+        focus_areas: Optional[List[str]] = None,
+        grant_id: Optional[UUID] = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream AI-powered feedback on a draft section using SSE events.
+
+        Yields SSE-formatted events as feedback is generated:
+        - event: feedback_start, data: {}
+        - event: feedback_chunk, data: {"content": "..."}
+        - event: feedback_end, data: {}
+
+        Args:
+            db: Database session
+            text: Draft text to get feedback on
+            mechanism: Grant mechanism code (e.g., R01, CAREER)
+            section_type: Type of section being reviewed
+            focus_areas: Optional list of areas to focus on
+            grant_id: Optional grant ID for additional context
+
+        Yields:
+            SSE-formatted event strings
+        """
+        # Get criteria
+        criteria = await review_criteria_service.get_criteria_from_db(db, mechanism)
+        if not criteria:
+            criteria = review_criteria_service.get_criteria_for_mechanism(mechanism)
+
+        # Get grant context
+        grant_context = ""
+        if grant_id:
+            grant = await db.get(Grant, grant_id)
+            if grant:
+                grant_context = f"Grant: {grant.title}\nAgency: {grant.agency or 'Unknown'}\n"
+
+        # Build criteria focus
+        criteria_focus = "\n".join([
+            f"- {c.name}: {c.description}" for c in criteria.criteria
+        ])
+
+        focus_instruction = ""
+        if focus_areas:
+            focus_instruction = f"\nPay special attention to these areas: {', '.join(focus_areas)}"
+
+        prompt = f"""You are an expert grant writing consultant reviewing a {section_type} section for a {mechanism} grant.
+
+{grant_context}
+
+REVIEW CRITERIA:
+{criteria_focus}
+{focus_instruction}
+
+DRAFT TEXT:
+---
+{text}
+---
+
+Provide structured feedback on this draft. Focus on:
+
+1. **Overall Assessment**: Start with a 2-3 sentence overall assessment.
+
+2. **Criterion-by-Criterion Feedback**: For each relevant criterion, provide specific feedback.
+
+3. **Structural Suggestions**: List any structural improvements needed.
+
+4. **Content Gaps**: Identify missing content that should be addressed.
+
+5. **Strengths**: Highlight what's working well.
+
+6. **Priority Actions**: End with the top 3 priority actions to improve this draft.
+
+Focus on structure, completeness, and alignment with review criteria. Do not critique writing style.
+
+Write your feedback in a clear, readable format using markdown for structure."""
+
+        # Emit start event
+        yield self._format_sse_event("feedback_start", {})
+
+        try:
+            # Use streaming with the Anthropic client
+            with self.client.messages.stream(
+                model=settings.llm_model,
+                max_tokens=settings.llm_max_tokens,
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                for text_chunk in stream.text_stream:
+                    if text_chunk:
+                        yield self._format_sse_event("feedback_chunk", {"content": text_chunk})
+
+            # Emit end event
+            yield self._format_sse_event("feedback_end", {})
+
+        except Exception as e:
+            logger.error("Failed to stream feedback", error=str(e))
+            # Emit error in the stream
+            yield self._format_sse_event("feedback_error", {"error": str(e)})
+            yield self._format_sse_event("feedback_end", {})
+
+    def _format_sse_event(self, event_type: str, data: dict) -> str:
+        """
+        Format data as a Server-Sent Event (SSE).
+
+        Args:
+            event_type: The event type (e.g., 'feedback_start', 'feedback_chunk')
+            data: The data payload to send
+
+        Returns:
+            SSE-formatted string
+        """
+        json_data = json.dumps(data)
+        return f"event: {event_type}\ndata: {json_data}\n\n"
 
 
 # Singleton instance

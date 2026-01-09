@@ -2,10 +2,11 @@
 import anthropic
 import openai
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Callable, Any, AsyncIterator
 from uuid import UUID
 import time
 import json
+import asyncio
 import structlog
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from backend.schemas.research import (
     ResearchStatus,
     ResearchGrantResult,
     ResearchSessionResponse,
+    ResearchPhase,
 )
 
 logger = structlog.get_logger(__name__)
@@ -113,6 +115,187 @@ class DeepResearchService:
             session.insights = f"Research failed: {str(e)}"
             await db.commit()
             raise
+
+    async def run_research_with_progress(
+        self, db: AsyncSession, session_id: UUID
+    ) -> AsyncIterator[dict]:
+        """
+        Execute deep research for a session with progress streaming.
+
+        Yields SSE-formatted events for real-time progress updates.
+        """
+        start_time = time.time()
+
+        session = await db.get(ResearchSession, session_id)
+        if not session:
+            yield {
+                "event": "error",
+                "data": {"error": "Session not found", "phase": ResearchPhase.PENDING.value}
+            }
+            return
+
+        # Update status to processing
+        session.status = "processing"
+        await db.commit()
+
+        try:
+            # Emit initial status
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.PENDING.value, "message": "Starting research..."}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 5, "message": "Initializing research session"}
+            }
+
+            # Get user profile for personalization
+            profile_result = await db.execute(
+                select(LabProfile).where(LabProfile.user_id == session.user_id)
+            )
+            profile = profile_result.scalar_one_or_none()
+            user = await db.get(User, session.user_id)
+
+            # Step 1: Analyze and expand the query with Claude
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.EXPANDING_QUERY.value, "message": "Analyzing and expanding your query..."}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 15, "message": "Expanding query with related terms"}
+            }
+
+            expanded_query = await self._expand_query(session.query, profile)
+
+            # Step 2: Generate embedding for semantic search
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.GENERATING_EMBEDDING.value, "message": "Generating semantic embeddings..."}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 25, "message": "Creating search vectors"}
+            }
+
+            embedding = await self._generate_embedding(expanded_query)
+
+            # Step 3: Search grants using vector similarity
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.SEARCHING.value, "message": "Searching grant database..."}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 40, "message": "Performing semantic search"}
+            }
+
+            grants = await self._search_grants(db, embedding, profile)
+
+            # Emit found grants incrementally
+            yield {
+                "event": "progress",
+                "data": {"percent": 50, "message": f"Found {len(grants)} potential matches"}
+            }
+
+            # Emit grants as they are found (in batches for efficiency)
+            for i, grant in enumerate(grants[:10]):  # Stream first 10 immediately
+                yield {
+                    "event": "grant_found",
+                    "data": {
+                        "grant": {
+                            "id": str(grant.id),
+                            "title": grant.title,
+                            "funder": grant.agency or "Unknown",
+                            "mechanism": None,
+                            "description": (grant.description or "")[:300],
+                            "deadline": grant.deadline.isoformat() if grant.deadline else None,
+                            "amount_min": grant.amount_min,
+                            "amount_max": grant.amount_max,
+                            "relevance_score": 0.5,  # Preliminary score
+                            "match_reasons": ["Semantic match to your query"]
+                        }
+                    }
+                }
+                # Small delay to avoid overwhelming the client
+                if i % 3 == 2:
+                    await asyncio.sleep(0.05)
+
+            # Step 4: Score and rank results with Claude
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.SCORING.value, "message": "AI is scoring and ranking results..."}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 65, "message": "Analyzing relevance with AI"}
+            }
+
+            scored_results = await self._score_results(session.query, grants, profile)
+
+            yield {
+                "event": "progress",
+                "data": {"percent": 80, "message": f"Scored {len(scored_results)} relevant grants"}
+            }
+
+            # Step 5: Generate insights
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.GENERATING_INSIGHTS.value, "message": "Generating strategic insights..."}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 90, "message": "Creating recommendations"}
+            }
+
+            insights = await self._generate_insights(session.query, scored_results, profile)
+
+            # Emit insights
+            yield {
+                "event": "insights",
+                "data": {"insights": insights}
+            }
+
+            # Calculate processing time
+            processing_time = int((time.time() - start_time) * 1000)
+
+            # Update session with results
+            session.status = "completed"
+            session.results = [r.model_dump(mode='json') for r in scored_results]
+            session.insights = insights
+            session.grants_found = len(scored_results)
+            session.processing_time_ms = processing_time
+            session.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            # Emit completion
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.COMPLETED.value, "message": "Research complete!"}
+            }
+            yield {
+                "event": "progress",
+                "data": {"percent": 100, "message": "Research completed successfully"}
+            }
+            yield {
+                "event": "complete",
+                "data": {"grants_found": len(scored_results), "processing_time_ms": processing_time}
+            }
+
+        except Exception as e:
+            logger.error("Research failed", session_id=str(session_id), error=str(e))
+            session.status = "failed"
+            session.insights = f"Research failed: {str(e)}"
+            await db.commit()
+
+            yield {
+                "event": "status",
+                "data": {"phase": ResearchPhase.FAILED.value, "message": f"Research failed: {str(e)}"}
+            }
+            yield {
+                "event": "error",
+                "data": {"error": str(e), "phase": ResearchPhase.FAILED.value}
+            }
 
     async def _expand_query(
         self, query: str, profile: Optional[LabProfile]
