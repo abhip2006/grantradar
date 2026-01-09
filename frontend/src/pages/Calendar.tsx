@@ -12,7 +12,6 @@ import {
   FunnelIcon,
 } from '@heroicons/react/24/outline';
 import { calendarApi } from '../services/api';
-import { Navbar } from '../components/Navbar';
 import { CalendarGrid, DeadlineList } from '../components/calendar';
 
 type ViewMode = 'calendar' | 'list';
@@ -107,10 +106,7 @@ export function Calendar() {
   const isLoading = viewMode === 'calendar' ? monthLoading : upcomingLoading;
 
   return (
-    <div className="min-h-screen bg-[var(--gr-bg-primary)]">
-      <Navbar />
-
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8 animate-fade-in-up">
           <div className="flex items-center justify-between">
@@ -327,9 +323,8 @@ export function Calendar() {
               <span className="text-[var(--gr-text-secondary)]">In Pipeline</span>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
 
