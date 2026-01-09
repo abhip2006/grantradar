@@ -310,6 +310,8 @@ export function Dashboard() {
     advancedFilters.categories?.length,
     advancedFilters.min_amount || advancedFilters.max_amount,
     advancedFilters.deadline_after || advancedFilters.deadline_before,
+    advancedFilters.deadline_proximity,
+    advancedFilters.score_range && advancedFilters.score_range !== 'all',
   ].filter(Boolean).length;
 
   // Clear advanced filters handler
