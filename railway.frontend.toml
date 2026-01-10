@@ -1,0 +1,12 @@
+# GrantRadar Frontend Railway Configuration
+# This config is specifically for the FRONTEND service
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.frontend"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
