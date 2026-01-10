@@ -5,14 +5,13 @@ SQLAlchemy ORM models for the grant intelligence platform.
 import enum
 import uuid
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
     TIMESTAMP,
-    Column,
     Enum,
     Float,
     ForeignKey,
@@ -27,6 +26,9 @@ from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB, TSVECTOR as PG_TSV
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import CHAR, JSON, TEXT, TypeDecorator
+
+if TYPE_CHECKING:
+    from backend.models.api_key import APIKey
 
 
 class GUID(TypeDecorator):

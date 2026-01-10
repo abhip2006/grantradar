@@ -13,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.celery_app import celery_app
-from backend.core.config import settings
 from backend.database import sync_engine
 from backend.models import LabProfile, User
 

@@ -9,9 +9,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
-from backend.models import LabProfile, User
+from backend.models import LabProfile
 from backend.schemas.profile import (
-    LabProfileCreate,
     LabProfileResponse,
     LabProfileUpdate,
     OnboardingData,

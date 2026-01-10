@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import admin_analytics, aims, alerts, analytics, api_keys, audit, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, sharing, similar, stats, team, team_collaboration, templates, verification, workflow_analytics, writing
+from backend.api import admin_analytics, aims, alerts, analytics, api_keys, audit, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, sharing, similar, stats, team, team_collaboration, templates, verification, winners, workflow_analytics, writing
 from backend.core.config import settings
 from backend.core.rate_limit import (
     RateLimitMiddleware,
@@ -382,6 +382,7 @@ app.include_router(team.router)
 app.include_router(team_collaboration.router)
 app.include_router(templates.router)
 app.include_router(verification.router)
+app.include_router(winners.router)
 app.include_router(workflow_analytics.router)
 app.include_router(writing.router)
 

@@ -7,7 +7,7 @@ import secrets
 from datetime import timedelta
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -22,7 +22,7 @@ from backend.api.deps import (
     verify_refresh_token,
 )
 from backend.core.config import settings
-from backend.core.rate_limit import RateLimitAuth, RateLimitTier, RateLimitDependency
+from backend.core.rate_limit import RateLimitAuth
 from backend.models import LabProfile, User
 from backend.schemas.auth import (
     ForgotPasswordRequest,
