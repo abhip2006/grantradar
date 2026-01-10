@@ -5,6 +5,11 @@
 builder = "dockerfile"
 dockerfilePath = "Dockerfile.frontend"
 
+# Pass environment variables as build arguments for Vite
+# VITE_* variables are baked in at build time, not runtime
+[build.args]
+VITE_API_URL = "${{VITE_API_URL}}"
+
 [deploy]
 healthcheckPath = "/health"
 healthcheckTimeout = 120
