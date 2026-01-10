@@ -9,6 +9,7 @@ import { PageErrorBoundary } from './components/common';
 // Pages
 import { Landing } from './pages/Landing';
 import { Auth } from './pages/Auth';
+import { Onboarding } from './pages/Onboarding';
 import { Dashboard } from './pages/Dashboard';
 import { GrantDetail } from './pages/GrantDetail';
 import { Compare } from './pages/Compare';
@@ -30,7 +31,6 @@ import { Templates } from './pages/Templates';
 import { AITools } from './pages/AITools';
 import { Kanban } from './pages/Kanban';
 import { Team } from './pages/Team';
-import Winners from './pages/Winners';
 import { InvitationAccept } from './pages/InvitationAccept';
 import { InvitationDecline } from './pages/InvitationDecline';
 import { GrantPortfolio } from './components/GrantPortfolio';
@@ -70,6 +70,18 @@ function App() {
               {/* Auth routes (no navbar) */}
               <Route element={<AuthLayout />}>
                 <Route path="/auth" element={<Auth />} />
+              </Route>
+
+              {/* Onboarding route (no navbar, protected but doesn't require profile) */}
+              <Route element={<AuthLayout />}>
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute requireProfile={false}>
+                      <Onboarding />
+                    </ProtectedRoute>
+                  }
+                />
               </Route>
 
               {/* Protected routes */}
@@ -204,14 +216,6 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <GrantPortfolio />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/winners"
-                  element={
-                    <ProtectedRoute>
-                      <Winners />
                     </ProtectedRoute>
                   }
                 />

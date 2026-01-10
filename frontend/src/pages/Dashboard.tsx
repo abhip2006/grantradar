@@ -579,187 +579,361 @@ export function Dashboard() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="mb-8 animate-fade-in-up">
+        <div className="mb-6 animate-fade-in-up">
           <h1 className="text-3xl font-display font-medium text-[var(--gr-text-primary)]">
             Grant Dashboard
           </h1>
           <p className="mt-2 text-[var(--gr-text-secondary)]">
-            Opportunities matched to your organization's profile
+            {dataMode === 'opportunities'
+              ? "Opportunities matched to your organization's profile"
+              : 'Search 2.6M+ funded NIH projects'}
           </p>
         </div>
 
-        {/* Stats Bar */}
-        <div className="mb-8">
-          <StatsBar stats={stats} isLoading={statsLoading} />
+        {/* Data Mode Toggle */}
+        <div className="flex gap-2 mb-8 animate-fade-in-up">
+          <button
+            onClick={() => setDataMode('opportunities')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              dataMode === 'opportunities'
+                ? 'bg-[var(--gr-blue-600)]/15 text-[var(--gr-blue-600)] border border-[var(--gr-blue-600)]/30'
+                : 'bg-[var(--gr-bg-card)] text-[var(--gr-text-secondary)] border border-[var(--gr-border-default)] hover:border-[var(--gr-border-strong)]'
+            }`}
+          >
+            <SparklesIcon className="w-4 h-4" />
+            Open Opportunities
+          </button>
+          <button
+            onClick={() => setDataMode('winners')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              dataMode === 'winners'
+                ? 'bg-[var(--gr-accent-forest)]/15 text-[var(--gr-accent-forest)] border border-[var(--gr-accent-forest)]/30'
+                : 'bg-[var(--gr-bg-card)] text-[var(--gr-text-secondary)] border border-[var(--gr-border-default)] hover:border-[var(--gr-border-strong)]'
+            }`}
+          >
+            <TrophyIcon className="w-4 h-4" />
+            Past Winners
+          </button>
         </div>
 
-        {/* Filters Section */}
-        <div className="card p-4 mb-8 animate-fade-in-up stagger-5">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--gr-text-tertiary)]" />
-              <input
-                type="text"
-                placeholder="Search grants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input pl-12"
-              />
-            </div>
+        {/* Stats Bar - Only show in opportunities mode */}
+        {dataMode === 'opportunities' && (
+          <div className="mb-8">
+            <StatsBar stats={stats} isLoading={statsLoading} />
+          </div>
+        )}
 
-            {/* Source Tabs */}
-            <TabGroup
-              selectedIndex={sourceFilters.findIndex(f => f.value === selectedSource)}
-              onChange={(index) => setSelectedSource(sourceFilters[index].value)}
-            >
-              <TabList className="flex p-1 bg-[var(--gr-bg-card)] rounded-xl border border-[var(--gr-border-subtle)]">
-                {sourceFilters.map((filter) => (
-                  <Tab
-                    key={filter.value}
-                    className={({ selected }) =>
-                      `px-4 py-2 text-sm font-medium rounded-lg transition-all outline-none ${
-                        selected
-                          ? 'bg-[var(--gr-blue-600)]/10 text-[var(--gr-blue-600)]'
-                          : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)]'
-                      }`
-                    }
+        {/* Conditional Content based on Data Mode */}
+        {dataMode === 'opportunities' ? (
+          <>
+            {/* Filters Section */}
+            <div className="card p-4 mb-8 animate-fade-in-up stagger-5">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                {/* Search Input */}
+                <div className="relative flex-1 max-w-md">
+                  <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--gr-text-tertiary)]" />
+                  <input
+                    type="text"
+                    placeholder="Search grants..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="input pl-12"
+                  />
+                </div>
+
+                {/* Source Tabs */}
+                <TabGroup
+                  selectedIndex={sourceFilters.findIndex(f => f.value === selectedSource)}
+                  onChange={(index) => setSelectedSource(sourceFilters[index].value)}
+                >
+                  <TabList className="flex p-1 bg-[var(--gr-bg-card)] rounded-xl border border-[var(--gr-border-subtle)]">
+                    {sourceFilters.map((filter) => (
+                      <Tab
+                        key={filter.value}
+                        className={({ selected }) =>
+                          `px-4 py-2 text-sm font-medium rounded-lg transition-all outline-none ${
+                            selected
+                              ? 'bg-[var(--gr-blue-600)]/10 text-[var(--gr-blue-600)]'
+                              : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-text-primary)]'
+                          }`
+                        }
+                      >
+                        {filter.name}
+                      </Tab>
+                    ))}
+                  </TabList>
+                </TabGroup>
+
+                {/* Saved Toggle */}
+                <button
+                  onClick={() => setShowSavedOnly(!showSavedOnly)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    showSavedOnly
+                      ? 'bg-[var(--gr-emerald-500)]/20 text-[var(--gr-emerald-400)] border border-[var(--gr-emerald-500)]/30'
+                      : 'bg-[var(--gr-bg-card)] text-[var(--gr-text-secondary)] border border-[var(--gr-border-default)] hover:border-[var(--gr-border-strong)]'
+                  }`}
+                >
+                  {showSavedOnly ? (
+                    <BookmarkSolidIcon className="w-4 h-4" />
+                  ) : (
+                    <BookmarkIcon className="w-4 h-4" />
+                  )}
+                  {showSavedOnly ? 'Showing Saved' : 'Show Saved'}
+                </button>
+              </div>
+
+              {/* Advanced Filters */}
+              <div className="mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
+                <AdvancedFilters
+                  filters={advancedFilters}
+                  onFiltersChange={setAdvancedFilters}
+                  onClear={handleClearAdvancedFilters}
+                />
+              </div>
+
+              {/* Active Filters Indicator */}
+              {(selectedSource !== 'all' || showSavedOnly || searchQuery || minScore || advancedFilterCount > 0) && (
+                <div className="flex items-center flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
+                  <FunnelIcon className="w-4 h-4 text-[var(--gr-text-tertiary)]" />
+                  <span className="text-sm text-[var(--gr-text-tertiary)]">Active filters:</span>
+                  {selectedSource !== 'all' && (
+                    <span className="badge badge-blue">{selectedSource}</span>
+                  )}
+                  {showSavedOnly && (
+                    <span className="badge badge-emerald">Saved Only</span>
+                  )}
+                  {minScore && (
+                    <span className="badge badge-cyan">{minScore}%+ score</span>
+                  )}
+                  {searchQuery && (
+                    <span className="badge badge-slate">"{searchQuery}"</span>
+                  )}
+                  {advancedFilterCount > 0 && (
+                    <span className="badge badge-blue">{advancedFilterCount} advanced filter{advancedFilterCount !== 1 ? 's' : ''}</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setSelectedSource('all');
+                      setShowSavedOnly(false);
+                      setMinScore(undefined);
+                      setSearchQuery('');
+                      setAdvancedFilters({});
+                    }}
+                    className="text-xs text-[var(--gr-text-tertiary)] hover:text-[var(--gr-danger)] ml-2"
                   >
-                    {filter.name}
-                  </Tab>
-                ))}
-              </TabList>
-            </TabGroup>
-
-            {/* Saved Toggle */}
-            <button
-              onClick={() => setShowSavedOnly(!showSavedOnly)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                showSavedOnly
-                  ? 'bg-[var(--gr-emerald-500)]/20 text-[var(--gr-emerald-400)] border border-[var(--gr-emerald-500)]/30'
-                  : 'bg-[var(--gr-bg-card)] text-[var(--gr-text-secondary)] border border-[var(--gr-border-default)] hover:border-[var(--gr-border-strong)]'
-              }`}
-            >
-              {showSavedOnly ? (
-                <BookmarkSolidIcon className="w-4 h-4" />
-              ) : (
-                <BookmarkIcon className="w-4 h-4" />
+                    Clear all
+                  </button>
+                </div>
               )}
-              {showSavedOnly ? 'Showing Saved' : 'Show Saved'}
-            </button>
-          </div>
-
-          {/* Advanced Filters */}
-          <div className="mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
-            <AdvancedFilters
-              filters={advancedFilters}
-              onFiltersChange={setAdvancedFilters}
-              onClear={handleClearAdvancedFilters}
-            />
-          </div>
-
-          {/* Active Filters Indicator */}
-          {(selectedSource !== 'all' || showSavedOnly || searchQuery || minScore || advancedFilterCount > 0) && (
-            <div className="flex items-center flex-wrap gap-2 mt-4 pt-4 border-t border-[var(--gr-border-subtle)]">
-              <FunnelIcon className="w-4 h-4 text-[var(--gr-text-tertiary)]" />
-              <span className="text-sm text-[var(--gr-text-tertiary)]">Active filters:</span>
-              {selectedSource !== 'all' && (
-                <span className="badge badge-blue">{selectedSource}</span>
-              )}
-              {showSavedOnly && (
-                <span className="badge badge-emerald">Saved Only</span>
-              )}
-              {minScore && (
-                <span className="badge badge-cyan">{minScore}%+ score</span>
-              )}
-              {searchQuery && (
-                <span className="badge badge-slate">"{searchQuery}"</span>
-              )}
-              {advancedFilterCount > 0 && (
-                <span className="badge badge-blue">{advancedFilterCount} advanced filter{advancedFilterCount !== 1 ? 's' : ''}</span>
-              )}
-              <button
-                onClick={() => {
-                  setSelectedSource('all');
-                  setShowSavedOnly(false);
-                  setMinScore(undefined);
-                  setSearchQuery('');
-                  setAdvancedFilters({});
-                }}
-                className="text-xs text-[var(--gr-text-tertiary)] hover:text-[var(--gr-danger)] ml-2"
-              >
-                Clear all
-              </button>
             </div>
-          )}
-        </div>
 
-        {/* Main Content with Saved Searches Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Grants Grid - Main Content */}
-          <div className="lg:col-span-3">
-            {grantsLoading ? (
-              <LoadingGrid />
-            ) : filteredMatches.length === 0 ? (
-              <EmptyState
-                showSavedOnly={showSavedOnly}
-                searchQuery={searchQuery}
-                onClearFilters={() => {
-                  setSelectedSource('all');
-                  setShowSavedOnly(false);
-                  setMinScore(undefined);
-                  setSearchQuery('');
-                  setAdvancedFilters({});
-                }}
-              />
-            ) : (
+            {/* Main Content with Saved Searches Sidebar */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Grants Grid - Main Content */}
+              <div className="lg:col-span-3">
+                {grantsLoading ? (
+                  <LoadingGrid />
+                ) : filteredMatches.length === 0 ? (
+                  <EmptyState
+                    showSavedOnly={showSavedOnly}
+                    searchQuery={searchQuery}
+                    onClearFilters={() => {
+                      setSelectedSource('all');
+                      setShowSavedOnly(false);
+                      setMinScore(undefined);
+                      setSearchQuery('');
+                      setAdvancedFilters({});
+                    }}
+                  />
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {filteredMatches.map((match, index) => (
+                        <GrantCard
+                          key={match.id}
+                          match={match}
+                          onSave={handleSave}
+                          onDismiss={handleDismiss}
+                          onToggleCompare={handleToggleCompare}
+                          isSelectedForCompare={compareSelection.some((g) => g.id === match.grant.id)}
+                          compareDisabled={compareSelection.length >= 4}
+                          delay={index}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Loading More Indicator */}
+                    {isFetchingNextPage && (
+                      <div className="flex justify-center py-12">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" />
+                          <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.2s' }} />
+                          <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.4s' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* End of List */}
+                    {!hasNextPage && filteredMatches.length > 0 && (
+                      <div className="text-center py-12 text-[var(--gr-text-tertiary)]">
+                        You've seen all {filteredMatches.length} matching grants
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Saved Searches Sidebar */}
+              <div className="lg:col-span-1 order-first lg:order-last">
+                <div className="card p-4 sticky top-24">
+                  <SavedSearches
+                    currentFilters={currentFilters}
+                    onApplySearch={handleApplySavedSearch}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Winners Mode */
+          <div>
+            {/* Search Bar */}
+            <form onSubmit={handleWinnersSearch} className="mb-6">
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--gr-text-tertiary)]" />
+                <input
+                  type="text"
+                  value={winnersSearchQuery}
+                  onChange={(e) => setWinnersSearchQuery(e.target.value)}
+                  placeholder="Search funded projects by keywords, topics, or research areas..."
+                  className="input-editorial w-full pl-12 pr-32 h-14 text-lg"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 btn-primary-editorial"
+                >
+                  Search
+                </button>
+              </div>
+            </form>
+
+            {/* Filters */}
+            <WinnersFilterPanel
+              filters={winnersFilters}
+              onChange={(f) => {
+                setWinnersFilters(f);
+                setWinnersPage(1);
+              }}
+              onReset={handleResetWinnersFilters}
+            />
+
+            {/* Aggregations */}
+            {winnersData && !winnersLoading && <AggregationCards data={winnersData} />}
+
+            {/* Results Count */}
+            {winnersData && (
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[var(--gr-text-secondary)]">
+                  <span className="font-semibold text-[var(--gr-text-primary)]">
+                    {winnersData.total.toLocaleString()}
+                  </span>{' '}
+                  funded projects found
+                </p>
+                <p className="text-sm text-[var(--gr-text-tertiary)]">
+                  Page {winnersData.page} of {winnersData.pages}
+                </p>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {winnersLoading && (
+              <div className="grid md:grid-cols-2 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="card-premium animate-pulse">
+                    <div className="h-6 bg-[var(--gr-bg-secondary)] rounded w-3/4 mb-3" />
+                    <div className="h-4 bg-[var(--gr-bg-secondary)] rounded w-1/2 mb-4" />
+                    <div className="h-16 bg-[var(--gr-bg-secondary)] rounded mb-4" />
+                    <div className="h-4 bg-[var(--gr-bg-secondary)] rounded w-1/3" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error State */}
+            {winnersError && (
+              <div className="text-center py-12">
+                <p className="text-[var(--gr-text-tertiary)]">
+                  Failed to load projects. Please try again.
+                </p>
+                <button
+                  onClick={() => refetchWinners()}
+                  className="mt-4 btn-secondary-editorial"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* Results Grid */}
+            {winnersData && !winnersLoading && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {filteredMatches.map((match, index) => (
-                    <GrantCard
-                      key={match.id}
-                      match={match}
-                      onSave={handleSave}
-                      onDismiss={handleDismiss}
-                      onToggleCompare={handleToggleCompare}
-                      isSelectedForCompare={compareSelection.some((g) => g.id === match.grant.id)}
-                      compareDisabled={compareSelection.length >= 4}
-                      delay={index}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {winnersData.results.map((project) => (
+                    <WinnerCard
+                      key={project.project_num}
+                      project={project}
+                      onClick={() => setSelectedProject(project)}
                     />
                   ))}
                 </div>
 
-                {/* Loading More Indicator */}
-                {isFetchingNextPage && (
-                  <div className="flex justify-center py-12">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" />
-                      <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <div className="w-2 h-2 rounded-full bg-[var(--gr-blue-600)] animate-pulse" style={{ animationDelay: '0.4s' }} />
-                    </div>
+                {/* Empty State */}
+                {winnersData.results.length === 0 && (
+                  <div className="text-center py-16">
+                    <AcademicCapIcon className="h-12 w-12 text-[var(--gr-text-muted)] mx-auto mb-4" />
+                    <h3 className="text-lg font-display font-semibold text-[var(--gr-text-primary)] mb-2">
+                      No projects found
+                    </h3>
+                    <p className="text-[var(--gr-text-tertiary)]">
+                      Try adjusting your search or filters
+                    </p>
                   </div>
                 )}
 
-                {/* End of List */}
-                {!hasNextPage && filteredMatches.length > 0 && (
-                  <div className="text-center py-12 text-[var(--gr-text-tertiary)]">
-                    You've seen all {filteredMatches.length} matching grants
+                {/* Pagination */}
+                {winnersData.pages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-8">
+                    <button
+                      onClick={() => setWinnersPage((p) => Math.max(1, p - 1))}
+                      disabled={winnersPage === 1}
+                      className="btn-secondary-editorial disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-4 text-[var(--gr-text-secondary)]">
+                      Page {winnersPage} of {winnersData.pages}
+                    </span>
+                    <button
+                      onClick={() => setWinnersPage((p) => Math.min(winnersData.pages, p + 1))}
+                      disabled={winnersPage === winnersData.pages}
+                      className="btn-secondary-editorial disabled:opacity-50"
+                    >
+                      Next
+                    </button>
                   </div>
                 )}
               </>
             )}
-          </div>
 
-          {/* Saved Searches Sidebar */}
-          <div className="lg:col-span-1 order-first lg:order-last">
-            <div className="card p-4 sticky top-24">
-              <SavedSearches
-                currentFilters={currentFilters}
-                onApplySearch={handleApplySavedSearch}
+            {/* Project Detail Modal */}
+            {selectedProject && (
+              <ProjectModal
+                project={selectedProject}
+                onClose={() => setSelectedProject(null)}
               />
-            </div>
+            )}
           </div>
-        </div>
+        )}
       </main>
 
       {/* Floating Compare Bar */}

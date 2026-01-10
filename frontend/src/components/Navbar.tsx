@@ -19,7 +19,6 @@ import {
   HomeIcon,
   UserGroupIcon,
   BriefcaseIcon,
-  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
 import { NotificationBellContainer } from './notifications';
@@ -141,7 +140,6 @@ export function Navbar() {
   // Resources dropdown items
   const resourcesNavigation: NavItem[] = [
     { name: 'Funders', href: '/funders', icon: BuildingLibraryIcon, description: 'Funder insights & profiles' },
-    { name: 'Winners', href: '/winners', icon: TrophyIcon, description: 'Past funded projects & patterns' },
     { name: 'Templates', href: '/templates', icon: DocumentTextIcon, description: 'Application templates' },
     { name: 'AI Tools', href: '/ai-tools', icon: SparklesIcon, description: 'AI-powered assistance' },
     { name: 'Integrations', href: '/integrations', icon: PuzzlePieceIcon, description: 'Connect your tools' },
