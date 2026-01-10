@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tab, TabGroup, TabList } from '@headlessui/react';
@@ -10,9 +10,11 @@ import {
   ArrowTrendingUpIcon,
   FunnelIcon,
   QuestionMarkCircleIcon,
+  AcademicCapIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
-import { grantsApi } from '../services/api';
+import { grantsApi, winnersApi } from '../services/api';
 import { socketService } from '../services/socket';
 import { useToast } from '../contexts/ToastContext';
 import { GrantCard } from '../components/GrantCard';
@@ -26,6 +28,14 @@ import {
   GrantCardSkeleton,
 } from '../components/common/Skeleton';
 import type { GrantMatch, GrantSource, DashboardStats, SavedSearchFilters, AdvancedGrantFilters } from '../types';
+import type { FundedProject, WinnersFilters } from '../types/winners';
+import { defaultWinnersFilters } from '../types/winners';
+import {
+  WinnerCard,
+  WinnersFilterPanel,
+  AggregationCards,
+  ProjectModal,
+} from '../components/winners';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    GRANTRADAR DASHBOARD
@@ -270,11 +280,17 @@ function LoadingGrid() {
   );
 }
 
+type DataMode = 'opportunities' | 'winners';
+
 export function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Data mode toggle
+  const [dataMode, setDataMode] = useState<DataMode>('opportunities');
+
+  // Opportunities state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSource, setSelectedSource] = useState<GrantSource | 'all'>('all');
   const [showSavedOnly, setShowSavedOnly] = useState(searchParams.get('filter') === 'saved');
@@ -282,6 +298,12 @@ export function Dashboard() {
   const [minScore, setMinScore] = useState<number | undefined>(undefined);
   const [compareSelection, setCompareSelection] = useState<Array<{ id: string; title: string }>>([]);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedGrantFilters>({});
+
+  // Winners state
+  const [winnersFilters, setWinnersFilters] = useState<WinnersFilters>(defaultWinnersFilters);
+  const [winnersPage, setWinnersPage] = useState(1);
+  const [winnersSearchQuery, setWinnersSearchQuery] = useState('');
+  const [selectedProject, setSelectedProject] = useState<FundedProject | null>(null);
 
   // Build current filters object for saved searches
   const currentFilters: SavedSearchFilters = {
@@ -336,6 +358,44 @@ export function Dashboard() {
     queryKey: ['dashboard-stats'],
     queryFn: grantsApi.getDashboardStats,
   });
+
+  // Winners search params and query
+  const winnersSearchParams = useMemo(() => ({
+    query: winnersSearchQuery || undefined,
+    activity_codes: winnersFilters.activityCodes.length > 0 ? winnersFilters.activityCodes.join(',') : undefined,
+    institute: winnersFilters.institute || undefined,
+    fiscal_years: winnersFilters.fiscalYears.length > 0 ? winnersFilters.fiscalYears.join(',') : undefined,
+    institution: winnersFilters.institution || undefined,
+    pi_name: winnersFilters.piName || undefined,
+    state: winnersFilters.state || undefined,
+    page: winnersPage,
+    limit: 20,
+  }), [winnersFilters, winnersSearchQuery, winnersPage]);
+
+  const {
+    data: winnersData,
+    isLoading: winnersLoading,
+    error: winnersError,
+    refetch: refetchWinners,
+  } = useQuery({
+    queryKey: ['winners-search', winnersSearchParams],
+    queryFn: () => winnersApi.search(winnersSearchParams),
+    enabled: dataMode === 'winners',
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Winners handlers
+  const handleWinnersSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setWinnersPage(1);
+    refetchWinners();
+  };
+
+  const handleResetWinnersFilters = () => {
+    setWinnersFilters(defaultWinnersFilters);
+    setWinnersSearchQuery('');
+    setWinnersPage(1);
+  };
 
   // Count active advanced filters
   const advancedFilterCount = [

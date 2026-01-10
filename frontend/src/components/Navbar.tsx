@@ -36,6 +36,87 @@ interface NavItem {
   description?: string;
 }
 
+// Desktop dropdown component - defined outside to avoid recreation on each render
+interface DropdownMenuProps {
+  label: string;
+  items: NavItem[];
+  isActive: boolean;
+  currentPath: string;
+}
+
+function DropdownMenu({ label, items, isActive, currentPath }: DropdownMenuProps) {
+  return (
+    <Popover className="relative">
+      {({ open }) => (
+        <>
+          <Popover.Button
+            className={classNames(
+              'inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-body font-medium transition-all duration-150 outline-none',
+              open || isActive
+                ? 'text-[var(--gr-forest-700)] bg-[var(--gr-forest-50)]'
+                : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] hover:bg-[var(--gr-paper-dark)]'
+            )}
+          >
+            {label}
+            <ChevronDownIcon
+              className={classNames(
+                'w-4 h-4 transition-transform duration-200',
+                open ? 'rotate-180' : ''
+              )}
+            />
+          </Popover.Button>
+
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-200"
+            enterFrom="opacity-0 translate-y-1"
+            enterTo="opacity-100 translate-y-0"
+            leave="transition ease-in duration-150"
+            leaveFrom="opacity-100 translate-y-0"
+            leaveTo="opacity-0 translate-y-1"
+          >
+            <Popover.Panel className="absolute left-0 z-50 mt-2 w-64 origin-top-left">
+              <div className="overflow-hidden rounded-lg bg-[var(--gr-paper)] shadow-lg ring-1 ring-[var(--gr-border-editorial)] border border-[var(--gr-border-editorial)]">
+                <div className="p-2">
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    const isItemActive = currentPath === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className={classNames(
+                          'flex items-start gap-3 rounded-md p-3 transition-colors',
+                          isItemActive
+                            ? 'bg-[var(--gr-forest-50)] text-[var(--gr-forest-700)]'
+                            : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]'
+                        )}
+                      >
+                        {Icon && (
+                          <Icon className={classNames(
+                            'w-5 h-5 flex-shrink-0 mt-0.5',
+                            isItemActive ? 'text-[var(--gr-forest-600)]' : 'text-[var(--gr-gold-500)]'
+                          )} />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium font-body">{item.name}</p>
+                          {item.description && (
+                            <p className="text-xs text-[var(--gr-text-tertiary)] mt-0.5 font-body">{item.description}</p>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </Popover.Panel>
+          </Transition>
+        </>
+      )}
+    </Popover>
+  );
+}
+
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -76,78 +157,6 @@ export function Navbar() {
   const isGroupActive = (items: NavItem[]) => {
     return items.some(item => location.pathname === item.href);
   };
-
-  // Desktop dropdown component
-  const DropdownMenu = ({ label, items, isActive }: { label: string; items: NavItem[]; isActive: boolean }) => (
-    <Popover className="relative">
-      {({ open }) => (
-        <>
-          <Popover.Button
-            className={classNames(
-              'inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-body font-medium transition-all duration-150 outline-none',
-              open || isActive
-                ? 'text-[var(--gr-forest-700)] bg-[var(--gr-forest-50)]'
-                : 'text-[var(--gr-text-secondary)] hover:text-[var(--gr-forest-700)] hover:bg-[var(--gr-paper-dark)]'
-            )}
-          >
-            {label}
-            <ChevronDownIcon
-              className={classNames(
-                'w-4 h-4 transition-transform duration-200',
-                open ? 'rotate-180' : ''
-              )}
-            />
-          </Popover.Button>
-
-          <Transition
-            as={Fragment}
-            enter="transition ease-out duration-200"
-            enterFrom="opacity-0 translate-y-1"
-            enterTo="opacity-100 translate-y-0"
-            leave="transition ease-in duration-150"
-            leaveFrom="opacity-100 translate-y-0"
-            leaveTo="opacity-0 translate-y-1"
-          >
-            <Popover.Panel className="absolute left-0 z-50 mt-2 w-64 origin-top-left">
-              <div className="overflow-hidden rounded-lg bg-[var(--gr-paper)] shadow-lg ring-1 ring-[var(--gr-border-editorial)] border border-[var(--gr-border-editorial)]">
-                <div className="p-2">
-                  {items.map((item) => {
-                    const Icon = item.icon;
-                    const isItemActive = location.pathname === item.href;
-                    return (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        className={classNames(
-                          'flex items-start gap-3 rounded-md p-3 transition-colors',
-                          isItemActive
-                            ? 'bg-[var(--gr-forest-50)] text-[var(--gr-forest-700)]'
-                            : 'text-[var(--gr-text-secondary)] hover:bg-[var(--gr-paper-dark)] hover:text-[var(--gr-forest-700)]'
-                        )}
-                      >
-                        {Icon && (
-                          <Icon className={classNames(
-                            'w-5 h-5 flex-shrink-0 mt-0.5',
-                            isItemActive ? 'text-[var(--gr-forest-600)]' : 'text-[var(--gr-gold-500)]'
-                          )} />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium font-body">{item.name}</p>
-                          {item.description && (
-                            <p className="text-xs text-[var(--gr-text-tertiary)] mt-0.5 font-body">{item.description}</p>
-                          )}
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            </Popover.Panel>
-          </Transition>
-        </>
-      )}
-    </Popover>
-  );
 
   return (
     <nav className="bg-[var(--gr-paper)] border-b border-[var(--gr-border-editorial)] sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
@@ -191,11 +200,13 @@ export function Navbar() {
                   label="Tools"
                   items={toolsNavigation}
                   isActive={isGroupActive(toolsNavigation)}
+                  currentPath={location.pathname}
                 />
                 <DropdownMenu
                   label="Resources"
                   items={resourcesNavigation}
                   isActive={isGroupActive(resourcesNavigation)}
+                  currentPath={location.pathname}
                 />
               </div>
             )}

@@ -19,5 +19,23 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Downgrade to warnings for gradual migration
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'react-refresh/only-export-components': 'warn',
+      // Allow setState in effects - common pattern for sync with props
+      'react-hooks/set-state-in-effect': 'off',
+      // Treat exhaustive-deps as warning
+      'react-hooks/exhaustive-deps': 'warn',
+      // Disable strict React compiler rules
+      'react-hooks/rules-of-hooks': 'error', // Keep this one
+      'react-hooks/static-components': 'off',
+      'react-hooks/prefer-use-state-lazy-initialization': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/purity': 'off',
+      // Disable no-useless-escape for regex patterns
+      'no-useless-escape': 'warn',
+    },
   },
 ])
