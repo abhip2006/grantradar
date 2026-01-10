@@ -330,7 +330,7 @@ class ProfileBuilder:
 
         query = text("""
             UPDATE lab_profiles
-            SET profile_embedding = :embedding::vector
+            SET profile_embedding = CAST(:embedding AS vector)
             WHERE user_id = :user_id
         """)
 

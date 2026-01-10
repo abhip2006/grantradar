@@ -225,7 +225,7 @@ class GrantEmbedder:
             embedding_str = "[" + ",".join(map(str, embedding)) + "]"
             update_query = text("""
                 UPDATE grants
-                SET embedding = :embedding::vector
+                SET embedding = CAST(:embedding AS vector)
                 WHERE id = :grant_id
             """)
             session.execute(update_query, {"grant_id": str(grant_id), "embedding": embedding_str})
@@ -273,7 +273,7 @@ class GrantEmbedder:
                        amount_min, amount_max, categories, eligibility,
                        embedding IS NOT NULL as has_embedding
                 FROM grants
-                WHERE id = ANY(:grant_ids)
+                WHERE id = ANY(CAST(:grant_ids AS uuid[]))
             """)
             results = session.execute(query, {"grant_ids": [str(gid) for gid in grant_ids]}).fetchall()
 
@@ -312,7 +312,7 @@ class GrantEmbedder:
                         embedding_str = "[" + ",".join(map(str, embedding)) + "]"
                         update_query = text("""
                             UPDATE grants
-                            SET embedding = :embedding::vector
+                            SET embedding = CAST(:embedding AS vector)
                             WHERE id = :grant_id
                         """)
                         session.execute(
