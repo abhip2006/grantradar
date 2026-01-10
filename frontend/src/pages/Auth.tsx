@@ -179,7 +179,8 @@ export function Auth() {
         }
       }
 
-      navigate('/dashboard');
+      // Redirect to onboarding to complete profile setup
+      navigate('/onboarding');
     } catch (error: unknown) {
       showToast(getErrorMessage(error), 'error');
     } finally {

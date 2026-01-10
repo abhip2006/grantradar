@@ -1097,3 +1097,43 @@ export interface EffortData {
   weeks_estimate?: string; // e.g., "2-3 weeks"
   complexity: EffortComplexity;
 }
+
+// ===== Onboarding & Lab Profile Types =====
+
+export type CareerStage = 'early_career' | 'mid_career' | 'established' | 'senior';
+export type CitizenshipStatus = 'us_citizen' | 'permanent_resident' | 'visa_holder' | 'international';
+export type InstitutionType = 'r1_university' | 'r2_university' | 'liberal_arts' | 'community_college' | 'nonprofit' | 'industry' | 'government' | 'hbcu' | 'msi' | 'other';
+
+export interface OnboardingData {
+  // User info updates
+  name?: string;
+  institution?: string;
+  phone?: string;
+
+  // Profile data (research_areas required)
+  research_areas: string[];
+  methods?: string[];
+  career_stage?: CareerStage;
+  citizenship_status?: CitizenshipStatus;
+  institution_type?: InstitutionType;
+  is_pi_eligible?: boolean;
+  past_grants?: Record<string, unknown>;
+  publications?: Record<string, unknown>;
+  orcid?: string;
+}
+
+export interface LabProfile {
+  id: string;
+  user_id: string;
+  research_areas?: string[];
+  methods?: string[];
+  career_stage?: CareerStage;
+  citizenship_status?: CitizenshipStatus;
+  institution_type?: InstitutionType;
+  is_pi_eligible: boolean;
+  past_grants?: Record<string, unknown>;
+  publications?: Record<string, unknown>;
+  orcid?: string;
+  has_embedding: boolean;
+  created_at: string;
+}

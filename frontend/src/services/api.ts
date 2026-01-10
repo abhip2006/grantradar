@@ -66,6 +66,8 @@ import type {
   AdvancedGrantFilters,
   OutcomeUpdate,
   MechanismInfo,
+  OnboardingData,
+  LabProfile,
 } from '../types';
 import type {
   KanbanBoard,
@@ -581,6 +583,53 @@ export const profileImportApi = {
     const response = await api.post<ImportPreview>('/profile/import/cv', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  },
+};
+
+// Onboarding API - Lab profile setup
+export const onboardingApi = {
+  // Complete onboarding (creates lab profile)
+  completeOnboarding: async (data: OnboardingData): Promise<LabProfile> => {
+    const response = await api.post<LabProfile>('/profile/onboarding', data);
+    return response.data;
+  },
+
+  // Get current lab profile
+  getProfile: async (): Promise<LabProfile> => {
+    const response = await api.get<LabProfile>('/profile');
+    return response.data;
+  },
+
+  // Check if profile exists (returns 404 if not)
+  checkProfile: async (): Promise<boolean> => {
+    try {
+      await api.get('/profile');
+      return true;
+    } catch (error) {
+      if ((error as AxiosError).response?.status === 404) {
+        return false;
+      }
+      throw error;
+    }
+  },
+
+  // Trigger profile analysis
+  triggerAnalysis: async (): Promise<{ message: string; task_id: string; status: string }> => {
+    const response = await api.post('/profile/analysis/trigger');
+    return response.data;
+  },
+
+  // Get analysis status
+  getAnalysisStatus: async (): Promise<{
+    status: string;
+    started_at?: string;
+    completed_at?: string;
+    lab_details?: Record<string, unknown>;
+    current_funding?: Record<string, unknown>;
+    publications?: Record<string, unknown>;
+  }> => {
+    const response = await api.get('/profile/analysis/status');
     return response.data;
   },
 };
