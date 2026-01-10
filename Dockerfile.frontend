@@ -1,6 +1,6 @@
 # GrantRadar Frontend Dockerfile
 # Production-ready multi-stage build with nginx for static file serving
-# Optimized for Railway deployment
+# Optimized for Railway deployment with dynamic PORT support
 
 # ==============================================================================
 # Stage 1: Dependencies Installation
@@ -50,37 +50,38 @@ LABEL maintainer="GrantRadar Team"
 LABEL description="GrantRadar Frontend Web Server"
 LABEL version="1.0.0"
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# Install curl for health checks and gettext for envsubst
+RUN apk add --no-cache curl gettext
 
 # Remove default nginx configuration
 RUN rm -rf /etc/nginx/conf.d/default.conf /etc/nginx/nginx.conf
 
-# Copy Railway-specific nginx configuration (no SSL, standalone)
-COPY nginx/railway.conf /etc/nginx/nginx.conf
+# Copy nginx template and startup script
+COPY nginx/railway.conf.template /etc/nginx/nginx.conf.template
+COPY nginx/start.sh /start.sh
+
+# Make startup script executable
+RUN chmod +x /start.sh
 
 # Copy built static files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create necessary directories and set permissions for non-root user
-RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run && \
+# Create necessary directories and set permissions
+# Note: Running as root to allow envsubst to write nginx.conf at runtime
+RUN mkdir -p /var/cache/nginx /var/log/nginx /var/run /var/lib/nginx/tmp && \
     chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
     chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /var/lib/nginx && \
+    chown -R nginx:nginx /etc/nginx && \
     touch /var/run/nginx.pid && \
-    chown nginx:nginx /var/run/nginx.pid && \
-    mkdir -p /var/lib/nginx/tmp && \
-    chown -R nginx:nginx /var/lib/nginx
+    chown nginx:nginx /var/run/nginx.pid
 
 # Switch to non-root user
 USER nginx
 
-# Expose port 80
-EXPOSE 80
+# Railway assigns PORT dynamically, don't expose fixed port
+# EXPOSE is just documentation, Railway handles routing
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:80/health || exit 1
-
-# Start nginx in foreground
-CMD ["nginx", "-g", "daemon off;"]
+# Start nginx with envsubst for PORT substitution
+CMD ["/start.sh"]
