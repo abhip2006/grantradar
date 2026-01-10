@@ -137,10 +137,11 @@ railway service create frontend
   - `VITE_API_URL=https://<your-api-service>.railway.app`
   - `VITE_WS_URL=wss://<your-api-service>.railway.app`
 
-### Step 8: Run Database Migrations
+### Step 8: Database Migrations (Automatic)
 
-After the API service is deployed:
+Database migrations now run automatically when the web/API service starts. The Procfile and Dockerfile include `alembic upgrade head` in the startup command.
 
+If you need to run migrations manually:
 ```bash
 railway run --service api alembic upgrade head
 ```
@@ -229,7 +230,7 @@ print(secrets.token_hex(32))
 
 ## Post-Deployment Checklist
 
-- [ ] Database migrations ran successfully
+- [ ] Database migrations ran automatically (check API logs for "Running database migrations")
 - [ ] API health check passes (`/health` endpoint)
 - [ ] Frontend loads and connects to API
 - [ ] User registration/login works

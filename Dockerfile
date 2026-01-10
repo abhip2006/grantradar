@@ -89,5 +89,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Default command for running the application
-# Uses gunicorn with uvicorn workers for production
-CMD ["sh", "-c", "uvicorn backend.main:socket_app --host 0.0.0.0 --port ${PORT} --workers 4 --loop uvloop --http httptools"]
+# Runs migrations before starting the server
+CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:socket_app --host 0.0.0.0 --port ${PORT} --workers 4 --loop uvloop --http httptools"]
