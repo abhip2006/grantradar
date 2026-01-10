@@ -1429,4 +1429,114 @@ export const notificationsApi = {
   },
 };
 
+// ============================================
+// Winners Intelligence API
+// ============================================
+
+import type {
+  WinnersSearchResponse,
+  WinnersSearchParams,
+  ProgramOfficersResponse,
+  InstitutionsResponse,
+  KeywordAnalysisRequest,
+  KeywordAnalysisResponse,
+  AbstractAnalysisRequest,
+  AbstractAnalysisResponse,
+  SuccessPredictionRequest,
+  SuccessPredictionResponse,
+  FundedProject,
+} from '../types/winners';
+
+export const winnersApi = {
+  // Search funded projects
+  search: async (params: WinnersSearchParams = {}): Promise<WinnersSearchResponse> => {
+    const response = await api.get<WinnersSearchResponse>('/winners/search', { params });
+    return response.data;
+  },
+
+  // Get specific project details
+  getProject: async (projectNum: string): Promise<FundedProject> => {
+    const response = await api.get<FundedProject>(`/winners/project/${encodeURIComponent(projectNum)}`);
+    return response.data;
+  },
+
+  // Get program officers directory
+  getProgramOfficers: async (params: {
+    institute?: string;
+    research_area?: string;
+    limit?: number;
+  } = {}): Promise<ProgramOfficersResponse> => {
+    const response = await api.get<ProgramOfficersResponse>('/winners/program-officers', { params });
+    return response.data;
+  },
+
+  // Get institution rankings
+  getInstitutions: async (params: {
+    research_area?: string;
+    mechanism?: string;
+    fiscal_years?: string;
+    limit?: number;
+  } = {}): Promise<InstitutionsResponse> => {
+    const response = await api.get<InstitutionsResponse>('/winners/institutions', { params });
+    return response.data;
+  },
+
+  // Get mechanism statistics
+  getMechanismStats: async (params: {
+    institute?: string;
+    fiscal_years?: string;
+  } = {}): Promise<{ mechanisms: Array<{ code: string; count: number; avg_award?: number }>; total_projects: number }> => {
+    const response = await api.get('/winners/mechanisms', { params });
+    return response.data;
+  },
+
+  // Get institute statistics
+  getInstituteStats: async (params: {
+    mechanism?: string;
+    fiscal_years?: string;
+  } = {}): Promise<{ institutes: Array<{ abbreviation: string; name?: string; count: number }>; total_projects: number }> => {
+    const response = await api.get('/winners/institutes', { params });
+    return response.data;
+  },
+
+  // Get fiscal year statistics
+  getYearStats: async (params: {
+    institute?: string;
+    mechanism?: string;
+    years_back?: number;
+  } = {}): Promise<{ years: Array<{ year: number; count: number; total_funding: number }>; total_projects: number }> => {
+    const response = await api.get('/winners/years', { params });
+    return response.data;
+  },
+
+  // Find similar funded projects
+  findSimilar: async (params: {
+    research_description: string;
+    mechanism?: string;
+    institute?: string;
+    limit?: number;
+  }): Promise<WinnersSearchResponse> => {
+    const response = await api.get<WinnersSearchResponse>('/winners/similar', { params });
+    return response.data;
+  },
+
+  // Analyze keywords in funded grants
+  analyzeKeywords: async (request: KeywordAnalysisRequest): Promise<KeywordAnalysisResponse> => {
+    const response = await api.post<KeywordAnalysisResponse>('/winners/keywords/analysis', request);
+    return response.data;
+  },
+
+  // Analyze abstract patterns
+  analyzeAbstracts: async (request: AbstractAnalysisRequest): Promise<AbstractAnalysisResponse> => {
+    const response = await api.post<AbstractAnalysisResponse>('/winners/abstracts/analyze', request);
+    return response.data;
+  },
+
+  // Predict success probability
+  predictSuccess: async (request: SuccessPredictionRequest): Promise<SuccessPredictionResponse> => {
+    const response = await api.post<SuccessPredictionResponse>('/winners/predict-success', request);
+    return response.data;
+  },
+};
+
 export default api;
