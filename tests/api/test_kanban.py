@@ -194,7 +194,7 @@ class TestKanbanBoard:
         result = await async_session.execute(
             select(GrantApplication).where(
                 GrantApplication.user_id == db_user.id,
-                not GrantApplication.archived,
+                GrantApplication.archived.is_(False),
             )
         )
         non_archived = result.scalars().all()

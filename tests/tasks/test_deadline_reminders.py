@@ -334,7 +334,7 @@ class TestReminderScheduleStatus:
         result = await async_session.execute(
             select(ReminderSchedule).where(
                 ReminderSchedule.deadline_id == upcoming_deadline.id,
-                not ReminderSchedule.is_sent,
+                ReminderSchedule.is_sent.is_(False),
             )
         )
         unsent = result.scalars().all()

@@ -206,8 +206,8 @@ class TestListComponents:
         result = await async_session.execute(
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current,
-                not DocumentComponent.is_archived,
+                DocumentComponent.is_current.is_(True),
+                DocumentComponent.is_archived.is_(False),
             )
         )
         components = result.scalars().all()
@@ -224,8 +224,8 @@ class TestListComponents:
         result = await async_session.execute(
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current,
-                not DocumentComponent.is_archived,
+                DocumentComponent.is_current.is_(True),
+                DocumentComponent.is_archived.is_(False),
             )
         )
         components = result.scalars().all()
@@ -244,8 +244,8 @@ class TestListComponents:
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
                 DocumentComponent.category == "facilities",
-                DocumentComponent.is_current,
-                not DocumentComponent.is_archived,
+                DocumentComponent.is_current.is_(True),
+                DocumentComponent.is_archived.is_(False),
             )
         )
         components = result.scalars().all()
@@ -687,8 +687,8 @@ class TestCategories:
             select(DocumentComponent.category, func.count(DocumentComponent.id))
             .where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current,
-                not DocumentComponent.is_archived,
+                DocumentComponent.is_current.is_(True),
+                DocumentComponent.is_archived.is_(False),
             )
             .group_by(DocumentComponent.category)
         )
@@ -723,8 +723,8 @@ class TestComponentSearch:
         result = await async_session.execute(
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current,
-                not DocumentComponent.is_archived,
+                DocumentComponent.is_current.is_(True),
+                DocumentComponent.is_archived.is_(False),
                 or_(
                     DocumentComponent.name.ilike(f"%{search_term}%"),
                     DocumentComponent.description.ilike(f"%{search_term}%"),
