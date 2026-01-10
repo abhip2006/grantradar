@@ -1,11 +1,10 @@
 """Kanban board service layer for business logic."""
-import os
-import uuid
+
 from datetime import datetime, timezone
 from typing import Optional, List, Any
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -23,7 +22,6 @@ from backend.models import (
 )
 from backend.schemas.kanban import (
     ApplicationStage,
-    Priority,
     SubtaskCreate,
     SubtaskUpdate,
     FieldDefinitionCreate,
@@ -63,7 +61,7 @@ class KanbanService:
         )
 
         if not show_archived:
-            query = query.where(GrantApplication.archived == False)
+            query = query.where(not GrantApplication.archived)
 
         if stages:
             query = query.where(GrantApplication.stage.in_(stages))
@@ -90,7 +88,7 @@ class KanbanService:
         for app in applications:
             card = self._build_card_response(app)
             # Handle both enum and string stage values
-            stage_value = app.stage.value if hasattr(app.stage, 'value') else str(app.stage)
+            stage_value = app.stage.value if hasattr(app.stage, "value") else str(app.stage)
             if stage_value in columns:
                 columns[stage_value].append(card)
 
@@ -104,9 +102,7 @@ class KanbanService:
 
         # Get team members
         team_result = await self.db.execute(
-            select(LabMember)
-            .options(selectinload(LabMember.member_user))
-            .where(LabMember.lab_owner_id == user_id)
+            select(LabMember).options(selectinload(LabMember.member_user)).where(LabMember.lab_owner_id == user_id)
         )
         team_members = team_result.scalars().all()
 
@@ -115,9 +111,11 @@ class KanbanService:
             "total": len(applications),
             "by_stage": {stage: len(cards) for stage, cards in columns.items()},
             "overdue": sum(
-                1 for app in applications
-                if app.target_date and app.target_date < datetime.now(timezone.utc)
-                and (app.stage.value if hasattr(app.stage, 'value') else str(app.stage)) not in ["awarded", "rejected"]
+                1
+                for app in applications
+                if app.target_date
+                and app.target_date < datetime.now(timezone.utc)
+                and (app.stage.value if hasattr(app.stage, "value") else str(app.stage)) not in ["awarded", "rejected"]
             ),
         }
 
@@ -131,8 +129,7 @@ class KanbanService:
     async def reorder_card(self, user_id: UUID, data: ReorderRequest) -> GrantApplication:
         """Move a card to a new position/stage."""
         result = await self.db.execute(
-            select(GrantApplication)
-            .where(
+            select(GrantApplication).where(
                 GrantApplication.id == data.card_id,
                 GrantApplication.user_id == user_id,
             )
@@ -141,7 +138,7 @@ class KanbanService:
         if not app:
             raise ValueError("Application not found")
 
-        old_stage = app.stage.value if hasattr(app.stage, 'value') else str(app.stage)
+        old_stage = app.stage.value if hasattr(app.stage, "value") else str(app.stage)
         old_position = app.position
 
         # Update positions in old column
@@ -187,8 +184,7 @@ class KanbanService:
     async def update_card(self, user_id: UUID, app_id: UUID, data: CardUpdate) -> GrantApplication:
         """Update a card's properties."""
         result = await self.db.execute(
-            select(GrantApplication)
-            .where(
+            select(GrantApplication).where(
                 GrantApplication.id == app_id,
                 GrantApplication.user_id == user_id,
             )
@@ -223,16 +219,13 @@ class KanbanService:
         )
         return result.scalars().all()
 
-    async def create_subtask(
-        self, user_id: UUID, app_id: UUID, data: SubtaskCreate
-    ) -> ApplicationSubtask:
+    async def create_subtask(self, user_id: UUID, app_id: UUID, data: SubtaskCreate) -> ApplicationSubtask:
         """Create a new subtask."""
         await self._verify_app_ownership(user_id, app_id)
 
         # Get max position
         result = await self.db.execute(
-            select(func.max(ApplicationSubtask.position))
-            .where(ApplicationSubtask.application_id == app_id)
+            select(func.max(ApplicationSubtask.position)).where(ApplicationSubtask.application_id == app_id)
         )
         max_pos = result.scalar() or -1
 
@@ -251,9 +244,7 @@ class KanbanService:
         await self.db.refresh(subtask)
         return subtask
 
-    async def update_subtask(
-        self, user_id: UUID, subtask_id: UUID, data: SubtaskUpdate
-    ) -> ApplicationSubtask:
+    async def update_subtask(self, user_id: UUID, subtask_id: UUID, data: SubtaskUpdate) -> ApplicationSubtask:
         """Update a subtask."""
         result = await self.db.execute(
             select(ApplicationSubtask)
@@ -292,9 +283,7 @@ class KanbanService:
 
     async def delete_subtask(self, user_id: UUID, subtask_id: UUID) -> None:
         """Delete a subtask."""
-        result = await self.db.execute(
-            select(ApplicationSubtask).where(ApplicationSubtask.id == subtask_id)
-        )
+        result = await self.db.execute(select(ApplicationSubtask).where(ApplicationSubtask.id == subtask_id))
         subtask = result.scalar_one_or_none()
         if not subtask:
             raise ValueError("Subtask not found")
@@ -311,9 +300,7 @@ class KanbanService:
         await self.db.delete(subtask)
         await self.db.commit()
 
-    async def reorder_subtasks(
-        self, user_id: UUID, app_id: UUID, subtask_ids: List[UUID]
-    ) -> List[ApplicationSubtask]:
+    async def reorder_subtasks(self, user_id: UUID, app_id: UUID, subtask_ids: List[UUID]) -> List[ApplicationSubtask]:
         """Reorder subtasks."""
         await self._verify_app_ownership(user_id, app_id)
 
@@ -345,15 +332,11 @@ class KanbanService:
         )
         return result.scalars().all()
 
-    async def add_comment(
-        self, user_id: UUID, app_id: UUID, content: str
-    ) -> ApplicationActivity:
+    async def add_comment(self, user_id: UUID, app_id: UUID, content: str) -> ApplicationActivity:
         """Add a comment to an application."""
         await self._verify_app_ownership(user_id, app_id)
 
-        activity = await self._log_activity(
-            app_id, user_id, "comment_added", {"content": content}
-        )
+        activity = await self._log_activity(app_id, user_id, "comment_added", {"content": content})
         await self.db.commit()
         await self.db.refresh(activity)
         return activity
@@ -398,9 +381,7 @@ class KanbanService:
         )
         self.db.add(attachment)
 
-        await self._log_activity(
-            app_id, user_id, "attachment_added", {"filename": filename}
-        )
+        await self._log_activity(app_id, user_id, "attachment_added", {"filename": filename})
 
         await self.db.commit()
         await self.db.refresh(attachment)
@@ -408,9 +389,7 @@ class KanbanService:
 
     async def delete_attachment(self, user_id: UUID, attachment_id: UUID) -> str:
         """Delete an attachment and return the storage path."""
-        result = await self.db.execute(
-            select(ApplicationAttachment).where(ApplicationAttachment.id == attachment_id)
-        )
+        result = await self.db.execute(select(ApplicationAttachment).where(ApplicationAttachment.id == attachment_id))
         attachment = result.scalar_one_or_none()
         if not attachment:
             raise ValueError("Attachment not found")
@@ -432,9 +411,7 @@ class KanbanService:
 
     async def get_attachment_by_id(self, user_id: UUID, attachment_id: UUID) -> ApplicationAttachment:
         """Get attachment by ID."""
-        result = await self.db.execute(
-            select(ApplicationAttachment).where(ApplicationAttachment.id == attachment_id)
-        )
+        result = await self.db.execute(select(ApplicationAttachment).where(ApplicationAttachment.id == attachment_id))
         attachment = result.scalar_one_or_none()
         if not attachment:
             raise ValueError("Attachment not found")
@@ -453,14 +430,11 @@ class KanbanService:
         )
         return result.scalars().all()
 
-    async def create_field_definition(
-        self, user_id: UUID, data: FieldDefinitionCreate
-    ) -> CustomFieldDefinition:
+    async def create_field_definition(self, user_id: UUID, data: FieldDefinitionCreate) -> CustomFieldDefinition:
         """Create a custom field definition."""
         # Get max position
         result = await self.db.execute(
-            select(func.max(CustomFieldDefinition.position))
-            .where(CustomFieldDefinition.user_id == user_id)
+            select(func.max(CustomFieldDefinition.position)).where(CustomFieldDefinition.user_id == user_id)
         )
         max_pos = result.scalar() or -1
 
@@ -483,8 +457,7 @@ class KanbanService:
     ) -> CustomFieldDefinition:
         """Update a custom field definition."""
         result = await self.db.execute(
-            select(CustomFieldDefinition)
-            .where(
+            select(CustomFieldDefinition).where(
                 CustomFieldDefinition.id == field_id,
                 CustomFieldDefinition.user_id == user_id,
             )
@@ -495,7 +468,9 @@ class KanbanService:
 
         update_data = data.model_dump(exclude_unset=True)
         if "options" in update_data and update_data["options"]:
-            update_data["options"] = [opt.model_dump() if hasattr(opt, 'model_dump') else opt for opt in update_data["options"]]
+            update_data["options"] = [
+                opt.model_dump() if hasattr(opt, "model_dump") else opt for opt in update_data["options"]
+            ]
 
         for key, value in update_data.items():
             setattr(field, key, value)
@@ -507,8 +482,7 @@ class KanbanService:
     async def delete_field_definition(self, user_id: UUID, field_id: UUID) -> None:
         """Delete a custom field definition."""
         result = await self.db.execute(
-            select(CustomFieldDefinition)
-            .where(
+            select(CustomFieldDefinition).where(
                 CustomFieldDefinition.id == field_id,
                 CustomFieldDefinition.user_id == user_id,
             )
@@ -520,9 +494,7 @@ class KanbanService:
         await self.db.delete(field)
         await self.db.commit()
 
-    async def update_card_fields(
-        self, user_id: UUID, app_id: UUID, fields: dict[str, Any]
-    ) -> GrantApplication:
+    async def update_card_fields(self, user_id: UUID, app_id: UUID, fields: dict[str, Any]) -> GrantApplication:
         """Update custom field values for an application."""
         await self._verify_app_ownership(user_id, app_id)
 
@@ -531,8 +503,7 @@ class KanbanService:
 
             # Check if value exists
             result = await self.db.execute(
-                select(CustomFieldValue)
-                .where(
+                select(CustomFieldValue).where(
                     CustomFieldValue.application_id == app_id,
                     CustomFieldValue.field_id == field_id,
                 )
@@ -549,15 +520,11 @@ class KanbanService:
                 )
                 self.db.add(new_value)
 
-            await self._log_activity(
-                app_id, user_id, "field_updated", {"field_id": str(field_id)}
-            )
+            await self._log_activity(app_id, user_id, "field_updated", {"field_id": str(field_id)})
 
         await self.db.commit()
 
-        result = await self.db.execute(
-            select(GrantApplication).where(GrantApplication.id == app_id)
-        )
+        result = await self.db.execute(select(GrantApplication).where(GrantApplication.id == app_id))
         return result.scalar_one()
 
     # ===== Team Operations =====
@@ -565,9 +532,7 @@ class KanbanService:
     async def get_team_members(self, user_id: UUID) -> List[LabMember]:
         """Get all lab members for a user."""
         result = await self.db.execute(
-            select(LabMember)
-            .options(selectinload(LabMember.member_user))
-            .where(LabMember.lab_owner_id == user_id)
+            select(LabMember).options(selectinload(LabMember.member_user)).where(LabMember.lab_owner_id == user_id)
         )
         return result.scalars().all()
 
@@ -575,8 +540,7 @@ class KanbanService:
         """Invite a new team member."""
         # Check if already invited
         result = await self.db.execute(
-            select(LabMember)
-            .where(
+            select(LabMember).where(
                 LabMember.lab_owner_id == user_id,
                 LabMember.member_email == data.email,
             )
@@ -586,9 +550,7 @@ class KanbanService:
             raise ValueError("Member already invited")
 
         # Check if user exists
-        user_result = await self.db.execute(
-            select(User).where(User.email == data.email)
-        )
+        user_result = await self.db.execute(select(User).where(User.email == data.email))
         existing_user = user_result.scalar_one_or_none()
 
         member = LabMember(
@@ -605,8 +567,7 @@ class KanbanService:
     async def remove_team_member(self, user_id: UUID, member_id: UUID) -> None:
         """Remove a team member."""
         result = await self.db.execute(
-            select(LabMember)
-            .where(
+            select(LabMember).where(
                 LabMember.id == member_id,
                 LabMember.lab_owner_id == user_id,
             )
@@ -626,8 +587,7 @@ class KanbanService:
 
         # Remove existing assignees
         await self.db.execute(
-            ApplicationAssignee.__table__.delete()
-            .where(ApplicationAssignee.application_id == app_id)
+            ApplicationAssignee.__table__.delete().where(ApplicationAssignee.application_id == app_id)
         )
 
         # Add new assignees
@@ -654,8 +614,7 @@ class KanbanService:
     async def _verify_app_ownership(self, user_id: UUID, app_id: UUID) -> None:
         """Verify that a user owns an application."""
         result = await self.db.execute(
-            select(GrantApplication.id)
-            .where(
+            select(GrantApplication.id).where(
                 GrantApplication.id == app_id,
                 GrantApplication.user_id == user_id,
             )
@@ -663,9 +622,7 @@ class KanbanService:
         if not result.scalar_one_or_none():
             raise ValueError("Application not found or access denied")
 
-    async def _log_activity(
-        self, app_id: UUID, user_id: UUID, action: str, details: dict
-    ) -> ApplicationActivity:
+    async def _log_activity(self, app_id: UUID, user_id: UUID, action: str, details: dict) -> ApplicationActivity:
         """Create an activity log entry."""
         activity = ApplicationActivity(
             application_id=app_id,
@@ -682,11 +639,11 @@ class KanbanService:
         completed = sum(1 for s in subtasks if s.is_completed)
 
         custom_fields = {}
-        for fv in (app.custom_field_values or []):
+        for fv in app.custom_field_values or []:
             custom_fields[str(fv.field_id)] = fv.value.get("value") if fv.value else None
 
         # Handle stage that could be enum or string
-        stage_value = app.stage.value if hasattr(app.stage, 'value') else str(app.stage)
+        stage_value = app.stage.value if hasattr(app.stage, "value") else str(app.stage)
 
         return {
             "id": str(app.id),

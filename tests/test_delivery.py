@@ -2,10 +2,11 @@
 Alert Delivery Tests
 Tests for email generation, SMS formatting, and routing logic.
 """
+
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -18,7 +19,6 @@ from agents.delivery.models import (
     AlertPayload,
     EmailContent,
     SMSContent,
-    SlackContent,
     DeliveryStatus,
     DigestBatch,
 )
@@ -36,6 +36,7 @@ class TestAlertPriority:
     @pytest.fixture
     def priority_router(self):
         """Create a priority router."""
+
         class PriorityRouter:
             PRIORITY_THRESHOLDS = {
                 AlertPriority.CRITICAL: 0.95,
@@ -169,6 +170,7 @@ class TestEmailGeneration:
     @pytest.fixture
     def email_generator(self):
         """Create an email generator."""
+
         class EmailGenerator:
             def __init__(self, from_email: str = "alerts@grantradar.com", from_name: str = "GrantRadar"):
                 self.from_email = from_email
@@ -208,7 +210,7 @@ class TestEmailGeneration:
                 <p><a href="{alert.grant.url}">View Grant Details</a></p>
 
                 <hr>
-                <p>Match Explanation: {alert.match.explanation or 'Based on your research profile alignment.'}</p>
+                <p>Match Explanation: {alert.match.explanation or "Based on your research profile alignment."}</p>
 
                 <p>Best regards,<br>The GrantRadar Team</p>
                 </body>
@@ -236,7 +238,7 @@ Agency: {alert.grant.funding_agency}
 
 View Grant: {alert.grant.url}
 
-Match Explanation: {alert.match.explanation or 'Based on your research profile alignment.'}
+Match Explanation: {alert.match.explanation or "Based on your research profile alignment."}
 
 Best regards,
 The GrantRadar Team
@@ -350,6 +352,7 @@ class TestSMSGeneration:
     @pytest.fixture
     def sms_generator(self):
         """Create an SMS generator."""
+
         class SMSGenerator:
             MAX_LENGTH = 160
 
@@ -382,7 +385,7 @@ class TestSMSGeneration:
                 if len(message) > self.MAX_LENGTH:
                     # Truncate title further
                     overflow = len(message) - self.MAX_LENGTH
-                    title = title[:len(title) - overflow - 3] + "..."
+                    title = title[: len(title) - overflow - 3] + "..."
                     message = f"GrantRadar: {score_percent}% match! {title}{days_left} {short_url}"
 
                 return SMSContent(
@@ -433,9 +436,11 @@ class TestSendGridIntegration:
     @pytest.fixture
     def sendgrid_sender(self, mock_sendgrid):
         """Create a SendGrid sender."""
+
         class SendGridSender:
             def __init__(self, api_key: str):
                 import sendgrid
+
                 self.client = sendgrid.SendGridAPIClient(api_key=api_key)
 
             async def send_email(self, email: EmailContent) -> dict:
@@ -494,9 +499,11 @@ class TestTwilioIntegration:
     @pytest.fixture
     def twilio_sender(self, mock_twilio):
         """Create a Twilio sender."""
+
         class TwilioSender:
             def __init__(self, account_sid: str, auth_token: str, from_number: str):
                 from twilio.rest import Client
+
                 self.client = Client(account_sid, auth_token)
                 self.from_number = from_number
 
@@ -615,6 +622,7 @@ class TestDigestBatching:
     @pytest.fixture
     def digest_batcher(self):
         """Create a digest batcher."""
+
         class DigestBatcher:
             def __init__(self, max_per_digest: int = 10, batch_window_hours: int = 24):
                 self.max_per_digest = max_per_digest

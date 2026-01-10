@@ -1,4 +1,5 @@
 """Permission template service for managing custom permission templates."""
+
 from typing import Optional, List
 from uuid import UUID
 
@@ -8,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import PermissionTemplate, LabMember
 from backend.core.exceptions import NotFoundError, ValidationError, ConflictError
-from backend.schemas.team import MemberPermissions
 
 
 logger = structlog.get_logger(__name__)
@@ -153,9 +153,7 @@ class PermissionTemplateService:
             List of PermissionTemplate records.
         """
         result = await self.db.execute(
-            select(PermissionTemplate)
-            .where(PermissionTemplate.owner_id == owner_id)
-            .order_by(PermissionTemplate.name)
+            select(PermissionTemplate).where(PermissionTemplate.owner_id == owner_id).order_by(PermissionTemplate.name)
         )
         return list(result.scalars().all())
 
@@ -266,9 +264,7 @@ class PermissionTemplateService:
         template = await self.get_template(owner_id, template_id)
 
         # Check if template is in use
-        members_using = await self.db.execute(
-            select(LabMember).where(LabMember.permission_template_id == template_id)
-        )
+        members_using = await self.db.execute(select(LabMember).where(LabMember.permission_template_id == template_id))
         if members_using.scalars().first():
             raise ValidationError(
                 "Cannot delete template that is currently assigned to team members. "
@@ -440,7 +436,7 @@ class PermissionTemplateService:
             select(PermissionTemplate).where(
                 and_(
                     PermissionTemplate.owner_id == owner_id,
-                    PermissionTemplate.is_default == True,
+                    PermissionTemplate.is_default,
                 )
             )
         )

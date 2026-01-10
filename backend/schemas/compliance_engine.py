@@ -2,6 +2,7 @@
 Compliance Engine Schemas
 Pydantic models for the compliance engine API requests and responses.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -19,6 +20,7 @@ from backend.schemas.common import PaginationInfo
 
 class RequirementType(str, Enum):
     """Types of compliance requirements."""
+
     REPORTING = "reporting"
     FINANCIAL = "financial"
     ETHICAL = "ethical"
@@ -27,6 +29,7 @@ class RequirementType(str, Enum):
 
 class RequirementFrequency(str, Enum):
     """Frequency of compliance requirements."""
+
     ONE_TIME = "one_time"
     QUARTERLY = "quarterly"
     ANNUAL = "annual"
@@ -35,6 +38,7 @@ class RequirementFrequency(str, Enum):
 
 class ComplianceTaskStatus(str, Enum):
     """Status of a compliance task."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -43,6 +47,7 @@ class ComplianceTaskStatus(str, Enum):
 
 class TemplateType(str, Enum):
     """Types of compliance templates."""
+
     PROGRESS_REPORT = "progress_report"
     FINANCIAL_REPORT = "financial_report"
     DATA_PLAN = "data_plan"
@@ -57,6 +62,7 @@ class TemplateType(str, Enum):
 
 class FunderRequirementBase(BaseModel):
     """Base schema for funder requirements."""
+
     funder_name: str = Field(..., min_length=1, max_length=255, description="Name of the funding organization")
     requirement_type: RequirementType = Field(..., description="Type of requirement")
     requirement_text: str = Field(..., min_length=1, description="Description of the requirement")
@@ -68,11 +74,13 @@ class FunderRequirementBase(BaseModel):
 
 class FunderRequirementCreate(FunderRequirementBase):
     """Schema for creating a funder requirement."""
+
     is_active: bool = Field(True, description="Whether this requirement is active")
 
 
 class FunderRequirementUpdate(BaseModel):
     """Schema for updating a funder requirement."""
+
     requirement_text: Optional[str] = Field(None, min_length=1)
     frequency: Optional[RequirementFrequency] = None
     deadline_offset_days: Optional[int] = Field(None, ge=0)
@@ -83,6 +91,7 @@ class FunderRequirementUpdate(BaseModel):
 
 class FunderRequirementResponse(FunderRequirementBase):
     """Schema for funder requirement response."""
+
     id: UUID = Field(..., description="Requirement ID")
     is_active: bool = Field(..., description="Whether this requirement is active")
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -94,6 +103,7 @@ class FunderRequirementResponse(FunderRequirementBase):
 
 class FunderRequirementList(BaseModel):
     """Schema for list of funder requirements."""
+
     data: List[FunderRequirementResponse] = Field(..., description="List of requirements")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -105,6 +115,7 @@ class FunderRequirementList(BaseModel):
 
 class ComplianceTaskBase(BaseModel):
     """Base schema for compliance tasks."""
+
     title: str = Field(..., min_length=1, max_length=500, description="Task title")
     description: Optional[str] = Field(None, description="Task description")
     due_date: datetime = Field(..., description="Due date for the task")
@@ -113,6 +124,7 @@ class ComplianceTaskBase(BaseModel):
 
 class ComplianceTaskCreate(ComplianceTaskBase):
     """Schema for creating a compliance task."""
+
     match_id: Optional[UUID] = Field(None, description="Associated match ID")
     grant_id: Optional[UUID] = Field(None, description="Associated grant ID")
     application_id: Optional[UUID] = Field(None, description="Associated application ID")
@@ -122,6 +134,7 @@ class ComplianceTaskCreate(ComplianceTaskBase):
 
 class ComplianceTaskUpdate(BaseModel):
     """Schema for updating a compliance task."""
+
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
     due_date: Optional[datetime] = None
@@ -131,6 +144,7 @@ class ComplianceTaskUpdate(BaseModel):
 
 class ComplianceTaskResponse(ComplianceTaskBase):
     """Schema for compliance task response."""
+
     id: UUID = Field(..., description="Task ID")
     user_id: UUID = Field(..., description="Owner user ID")
     match_id: Optional[UUID] = Field(None, description="Associated match ID")
@@ -167,12 +181,14 @@ class ComplianceTaskResponse(ComplianceTaskBase):
 
 class ComplianceTaskList(BaseModel):
     """Schema for list of compliance tasks."""
+
     data: List[ComplianceTaskResponse] = Field(..., description="List of tasks")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
 
 class ComplianceTaskComplete(BaseModel):
     """Schema for completing a compliance task."""
+
     notes: Optional[str] = Field(None, description="Completion notes")
 
 
@@ -183,6 +199,7 @@ class ComplianceTaskComplete(BaseModel):
 
 class TemplateSection(BaseModel):
     """A section within a compliance template."""
+
     name: str = Field(..., description="Section name")
     description: Optional[str] = Field(None, description="Section description")
     required: bool = Field(True, description="Whether this section is required")
@@ -191,6 +208,7 @@ class TemplateSection(BaseModel):
 
 class ComplianceTemplateBase(BaseModel):
     """Base schema for compliance templates."""
+
     funder_name: str = Field(..., min_length=1, max_length=255, description="Funder name")
     mechanism: Optional[str] = Field(None, max_length=50, description="Grant mechanism")
     template_name: str = Field(..., min_length=1, max_length=255, description="Template name")
@@ -201,11 +219,13 @@ class ComplianceTemplateBase(BaseModel):
 
 class ComplianceTemplateCreate(ComplianceTemplateBase):
     """Schema for creating a compliance template."""
+
     is_active: bool = Field(True, description="Whether this template is active")
 
 
 class ComplianceTemplateUpdate(BaseModel):
     """Schema for updating a compliance template."""
+
     template_name: Optional[str] = Field(None, min_length=1, max_length=255)
     template_content: Optional[Dict[str, Any]] = None
     description: Optional[str] = None
@@ -214,6 +234,7 @@ class ComplianceTemplateUpdate(BaseModel):
 
 class ComplianceTemplateResponse(ComplianceTemplateBase):
     """Schema for compliance template response."""
+
     id: UUID = Field(..., description="Template ID")
     is_active: bool = Field(..., description="Whether this template is active")
     created_at: datetime = Field(..., description="Creation timestamp")
@@ -225,6 +246,7 @@ class ComplianceTemplateResponse(ComplianceTemplateBase):
 
 class ComplianceTemplateList(BaseModel):
     """Schema for list of compliance templates."""
+
     data: List[ComplianceTemplateResponse] = Field(..., description="List of templates")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -236,6 +258,7 @@ class ComplianceTemplateList(BaseModel):
 
 class ChecklistItem(BaseModel):
     """A single item in the compliance checklist."""
+
     requirement_id: Optional[UUID] = Field(None, description="Requirement ID")
     task_id: Optional[UUID] = Field(None, description="Task ID if task exists")
     title: str = Field(..., description="Requirement/task title")
@@ -249,6 +272,7 @@ class ChecklistItem(BaseModel):
 
 class ComplianceChecklist(BaseModel):
     """Compliance checklist for a grant."""
+
     grant_id: UUID = Field(..., description="Grant ID")
     funder_name: str = Field(..., description="Funder name")
     mechanism: Optional[str] = Field(None, description="Grant mechanism")
@@ -267,6 +291,7 @@ class ComplianceChecklist(BaseModel):
 
 class UpcomingDeadline(BaseModel):
     """An upcoming compliance deadline."""
+
     task_id: UUID = Field(..., description="Task ID")
     title: str = Field(..., description="Task title")
     due_date: datetime = Field(..., description="Due date")
@@ -279,6 +304,7 @@ class UpcomingDeadline(BaseModel):
 
 class UpcomingDeadlinesList(BaseModel):
     """List of upcoming compliance deadlines."""
+
     data: List[UpcomingDeadline] = Field(..., description="List of upcoming deadlines")
     total: int = Field(..., description="Total count")
 
@@ -290,6 +316,7 @@ class UpcomingDeadlinesList(BaseModel):
 
 class GenerateComplianceTasksRequest(BaseModel):
     """Request to generate compliance tasks for an awarded grant."""
+
     application_id: UUID = Field(..., description="Application ID for the awarded grant")
     award_date: datetime = Field(..., description="Award start date")
     funder_name: Optional[str] = Field(None, description="Funder name (auto-detected if not provided)")
@@ -298,5 +325,6 @@ class GenerateComplianceTasksRequest(BaseModel):
 
 class GenerateComplianceTasksResponse(BaseModel):
     """Response from generating compliance tasks."""
+
     tasks_created: int = Field(..., description="Number of tasks created")
     tasks: List[ComplianceTaskResponse] = Field(..., description="Created tasks")

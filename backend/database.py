@@ -2,6 +2,7 @@
 GrantRadar Database Connection Setup
 Provides async and sync database engines with connection pooling.
 """
+
 from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager, contextmanager
 from typing import Any
@@ -143,6 +144,7 @@ def get_sync_session() -> Generator[Session, None, None]:
 # Database Initialization
 # =============================================================================
 
+
 async def init_db() -> None:
     """
     Initialize the database by creating all tables.
@@ -175,6 +177,7 @@ def close_sync_db() -> None:
 # =============================================================================
 # Health Check
 # =============================================================================
+
 
 async def check_db_connection() -> dict[str, Any]:
     """

@@ -2,14 +2,15 @@
 Intelligence Graph API Endpoints
 Grant mechanism data, funded projects, and competition metrics.
 """
+
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
-from backend.models import CompetitionSnapshot, FundedProject, Grant, GrantMechanism
+from backend.models import CompetitionSnapshot, FundedProject, Grant
 from backend.schemas.intelligence import (
     CompetitionData,
     CompetitionSnapshotResponse,
@@ -47,12 +48,8 @@ router = APIRouter(prefix="/api/intelligence", tags=["Intelligence"])
 async def list_mechanisms(
     db: AsyncSessionDep,
     current_user: CurrentUser,
-    funding_agency: Optional[str] = Query(
-        None, description="Filter by funding agency (e.g., NIH, NSF)"
-    ),
-    category: Optional[str] = Query(
-        None, description="Filter by category (e.g., research, career, training)"
-    ),
+    funding_agency: Optional[str] = Query(None, description="Filter by funding agency (e.g., NIH, NSF)"),
+    category: Optional[str] = Query(None, description="Filter by category (e.g., research, career, training)"),
 ) -> MechanismListResponse:
     """
     Get all grant mechanisms with optional filtering.
@@ -404,9 +401,7 @@ async def search_funded_projects(
     db: AsyncSessionDep,
     current_user: CurrentUser,
     mechanism: Optional[str] = Query(None, description="Filter by mechanism code"),
-    funding_institute: Optional[str] = Query(
-        None, description="Filter by funding institute (e.g., NCI, NHLBI)"
-    ),
+    funding_institute: Optional[str] = Query(None, description="Filter by funding institute (e.g., NCI, NHLBI)"),
     fiscal_year: Optional[int] = Query(None, description="Filter by fiscal year"),
     limit: int = Query(50, ge=1, le=100, description="Maximum results to return"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
@@ -425,11 +420,7 @@ async def search_funded_projects(
     if fiscal_year:
         query = query.where(FundedProject.fiscal_year == fiscal_year)
 
-    query = (
-        query.order_by(FundedProject.award_date.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    query = query.order_by(FundedProject.award_date.desc()).limit(limit).offset(offset)
 
     result = await db.execute(query)
     projects = result.scalars().all()
@@ -459,9 +450,7 @@ async def count_funded_projects_endpoint(
     db: AsyncSessionDep,
     current_user: CurrentUser,
     mechanism: Optional[str] = Query(None, description="Filter by mechanism code"),
-    funding_institute: Optional[str] = Query(
-        None, description="Filter by funding institute"
-    ),
+    funding_institute: Optional[str] = Query(None, description="Filter by funding institute"),
     fiscal_year: Optional[int] = Query(None, description="Filter by fiscal year"),
 ) -> dict[str, int]:
     """

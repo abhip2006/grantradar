@@ -1,11 +1,12 @@
 """Team collaboration service for grant assignments, comments, and coordination."""
+
 import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,7 +18,6 @@ from backend.models import (
     LabMember,
     User,
     Grant,
-    Match,
     InvitationStatus,
 )
 from backend.schemas.team_collaboration import (
@@ -28,7 +28,6 @@ from backend.schemas.team_collaboration import (
     AssignmentRole,
     AssignmentStatus,
     TeamCollaborationNotificationType,
-    MentionInfo,
 )
 from backend.core.exceptions import NotFoundError, ValidationError, AuthorizationError
 
@@ -74,9 +73,7 @@ class TeamCollaborationService:
             ValidationError: If user is not a team member.
         """
         # Verify the grant exists
-        grant_result = await self.db.execute(
-            select(Grant).where(Grant.id == data.grant_id)
-        )
+        grant_result = await self.db.execute(select(Grant).where(Grant.id == data.grant_id))
         grant = grant_result.scalar_one_or_none()
         if not grant:
             raise NotFoundError("Grant", str(data.grant_id))
@@ -94,9 +91,7 @@ class TeamCollaborationService:
         )
         existing = existing_result.scalar_one_or_none()
         if existing:
-            raise ValidationError(
-                "This user is already assigned to this grant"
-            )
+            raise ValidationError("This user is already assigned to this grant")
 
         # Create the assignment
         assignment = GrantAssignment(
@@ -113,9 +108,7 @@ class TeamCollaborationService:
         self.db.add(assignment)
 
         # Get assignee info for notification
-        assignee_result = await self.db.execute(
-            select(User).where(User.id == data.assigned_to)
-        )
+        assignee_result = await self.db.execute(select(User).where(User.id == data.assigned_to))
         assignee = assignee_result.scalar_one_or_none()
 
         # Create notification for assignee
@@ -235,11 +228,7 @@ class TeamCollaborationService:
         total = count_result.scalar() or 0
 
         # Apply pagination and ordering
-        query = (
-            query.order_by(GrantAssignment.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = query.order_by(GrantAssignment.created_at.desc()).offset(offset).limit(limit)
 
         result = await self.db.execute(query)
         assignments = list(result.scalars().all())
@@ -309,7 +298,7 @@ class TeamCollaborationService:
             action_type="assignment_updated",
             entity_type="assignment",
             entity_id=assignment.id,
-            entity_name=f"Assignment updated",
+            entity_name="Assignment updated",
             metadata={
                 "old_status": old_status,
                 "new_status": assignment.status,
@@ -349,7 +338,7 @@ class TeamCollaborationService:
             action_type="assignment_removed",
             entity_type="assignment",
             entity_id=assignment.id,
-            entity_name=f"Assignment removed",
+            entity_name="Assignment removed",
             metadata={
                 "grant_id": str(assignment.grant_id),
                 "assignee_id": str(assignment.assigned_to),
@@ -388,9 +377,7 @@ class TeamCollaborationService:
             NotFoundError: If grant or parent comment not found.
         """
         # Verify grant exists
-        grant_result = await self.db.execute(
-            select(Grant).where(Grant.id == grant_id)
-        )
+        grant_result = await self.db.execute(select(Grant).where(Grant.id == grant_id))
         grant = grant_result.scalar_one_or_none()
         if not grant:
             raise NotFoundError("Grant", str(grant_id))
@@ -426,9 +413,7 @@ class TeamCollaborationService:
         await self.db.flush()
 
         # Get author info
-        author_result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
+        author_result = await self.db.execute(select(User).where(User.id == user_id))
         author = author_result.scalar_one_or_none()
 
         # Create notifications for mentions
@@ -526,11 +511,7 @@ class TeamCollaborationService:
         total = count_result.scalar() or 0
 
         # Apply pagination and ordering
-        query = (
-            query.order_by(TeamComment.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = query.order_by(TeamComment.created_at.desc()).offset(offset).limit(limit)
 
         result = await self.db.execute(query)
         comments = list(result.scalars().all())
@@ -648,9 +629,7 @@ class TeamCollaborationService:
         await self._verify_team_member(lab_owner_id, user_id)
 
         # Get user info
-        user_result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
+        user_result = await self.db.execute(select(User).where(User.id == user_id))
         user = user_result.scalar_one_or_none()
 
         # Get assignments
@@ -674,10 +653,7 @@ class TeamCollaborationService:
         contributor = [a for a in active if a.role == AssignmentRole.CONTRIBUTOR.value]
         reviewer = [a for a in active if a.role == AssignmentRole.REVIEWER.value]
         overdue = [a for a in active if a.due_date and a.due_date < now]
-        due_this_week = [
-            a for a in active
-            if a.due_date and now <= a.due_date <= week_from_now
-        ]
+        due_this_week = [a for a in active if a.due_date and now <= a.due_date <= week_from_now]
 
         # Build assignment list
         assignment_list = []
@@ -685,15 +661,17 @@ class TeamCollaborationService:
             days_until = None
             if a.due_date:
                 days_until = (a.due_date - now).days
-            assignment_list.append({
-                "id": a.id,
-                "grant_id": a.grant_id,
-                "grant_title": a.grant.title if a.grant else "Unknown",
-                "role": a.role,
-                "status": a.status,
-                "due_date": a.due_date,
-                "days_until_due": days_until,
-            })
+            assignment_list.append(
+                {
+                    "id": a.id,
+                    "grant_id": a.grant_id,
+                    "grant_title": a.grant.title if a.grant else "Unknown",
+                    "role": a.role,
+                    "status": a.status,
+                    "due_date": a.due_date,
+                    "days_until_due": days_until,
+                }
+            )
 
         return {
             "user_id": user_id,
@@ -741,9 +719,7 @@ class TeamCollaborationService:
 
         for member in members:
             if member.member_user_id:
-                workload = await self.get_member_workload(
-                    lab_owner_id, member.member_user_id
-                )
+                workload = await self.get_member_workload(lab_owner_id, member.member_user_id)
                 member_workloads.append(workload)
                 total_assignments += workload["total_assignments"]
                 active_assignments += workload["active_assignments"]
@@ -809,7 +785,7 @@ class TeamCollaborationService:
             # Find overlapping deadlines within window
             for i, a1 in enumerate(user_assigns):
                 conflicting = [a1]
-                for a2 in user_assigns[i + 1:]:
+                for a2 in user_assigns[i + 1 :]:
                     diff = abs((a2.due_date - a1.due_date).days)
                     if diff <= conflict_window_days:
                         conflicting.append(a2)
@@ -829,25 +805,27 @@ class TeamCollaborationService:
                         severity = "low"
 
                     assignee = conflicting[0].assignee
-                    conflicts.append({
-                        "user_id": user_id,
-                        "user_name": assignee.name if assignee else None,
-                        "user_email": assignee.email if assignee else "Unknown",
-                        "conflict_date": a1.due_date,
-                        "conflicting_assignments": [
-                            {
-                                "id": c.id,
-                                "grant_id": c.grant_id,
-                                "grant_title": c.grant.title if c.grant else "Unknown",
-                                "due_date": c.due_date,
-                                "role": c.role,
-                                "assigned_to": c.assigned_to,
-                                "assignee_name": c.assignee.name if c.assignee else None,
-                            }
-                            for c in conflicting
-                        ],
-                        "severity": severity,
-                    })
+                    conflicts.append(
+                        {
+                            "user_id": user_id,
+                            "user_name": assignee.name if assignee else None,
+                            "user_email": assignee.email if assignee else "Unknown",
+                            "conflict_date": a1.due_date,
+                            "conflicting_assignments": [
+                                {
+                                    "id": c.id,
+                                    "grant_id": c.grant_id,
+                                    "grant_title": c.grant.title if c.grant else "Unknown",
+                                    "due_date": c.due_date,
+                                    "role": c.role,
+                                    "assigned_to": c.assigned_to,
+                                    "assignee_name": c.assignee.name if c.assignee else None,
+                                }
+                                for c in conflicting
+                            ],
+                            "severity": severity,
+                        }
+                    )
 
         # Deduplicate conflicts (same assignments might appear multiple times)
         seen = set()
@@ -900,11 +878,7 @@ class TeamCollaborationService:
         total = count_result.scalar() or 0
 
         # Apply pagination and ordering
-        query = (
-            query.order_by(TeamActivityLog.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = query.order_by(TeamActivityLog.created_at.desc()).offset(offset).limit(limit)
 
         result = await self.db.execute(query)
         activities = list(result.scalars().all())
@@ -912,20 +886,22 @@ class TeamCollaborationService:
         # Format activities
         activity_list = []
         for activity in activities:
-            activity_list.append({
-                "id": activity.id,
-                "activity_type": activity.action_type,
-                "actor_id": activity.actor_id,
-                "actor_name": activity.actor.name if activity.actor else None,
-                "actor_email": activity.actor.email if activity.actor else None,
-                "entity_type": activity.entity_type,
-                "entity_id": activity.entity_id,
-                "entity_name": activity.entity_name,
-                "grant_id": activity.metadata_.get("grant_id") if activity.metadata_ else None,
-                "grant_title": activity.metadata_.get("grant_title") if activity.metadata_ else None,
-                "metadata": activity.metadata_,
-                "created_at": activity.created_at,
-            })
+            activity_list.append(
+                {
+                    "id": activity.id,
+                    "activity_type": activity.action_type,
+                    "actor_id": activity.actor_id,
+                    "actor_name": activity.actor.name if activity.actor else None,
+                    "actor_email": activity.actor.email if activity.actor else None,
+                    "entity_type": activity.entity_type,
+                    "entity_id": activity.entity_id,
+                    "entity_name": activity.entity_name,
+                    "grant_id": activity.metadata_.get("grant_id") if activity.metadata_ else None,
+                    "grant_title": activity.metadata_.get("grant_title") if activity.metadata_ else None,
+                    "metadata": activity.metadata_,
+                    "created_at": activity.created_at,
+                }
+            )
 
         return activity_list, total
 
@@ -959,7 +935,7 @@ class TeamCollaborationService:
         if team_id:
             query = query.where(TeamNotification.team_id == team_id)
         if unread_only:
-            query = query.where(TeamNotification.is_read == False)
+            query = query.where(not TeamNotification.is_read)
 
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -969,7 +945,7 @@ class TeamCollaborationService:
         # Get unread count
         unread_query = select(func.count()).where(
             TeamNotification.user_id == user_id,
-            TeamNotification.is_read == False,
+            not TeamNotification.is_read,
         )
         if team_id:
             unread_query = unread_query.where(TeamNotification.team_id == team_id)
@@ -977,11 +953,7 @@ class TeamCollaborationService:
         unread_count = unread_result.scalar() or 0
 
         # Apply pagination and ordering
-        query = (
-            query.order_by(TeamNotification.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = query.order_by(TeamNotification.created_at.desc()).offset(offset).limit(limit)
 
         result = await self.db.execute(query)
         notifications = list(result.scalars().all())
@@ -1010,14 +982,14 @@ class TeamCollaborationService:
                 select(TeamNotification).where(
                     TeamNotification.user_id == user_id,
                     TeamNotification.id.in_(notification_ids),
-                    TeamNotification.is_read == False,
+                    not TeamNotification.is_read,
                 )
             )
         else:
             result = await self.db.execute(
                 select(TeamNotification).where(
                     TeamNotification.user_id == user_id,
-                    TeamNotification.is_read == False,
+                    not TeamNotification.is_read,
                 )
             )
 
@@ -1088,21 +1060,21 @@ class TeamCollaborationService:
             email = match.group(1).lower()
 
             # Look up user by email
-            user_result = await self.db.execute(
-                select(User).where(User.email == email)
-            )
+            user_result = await self.db.execute(select(User).where(User.email == email))
             user = user_result.scalar_one_or_none()
 
             if user:
                 # Verify they're a team member
                 try:
                     await self._verify_team_member(lab_owner_id, user.id)
-                    mentions.append({
-                        "user_id": str(user.id),
-                        "name": user.name,
-                        "email": user.email,
-                        "position": match.start(),
-                    })
+                    mentions.append(
+                        {
+                            "user_id": str(user.id),
+                            "name": user.name,
+                            "email": user.email,
+                            "position": match.start(),
+                        }
+                    )
                 except ValidationError:
                     pass  # Skip non-team members
 

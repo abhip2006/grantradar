@@ -2,8 +2,9 @@
 GrantRadar Matching Tasks
 Celery tasks for computing and managing grant-to-researcher matches.
 """
+
 import time
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 import redis
@@ -27,6 +28,7 @@ MATCHES_STREAM = "matches:computed"
 # =============================================================================
 # Task 1: Compute Grant Matches
 # =============================================================================
+
 
 @celery_app.task(
     bind=True,
@@ -135,6 +137,7 @@ def compute_grant_matches(self, grant_id: str) -> dict[str, Any]:
 # Task 2: Process High Priority Match
 # =============================================================================
 
+
 @celery_app.task(
     bind=True,
     queue="critical",
@@ -228,7 +231,6 @@ def process_high_priority_match(self, match_id: str) -> dict[str, Any]:
             match_score = result.match_score
             user_id = result.user_id
             grant_id = result.grant_id
-            user_email = result.user_email
 
             # Verify this is actually a high priority match (>90%)
             if match_score <= 0.90:
@@ -267,7 +269,7 @@ def process_high_priority_match(self, match_id: str) -> dict[str, Any]:
                     "match_id": str(match_uuid),
                     "processed_at": time.time(),
                     "task_id": task_id,
-                }
+                },
             )
 
             # Trigger immediate alert delivery
@@ -336,6 +338,7 @@ def process_high_priority_match(self, match_id: str) -> dict[str, Any]:
 # =============================================================================
 # Task 3: Recompute User Matches
 # =============================================================================
+
 
 @celery_app.task(
     bind=True,
@@ -421,10 +424,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                 LIMIT 1
             """)
 
-            profile_result = session.execute(
-                profile_query,
-                {"user_id": str(user_uuid)}
-            ).fetchone()
+            profile_result = session.execute(profile_query, {"user_id": str(user_uuid)}).fetchone()
 
             if not profile_result:
                 logger.warning(
@@ -432,11 +432,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                     task_id=task_id,
                     user_id=user_id,
                 )
-                raise ValueError(
-                    f"User {user_id} has no lab profile or profile lacks embedding"
-                )
-
-            profile_embedding = profile_result.profile_embedding
+                raise ValueError(f"User {user_id} has no lab profile or profile lacks embedding")
 
             # Fetch all grants with embeddings for re-matching
             # Use vector similarity to find relevant grants
@@ -484,10 +480,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
             """)
             existing_scores = {
                 str(row.grant_id): row.match_score
-                for row in session.execute(
-                    existing_scores_query,
-                    {"user_id": str(user_uuid)}
-                )
+                for row in session.execute(existing_scores_query, {"user_id": str(user_uuid)})
             }
 
             # Process each grant
@@ -523,7 +516,10 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                         user_id=user_uuid,
                         research_areas=profile_result.research_areas or [],
                         methods=profile_result.methods or [],
-                        past_grants=[g.get("title", str(g)) if isinstance(g, dict) else str(g) for g in (profile_result.past_grants or [])],
+                        past_grants=[
+                            g.get("title", str(g)) if isinstance(g, dict) else str(g)
+                            for g in (profile_result.past_grants or [])
+                        ],
                         institution=None,  # Not in current schema
                         department=None,
                         keywords=[],
@@ -538,8 +534,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                         ) AS similarity
                     """)
                     similarity_result = session.execute(
-                        similarity_query,
-                        {"user_id": str(user_uuid), "grant_id": str(grant_id)}
+                        similarity_query, {"user_id": str(user_uuid), "grant_id": str(grant_id)}
                     ).fetchone()
                     vector_similarity = float(similarity_result.similarity)
 
@@ -570,6 +565,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
 
                     # Compute final weighted score
                     from agents.matching.models import FinalMatch
+
                     final_score = FinalMatch.compute_final_score(
                         vector_similarity,
                         match_result.match_score,
@@ -609,7 +605,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                             "match_score": final_score / 100,  # Convert to 0-1
                             "reasoning": match_result.reasoning,
                             "predicted_success": match_result.predicted_success / 100,
-                        }
+                        },
                     )
 
                     stats["matches_updated"] += 1
@@ -618,13 +614,10 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                     old_score = existing_scores.get(str(grant_id), 0)
                     if final_score > 70 and (old_score <= 70 or old_score == 0):
                         # Publish to matches:computed stream
-                        from backend.core.events import MatchComputedEvent, PriorityLevel
+                        from backend.core.events import MatchComputedEvent
                         from uuid import uuid4
 
-                        priority = matcher._compute_priority_level(
-                            final_score,
-                            grant.deadline
-                        )
+                        priority = matcher._compute_priority_level(final_score, grant.deadline)
 
                         event = MatchComputedEvent(
                             event_id=uuid4(),
@@ -638,10 +631,7 @@ def recompute_user_matches(self, user_id: str) -> dict[str, Any]:
                             grant_deadline=grant.deadline,
                         )
 
-                        redis_client.xadd(
-                            MATCHES_STREAM,
-                            {"data": event.model_dump_json()}
-                        )
+                        redis_client.xadd(MATCHES_STREAM, {"data": event.model_dump_json()})
 
                         stats["new_high_matches"] += 1
 

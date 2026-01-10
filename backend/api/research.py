@@ -1,4 +1,5 @@
 """Deep research API endpoints."""
+
 import json
 from uuid import UUID
 from typing import List, AsyncGenerator
@@ -38,9 +39,7 @@ async def create_research_session(
 
     The research runs asynchronously. Poll the session endpoint for results.
     """
-    session = await research_service.create_session(
-        db=db, user=current_user, query=request.query
-    )
+    session = await research_service.create_session(db=db, user=current_user, query=request.query)
 
     # Run research in background
     async def run_research():
@@ -144,6 +143,7 @@ async def stream_research_session(
 
     # If session is already completed or failed, return final status immediately
     if session.status in ("completed", "failed"):
+
         async def completed_stream() -> AsyncGenerator[str, None]:
             if session.status == "completed":
                 yield f"event: status\ndata: {json.dumps({'phase': 'completed', 'message': 'Research already completed'})}\n\n"
@@ -159,7 +159,7 @@ async def stream_research_session(
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
-            }
+            },
         )
 
     async def event_generator() -> AsyncGenerator[str, None]:
@@ -188,7 +188,7 @@ async def stream_research_session(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",  # Disable nginx buffering
-        }
+        },
     )
 
 
@@ -216,7 +216,7 @@ async def start_research_with_stream(
     if session.status != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Session is already {session.status}. Use GET /stream to reconnect."
+            detail=f"Session is already {session.status}. Use GET /stream to reconnect.",
         )
 
     async def event_generator() -> AsyncGenerator[str, None]:
@@ -245,7 +245,7 @@ async def start_research_with_stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
-        }
+        },
     )
 
 

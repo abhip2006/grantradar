@@ -2,12 +2,13 @@
 Match API Endpoints
 List matches, get details, perform actions, and submit feedback.
 """
+
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import and_, bindparam, func, or_, select, text
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.types import Text
 from sqlalchemy.orm import joinedload
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/api/matches", tags=["Matches"])
     "",
     response_model=MatchList,
     summary="List matches",
-    description="Get paginated list of grant matches for the current user."
+    description="Get paginated list of grant matches for the current user.",
 )
 async def list_matches(
     db: AsyncSessionDep,
@@ -49,7 +50,12 @@ async def list_matches(
     max_amount: Optional[int] = Query(default=None, ge=0, description="Maximum funding amount"),
     deadline_after: Optional[datetime] = Query(default=None, description="Deadline on or after date"),
     deadline_before: Optional[datetime] = Query(default=None, description="Deadline on or before date"),
-    deadline_proximity: Optional[int] = Query(default=None, ge=1, le=365, description="Filter grants with deadlines within X days from now (e.g., 30, 60, 90, 180)"),
+    deadline_proximity: Optional[int] = Query(
+        default=None,
+        ge=1,
+        le=365,
+        description="Filter grants with deadlines within X days from now (e.g., 30, 60, 90, 180)",
+    ),
 ) -> MatchList:
     """
     Get a paginated list of grant matches for the authenticated user.
@@ -58,17 +64,9 @@ async def list_matches(
     Supports filtering by match score, user action, and grant-level attributes.
     """
     # Build base query with grant join
-    query = (
-        select(Match)
-        .join(Match.grant)
-        .options(joinedload(Match.grant))
-        .where(Match.user_id == current_user.id)
-    )
+    query = select(Match).join(Match.grant).options(joinedload(Match.grant)).where(Match.user_id == current_user.id)
     count_query = (
-        select(func.count(Match.id))
-        .select_from(Match)
-        .join(Match.grant)
-        .where(Match.user_id == current_user.id)
+        select(func.count(Match.id)).select_from(Match).join(Match.grant).where(Match.user_id == current_user.id)
     )
 
     # Apply match-level filters
@@ -83,12 +81,7 @@ async def list_matches(
     if user_action:
         match_filters.append(Match.user_action == user_action)
     elif exclude_dismissed:
-        match_filters.append(
-            or_(
-                Match.user_action.is_(None),
-                Match.user_action != "dismissed"
-            )
-        )
+        match_filters.append(or_(Match.user_action.is_(None), Match.user_action != "dismissed"))
 
     # Apply grant-level filters
     grant_filters = []
@@ -104,26 +97,17 @@ async def list_matches(
         # The && operator checks if two arrays have any elements in common
         # Cast the column type explicitly since StringArray TypeDecorator doesn't expose overlap()
         from sqlalchemy import cast
-        grant_filters.append(
-            cast(Grant.categories, ARRAY(Text)).overlap(categories)
-        )
+
+        grant_filters.append(cast(Grant.categories, ARRAY(Text)).overlap(categories))
 
     if min_amount is not None:
         # Include grants where either min or max is >= min_amount
-        grant_filters.append(
-            or_(
-                Grant.amount_min >= min_amount,
-                Grant.amount_max >= min_amount
-            )
-        )
+        grant_filters.append(or_(Grant.amount_min >= min_amount, Grant.amount_max >= min_amount))
 
     if max_amount is not None:
         # Include grants where either min or max is <= max_amount
         grant_filters.append(
-            or_(
-                Grant.amount_max <= max_amount,
-                and_(Grant.amount_max.is_(None), Grant.amount_min <= max_amount)
-            )
+            or_(Grant.amount_max <= max_amount, and_(Grant.amount_max.is_(None), Grant.amount_min <= max_amount))
         )
 
     if deadline_after is not None:
@@ -179,20 +163,15 @@ async def list_matches(
     ]
 
     return MatchList(
-        matches=match_responses,
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(offset + len(matches)) < total
+        matches=match_responses, total=total, page=page, page_size=page_size, has_more=(offset + len(matches)) < total
     )
-
 
 
 @router.get(
     "/{match_id}",
     response_model=MatchDetail,
     summary="Get match details",
-    description="Get detailed information about a specific match."
+    description="Get detailed information about a specific match.",
 )
 async def get_match(
     match_id: UUID,
@@ -208,20 +187,12 @@ async def get_match(
     result = await db.execute(
         select(Match)
         .options(joinedload(Match.grant))
-        .where(
-            and_(
-                Match.id == match_id,
-                Match.user_id == current_user.id
-            )
-        )
+        .where(and_(Match.id == match_id, Match.user_id == current_user.id))
     )
     match = result.unique().scalar_one_or_none()
 
     if not match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
 
     return MatchDetail(
         id=match.id,
@@ -254,7 +225,7 @@ async def get_match(
     "/{match_id}/action",
     response_model=MatchDetail,
     summary="Perform action on match",
-    description="Save or dismiss a grant match."
+    description="Save or dismiss a grant match.",
 )
 async def match_action(
     match_id: UUID,
@@ -271,20 +242,12 @@ async def match_action(
     result = await db.execute(
         select(Match)
         .options(joinedload(Match.grant))
-        .where(
-            and_(
-                Match.id == match_id,
-                Match.user_id == current_user.id
-            )
-        )
+        .where(and_(Match.id == match_id, Match.user_id == current_user.id))
     )
     match = result.unique().scalar_one_or_none()
 
     if not match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
 
     # Update action
     match.user_action = action.action
@@ -322,7 +285,7 @@ async def match_action(
     "/{match_id}/feedback",
     response_model=MatchDetail,
     summary="Submit match feedback",
-    description="Submit feedback on match quality to improve recommendations."
+    description="Submit feedback on match quality to improve recommendations.",
 )
 async def match_feedback(
     match_id: UUID,
@@ -339,20 +302,12 @@ async def match_feedback(
     result = await db.execute(
         select(Match)
         .options(joinedload(Match.grant))
-        .where(
-            and_(
-                Match.id == match_id,
-                Match.user_id == current_user.id
-            )
-        )
+        .where(and_(Match.id == match_id, Match.user_id == current_user.id))
     )
     match = result.unique().scalar_one_or_none()
 
     if not match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
 
     # Update feedback
     match.user_feedback = {
@@ -414,20 +369,12 @@ async def update_outcome(
     result = await db.execute(
         select(Match)
         .options(joinedload(Match.grant))
-        .where(
-            and_(
-                Match.id == match_id,
-                Match.user_id == current_user.id
-            )
-        )
+        .where(and_(Match.id == match_id, Match.user_id == current_user.id))
     )
     match = result.unique().scalar_one_or_none()
 
     if not match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match not found")
 
     # Update outcome fields
     match.application_status = outcome.application_status

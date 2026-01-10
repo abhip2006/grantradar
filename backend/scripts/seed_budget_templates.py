@@ -7,6 +7,7 @@ Run this script to populate the budget_templates table with initial data.
 Usage:
     python -m backend.scripts.seed_budget_templates
 """
+
 import asyncio
 import json
 import logging
@@ -15,11 +16,8 @@ from uuid import uuid4
 from backend.database import get_async_session
 from backend.services.budget_templates import (
     ALL_BUDGET_TEMPLATES,
-    BUDGET_CATEGORIES,
     NIH_SALARY_CAPS,
-    DEFAULT_FA_RATES,
     DEFAULT_FRINGE_RATES,
-    BudgetCategory,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,27 +65,31 @@ for mechanism_code, template in ALL_BUDGET_TEMPLATES.items():
         elif category == "other":
             notes = "Participant support, animal care, human subjects costs, service center charges."
 
-        BUDGET_TEMPLATE_SEED_DATA.append({
-            "mechanism_code": mechanism_code,
-            "category": category,
-            "typical_percentage": typical_pct,
-            "typical_amount_min": min_amount,
-            "typical_amount_max": max_amount,
-            "is_required": category == "personnel",  # Personnel is typically required
-            "priority": {
-                "personnel": 1,
-                "supplies": 2,
-                "equipment": 3,
-                "travel": 4,
-                "consultants": 5,
-                "other": 6,
-            }.get(category, 10),
-            "notes": notes,
-            "validation_rules": {
-                "min_percentage": min_pct,
-                "max_percentage": max_pct,
-            } if min_pct > 0 or max_pct < 100 else None,
-        })
+        BUDGET_TEMPLATE_SEED_DATA.append(
+            {
+                "mechanism_code": mechanism_code,
+                "category": category,
+                "typical_percentage": typical_pct,
+                "typical_amount_min": min_amount,
+                "typical_amount_max": max_amount,
+                "is_required": category == "personnel",  # Personnel is typically required
+                "priority": {
+                    "personnel": 1,
+                    "supplies": 2,
+                    "equipment": 3,
+                    "travel": 4,
+                    "consultants": 5,
+                    "other": 6,
+                }.get(category, 10),
+                "notes": notes,
+                "validation_rules": {
+                    "min_percentage": min_pct,
+                    "max_percentage": max_pct,
+                }
+                if min_pct > 0 or max_pct < 100
+                else None,
+            }
+        )
 
 
 async def seed_budget_templates():
@@ -96,9 +98,7 @@ async def seed_budget_templates():
         from sqlalchemy import text
 
         # Check if data already exists
-        result = await session.execute(
-            text("SELECT COUNT(*) FROM budget_templates")
-        )
+        result = await session.execute(text("SELECT COUNT(*) FROM budget_templates"))
         count = result.scalar()
 
         if count and count > 0:
@@ -131,8 +131,10 @@ async def seed_budget_templates():
                     "is_required": template_data["is_required"],
                     "priority": template_data["priority"],
                     "notes": template_data["notes"],
-                    "validation_rules": json.dumps(template_data["validation_rules"]) if template_data["validation_rules"] else None,
-                }
+                    "validation_rules": json.dumps(template_data["validation_rules"])
+                    if template_data["validation_rules"]
+                    else None,
+                },
             )
 
         await session.commit()

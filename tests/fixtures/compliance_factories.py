@@ -4,11 +4,10 @@ Factory classes for Compliance and Component test data.
 These factories create model instances with sensible defaults and customization options
 for testing the Compliance Scanner and Component Library features.
 """
+
 import uuid
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from backend.models import GrantApplication, User
 from backend.models.compliance import ComplianceRule, ComplianceScan
 from backend.models.components import ComponentUsage, DocumentComponent, DocumentVersion
 
@@ -573,7 +572,8 @@ class DocumentVersionFactory:
             kanban_card_id=kanban_card_id,
             section=section,
             version_number=version_number,
-            content=content or f"Version {version_number} content for {section}. This is test content for the document version.",
+            content=content
+            or f"Version {version_number} content for {section}. This is test content for the document version.",
             snapshot_name=snapshot_name,
             change_summary=change_summary or f"Version {version_number} changes",
             file_path=file_path,

@@ -1,6 +1,7 @@
 """
 Funder Insights schemas for analytics and historical data.
 """
+
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -75,17 +76,11 @@ class FunderInsightsResponse(BaseModel):
     focus_area_counts: dict[str, int] = Field(default_factory=dict, description="Count per focus area")
 
     # Seasonality
-    deadline_months: list[DeadlineMonth] = Field(
-        default_factory=list, description="Distribution of deadlines by month"
-    )
-    typical_deadline_months: list[str] = Field(
-        default_factory=list, description="Most common deadline months"
-    )
+    deadline_months: list[DeadlineMonth] = Field(default_factory=list, description="Distribution of deadlines by month")
+    typical_deadline_months: list[str] = Field(default_factory=list, description="Most common deadline months")
 
     # User-specific data (if authenticated)
-    user_history: Optional[UserFunderHistory] = Field(
-        None, description="User's history with this funder"
-    )
+    user_history: Optional[UserFunderHistory] = Field(None, description="User's history with this funder")
 
     class Config:
         from_attributes = True

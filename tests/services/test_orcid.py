@@ -2,8 +2,8 @@
 Tests for ORCID API Service.
 Tests fetching and parsing researcher profiles from ORCID.
 """
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestValidateOrcid:
@@ -203,11 +203,7 @@ class TestParseOrcidBiography:
         """Test parsing biography from ORCID data."""
         from backend.services.orcid import parse_orcid_biography
 
-        person_data = {
-            "biography": {
-                "content": "I am a researcher specializing in machine learning."
-            }
-        }
+        person_data = {"biography": {"content": "I am a researcher specializing in machine learning."}}
 
         bio = parse_orcid_biography(person_data)
 
@@ -382,9 +378,7 @@ class TestOrcidDataExtraction:
 
     def test_extract_publication_title(self):
         """Test extracting publication title."""
-        work_summary = {
-            "title": {"title": {"value": "Deep Learning in Genomics"}}
-        }
+        work_summary = {"title": {"title": {"value": "Deep Learning in Genomics"}}}
 
         title_obj = work_summary.get("title", {}).get("title", {})
         title = title_obj.get("value", "")
@@ -393,9 +387,7 @@ class TestOrcidDataExtraction:
 
     def test_extract_publication_year(self):
         """Test extracting publication year."""
-        work_summary = {
-            "publication-date": {"year": {"value": "2023"}}
-        }
+        work_summary = {"publication-date": {"year": {"value": "2023"}}}
 
         pub_date = work_summary.get("publication-date", {})
         year = pub_date.get("year", {}).get("value")
@@ -404,9 +396,7 @@ class TestOrcidDataExtraction:
 
     def test_extract_journal_name(self):
         """Test extracting journal name."""
-        work_summary = {
-            "journal-title": {"value": "Nature Methods"}
-        }
+        work_summary = {"journal-title": {"value": "Nature Methods"}}
 
         journal = work_summary.get("journal-title", {}).get("value", "")
 

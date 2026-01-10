@@ -2,6 +2,7 @@
 Compliance Scanner Service
 Core logic for validating documents against funder-specific compliance rules.
 """
+
 import hashlib
 import re
 from typing import Any, Dict, List, Optional
@@ -112,16 +113,18 @@ class ComplianceScannerService:
                 results.append(result)
             except Exception as e:
                 logger.error(f"Error processing rule {rule.get('name')}: {str(e)}")
-                results.append({
-                    "rule_id": rule.get("id", str(uuid4())),
-                    "rule_name": rule.get("name", "Unknown"),
-                    "rule_type": rule_type,
-                    "passed": False,
-                    "severity": rule.get("severity", RuleSeverity.ERROR.value),
-                    "message": f"Error checking rule: {str(e)}",
-                    "location": None,
-                    "details": {"error": str(e)},
-                })
+                results.append(
+                    {
+                        "rule_id": rule.get("id", str(uuid4())),
+                        "rule_name": rule.get("name", "Unknown"),
+                        "rule_type": rule_type,
+                        "passed": False,
+                        "severity": rule.get("severity", RuleSeverity.ERROR.value),
+                        "message": f"Error checking rule: {str(e)}",
+                        "location": None,
+                        "details": {"error": str(e)},
+                    }
+                )
 
         return results
 
@@ -295,22 +298,15 @@ class ComplianceScannerService:
             stated_total = budget_data["total"]
 
             if isinstance(line_items, list):
-                calculated_total = sum(
-                    item.get("amount", 0) for item in line_items
-                    if isinstance(item, dict)
-                )
+                calculated_total = sum(item.get("amount", 0) for item in line_items if isinstance(item, dict))
             elif isinstance(line_items, dict):
-                calculated_total = sum(
-                    v for v in line_items.values()
-                    if isinstance(v, (int, float))
-                )
+                calculated_total = sum(v for v in line_items.values() if isinstance(v, (int, float)))
             else:
                 calculated_total = 0
 
             if abs(calculated_total - stated_total) > 0.01:
                 errors.append(
-                    f"Budget total mismatch: stated ${stated_total:,.2f}, "
-                    f"calculated ${calculated_total:,.2f}"
+                    f"Budget total mismatch: stated ${stated_total:,.2f}, calculated ${calculated_total:,.2f}"
                 )
 
         # Check yearly totals if multi-year budget
@@ -321,22 +317,15 @@ class ComplianceScannerService:
                     stated = year_data["total"]
 
                     if isinstance(items, list):
-                        calculated = sum(
-                            item.get("amount", 0) for item in items
-                            if isinstance(item, dict)
-                        )
+                        calculated = sum(item.get("amount", 0) for item in items if isinstance(item, dict))
                     elif isinstance(items, dict):
-                        calculated = sum(
-                            v for v in items.values()
-                            if isinstance(v, (int, float))
-                        )
+                        calculated = sum(v for v in items.values() if isinstance(v, (int, float)))
                     else:
                         calculated = 0
 
                     if abs(calculated - stated) > 0.01:
                         errors.append(
-                            f"Year {year} budget mismatch: stated ${stated:,.2f}, "
-                            f"calculated ${calculated:,.2f}"
+                            f"Year {year} budget mismatch: stated ${stated:,.2f}, calculated ${calculated:,.2f}"
                         )
 
         # Check budget limit if specified
@@ -344,8 +333,7 @@ class ComplianceScannerService:
         if max_budget and "total" in budget_data:
             if budget_data["total"] > max_budget:
                 errors.append(
-                    f"Total budget (${budget_data['total']:,.2f}) exceeds "
-                    f"maximum allowed (${max_budget:,.2f})"
+                    f"Total budget (${budget_data['total']:,.2f}) exceeds maximum allowed (${max_budget:,.2f})"
                 )
 
         # Check modular budget constraints for NIH
@@ -353,9 +341,7 @@ class ComplianceScannerService:
             total = budget_data.get("direct_costs_total", budget_data.get("total", 0))
             module_size = params.get("module_size", 25000)
             if total % module_size != 0:
-                warnings.append(
-                    f"Direct costs (${total:,.2f}) should be a multiple of ${module_size:,}"
-                )
+                warnings.append(f"Direct costs (${total:,.2f}) should be a multiple of ${module_size:,}")
 
         passed = len(errors) == 0
 
@@ -370,7 +356,11 @@ class ComplianceScannerService:
             rule,
             passed=passed,
             message=message,
-            severity=rule.get("severity", RuleSeverity.ERROR.value) if errors else RuleSeverity.WARNING.value if warnings else RuleSeverity.INFO.value,
+            severity=rule.get("severity", RuleSeverity.ERROR.value)
+            if errors
+            else RuleSeverity.WARNING.value
+            if warnings
+            else RuleSeverity.INFO.value,
             details={
                 "errors": errors,
                 "warnings": warnings,
@@ -472,8 +462,7 @@ class ComplianceScannerService:
 
         if passed:
             margins_str = ", ".join(
-                f"{side}: {margin_info.get(side, 'N/A')}in"
-                for side in ["top", "bottom", "left", "right"]
+                f"{side}: {margin_info.get(side, 'N/A')}in" for side in ["top", "bottom", "left", "right"]
             )
             message = f"Margin compliance verified ({margins_str})"
         else:
@@ -512,14 +501,10 @@ class ComplianceScannerService:
         issues = []
 
         if line_spacing < min_spacing:
-            issues.append(
-                f"Line spacing ({line_spacing}) is below minimum ({min_spacing})"
-            )
+            issues.append(f"Line spacing ({line_spacing}) is below minimum ({min_spacing})")
 
         if max_spacing and line_spacing > max_spacing:
-            issues.append(
-                f"Line spacing ({line_spacing}) exceeds maximum ({max_spacing})"
-            )
+            issues.append(f"Line spacing ({line_spacing}) exceeds maximum ({max_spacing})")
 
         passed = len(issues) == 0
 
@@ -679,31 +664,23 @@ class ComplianceScannerService:
         ]
 
         if document_type in required_content_types and not content:
-            logger.warning(
-                f"Empty content for document type that typically requires content: {document_type.value}"
-            )
+            logger.warning(f"Empty content for document type that typically requires content: {document_type.value}")
             # Don't raise error, just log warning - content might be provided via metadata
 
         if content:
             # Check for minimum content length
             if len(content.strip()) < 10:
-                raise ValueError(
-                    "Document content is too short (less than 10 characters)"
-                )
+                raise ValueError("Document content is too short (less than 10 characters)")
 
             # Check for excessively large content (potential DoS)
             max_content_size = 10 * 1024 * 1024  # 10 MB
             if len(content) > max_content_size:
-                raise ValueError(
-                    f"Document content exceeds maximum size ({max_content_size // (1024 * 1024)} MB)"
-                )
+                raise ValueError(f"Document content exceeds maximum size ({max_content_size // (1024 * 1024)} MB)")
 
             # Check for binary content that might have been incorrectly uploaded
             # Binary files often have null bytes
             if "\x00" in content:
-                raise ValueError(
-                    "Document content appears to be binary. Please extract text first."
-                )
+                raise ValueError("Document content appears to be binary. Please extract text first.")
 
     @staticmethod
     def calculate_content_hash(content: str) -> str:

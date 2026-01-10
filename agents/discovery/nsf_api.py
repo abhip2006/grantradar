@@ -2,6 +2,7 @@
 NSF Award Search API Discovery Agent
 Discovers new grant opportunities from the National Science Foundation.
 """
+
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -30,6 +31,7 @@ from agents.discovery.base import DiscoveryAgent
 
 class NSFAwardStatus(str, Enum):
     """NSF Award status values."""
+
     ACTIVE = "Active"
     EXPIRED = "Expired"
 
@@ -40,6 +42,7 @@ class NSFAward(BaseModel):
 
     Maps the JSON response from the NSF Award Search API.
     """
+
     id: str = Field(..., description="Award ID/Number")
     title: str = Field(..., description="Award title")
     agency: str = Field(default="NSF", description="Funding agency")
@@ -124,6 +127,7 @@ class NSFSearchParams(BaseModel):
 
     See: https://www.research.gov/common/webapi/awardapisearch-v1.htm
     """
+
     # Date filters (MM/DD/YYYY format)
     dateStart: Optional[str] = Field(default=None, description="Start date for award date range")
     dateEnd: Optional[str] = Field(default=None, description="End date for award date range")
@@ -147,10 +151,7 @@ class NSFSearchParams(BaseModel):
     rpp: int = Field(default=25, ge=1, le=25, description="Results per page (max 25)")
 
     # Output format
-    printFields: Optional[str] = Field(
-        default=None,
-        description="Comma-separated list of fields to return"
-    )
+    printFields: Optional[str] = Field(default=None, description="Comma-separated list of fields to return")
 
     def to_query_params(self) -> dict[str, str]:
         """Convert to API query parameters, excluding None values."""
@@ -166,6 +167,7 @@ class DiscoveredGrant(BaseModel):
 
     This is the standard format used across all discovery agents.
     """
+
     external_id: str = Field(..., description="External ID from source")
     source: str = Field(..., description="Data source identifier")
     title: str = Field(..., description="Grant title")
@@ -200,9 +202,7 @@ class DiscoveredGrant(BaseModel):
     raw_data: Optional[dict[str, Any]] = Field(default=None, description="Original API response")
 
     class Config:
-        json_encoders = {
-            Decimal: str
-        }
+        json_encoders = {Decimal: str}
 
 
 # ============================================================================
@@ -240,10 +240,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
         if self.http_client is None:
             self.http_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(30.0),
-                headers={
-                    "Accept": "application/json",
-                    "User-Agent": "GrantRadar/1.0 (grant-discovery-agent)"
-                }
+                headers={"Accept": "application/json", "User-Agent": "GrantRadar/1.0 (grant-discovery-agent)"},
             )
         return self.http_client
 
@@ -252,10 +249,8 @@ class NSFDiscoveryAgent(DiscoveryAgent):
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         before_sleep=lambda retry_state: structlog.get_logger().warning(
-            "nsf_api_retry",
-            attempt=retry_state.attempt_number,
-            wait=retry_state.next_action.sleep
-        )
+            "nsf_api_retry", attempt=retry_state.attempt_number, wait=retry_state.next_action.sleep
+        ),
     )
     async def _fetch_page(self, params: NSFSearchParams) -> dict[str, Any]:
         """
@@ -273,11 +268,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
         client = await self._get_http_client()
         query_params = params.to_query_params()
 
-        self.logger.debug(
-            "nsf_api_request",
-            offset=params.offset,
-            params=query_params
-        )
+        self.logger.debug("nsf_api_request", offset=params.offset, params=query_params)
 
         response = await client.get(self.API_URL, params=query_params)
         response.raise_for_status()
@@ -337,13 +328,10 @@ class NSFDiscoveryAgent(DiscoveryAgent):
             pi_name=award.get_pi_name(),
             pi_email=award.piEmail,
             source_url=f"https://www.nsf.gov/awardsearch/showAward?AWD_ID={award.id}",
-            raw_data=award.model_dump()
+            raw_data=award.model_dump(),
         )
 
-    async def _fetch_all_pages(
-        self,
-        base_params: NSFSearchParams
-    ) -> list[NSFAward]:
+    async def _fetch_all_pages(self, base_params: NSFSearchParams) -> list[NSFAward]:
         """
         Fetch all pages of results from the NSF API.
 
@@ -363,11 +351,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
             try:
                 response_data = await self._fetch_page(params)
             except httpx.HTTPError as e:
-                self.logger.error(
-                    "nsf_api_fetch_failed",
-                    offset=current_offset,
-                    error=str(e)
-                )
+                self.logger.error("nsf_api_fetch_failed", offset=current_offset, error=str(e))
                 break
 
             # Parse response structure
@@ -376,11 +360,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
             awards_data = response_wrapper.get("award", [])
 
             if not awards_data:
-                self.logger.info(
-                    "nsf_api_no_more_results",
-                    offset=current_offset,
-                    total_fetched=len(all_awards)
-                )
+                self.logger.info("nsf_api_no_more_results", offset=current_offset, total_fetched=len(all_awards))
                 break
 
             # Parse awards
@@ -389,17 +369,13 @@ class NSFDiscoveryAgent(DiscoveryAgent):
                     award = NSFAward.model_validate(award_data)
                     all_awards.append(award)
                 except Exception as e:
-                    self.logger.warning(
-                        "nsf_award_parse_failed",
-                        award_id=award_data.get("id"),
-                        error=str(e)
-                    )
+                    self.logger.warning("nsf_award_parse_failed", award_id=award_data.get("id"), error=str(e))
 
             self.logger.info(
                 "nsf_api_page_fetched",
                 offset=current_offset,
                 awards_in_page=len(awards_data),
-                total_fetched=len(all_awards)
+                total_fetched=len(all_awards),
             )
 
             # Check if we've fetched all results
@@ -433,11 +409,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
 
         end_date = datetime.now(timezone.utc)
 
-        self.logger.info(
-            "nsf_discovery_start",
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat()
-        )
+        self.logger.info("nsf_discovery_start", start_date=start_date.isoformat(), end_date=end_date.isoformat())
 
         # Build search parameters
         params = NSFSearchParams(
@@ -445,16 +417,13 @@ class NSFDiscoveryAgent(DiscoveryAgent):
             dateEnd=self._format_date_for_api(end_date),
             printFields=self.DEFAULT_FIELDS,
             rpp=self.RESULTS_PER_PAGE,
-            offset=1
+            offset=1,
         )
 
         # Fetch all awards
         awards = await self._fetch_all_pages(params)
 
-        self.logger.info(
-            "nsf_awards_fetched",
-            total_awards=len(awards)
-        )
+        self.logger.info("nsf_awards_fetched", total_awards=len(awards))
 
         # Filter duplicates and normalize
         new_grants: list[dict[str, Any]] = []
@@ -462,10 +431,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
         for award in awards:
             # Check for duplicates
             if self.is_duplicate(award.id, award.title):
-                self.logger.debug(
-                    "nsf_award_duplicate",
-                    award_id=award.id
-                )
+                self.logger.debug("nsf_award_duplicate", award_id=award.id)
                 continue
 
             # Normalize and add
@@ -475,11 +441,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
             # Mark as seen
             self.mark_as_seen(award.id, award.title)
 
-        self.logger.info(
-            "nsf_discovery_complete",
-            total_fetched=len(awards),
-            new_grants=len(new_grants)
-        )
+        self.logger.info("nsf_discovery_complete", total_fetched=len(awards), new_grants=len(new_grants))
 
         return new_grants
 
@@ -504,11 +466,7 @@ class NSFDiscoveryAgent(DiscoveryAgent):
             return len(grants)
 
         except Exception as e:
-            self.logger.error(
-                "nsf_discovery_failed",
-                error=str(e),
-                exc_info=True
-            )
+            self.logger.error("nsf_discovery_failed", error=str(e), exc_info=True)
             raise
         finally:
             await self.close_async()
@@ -546,10 +504,7 @@ def discover_nsf_grants(self) -> dict[str, Any]:
     Returns:
         Dict with discovery results
     """
-    logger = structlog.get_logger().bind(
-        task_id=self.request.id,
-        task_name="discover_nsf_grants"
-    )
+    logger = structlog.get_logger().bind(task_id=self.request.id, task_name="discover_nsf_grants")
 
     logger.info("nsf_discovery_task_start")
 
@@ -564,23 +519,12 @@ def discover_nsf_grants(self) -> dict[str, Any]:
         finally:
             loop.close()
 
-        logger.info(
-            "nsf_discovery_task_complete",
-            grants_discovered=count
-        )
+        logger.info("nsf_discovery_task_complete", grants_discovered=count)
 
-        return {
-            "status": "success",
-            "grants_discovered": count,
-            "source": "nsf"
-        }
+        return {"status": "success", "grants_discovered": count, "source": "nsf"}
 
     except Exception as e:
-        logger.error(
-            "nsf_discovery_task_failed",
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("nsf_discovery_task_failed", error=str(e), exc_info=True)
         raise
 
 

@@ -2,6 +2,7 @@
 GrantRadar FastAPI Application
 Main entry point for the grant intelligence platform API.
 """
+
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
@@ -11,7 +12,58 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.api import admin_analytics, aims, alerts, analytics, api_keys, audit, auth, budgets, calendar, chat, checklists, compare, compliance, compliance_engine, components, contact, deadlines, effort, eligibility, filters, forecast, funder_insights, grants, health, insights, institution, integrations, intelligence, kanban, matches, notifications, permission_templates, pipeline, preferences, probability, profile, reminders, research, reviews, saved_searches, sharing, similar, stats, team, team_collaboration, templates, verification, winners, workflow_analytics, writing
+from backend.api import (
+    admin_analytics,
+    aims,
+    alerts,
+    analytics,
+    api_keys,
+    audit,
+    auth,
+    budgets,
+    calendar,
+    chat,
+    checklists,
+    compare,
+    compliance,
+    compliance_engine,
+    components,
+    contact,
+    deadlines,
+    effort,
+    eligibility,
+    filters,
+    forecast,
+    funder_insights,
+    grants,
+    health,
+    insights,
+    institution,
+    integrations,
+    intelligence,
+    kanban,
+    matches,
+    notifications,
+    permission_templates,
+    pipeline,
+    preferences,
+    probability,
+    profile,
+    reminders,
+    research,
+    reviews,
+    saved_searches,
+    sharing,
+    similar,
+    stats,
+    team,
+    team_collaboration,
+    templates,
+    verification,
+    winners,
+    workflow_analytics,
+    writing,
+)
 from backend.core.config import settings
 from backend.core.rate_limit import (
     RateLimitMiddleware,
@@ -35,6 +87,7 @@ logger = logging.getLogger(__name__)
 # Socket.IO Setup
 # =============================================================================
 
+
 # Create Socket.IO server with CORS support
 # SECURITY: Never use wildcard "*" for CORS - always specify allowed origins
 def get_socketio_cors_origins() -> list:
@@ -42,15 +95,18 @@ def get_socketio_cors_origins() -> list:
     origins = [settings.frontend_url]
     if settings.debug:
         # In debug mode, also allow common development ports
-        origins.extend([
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-        ])
+        origins.extend(
+            [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:5174",
+            ]
+        )
     return origins
+
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
@@ -152,9 +208,7 @@ def validate_security_settings() -> None:
     if errors:
         for error in errors:
             logger.error(f"SECURITY ERROR: {error}")
-        raise RuntimeError(
-            f"Cannot start in production with insecure configuration: {'; '.join(errors)}"
-        )
+        raise RuntimeError(f"Cannot start in production with insecure configuration: {'; '.join(errors)}")
 
 
 @asynccontextmanager
@@ -196,6 +250,7 @@ async def lifespan(app: FastAPI):
 
     # Mark startup complete for health check probes
     from backend.api.health import mark_startup_complete
+
     mark_startup_complete()
     logger.info("Application startup complete")
 
@@ -247,14 +302,16 @@ app = FastAPI(
 # Parse allowed origins
 allowed_origins = [settings.frontend_url]
 if settings.debug:
-    allowed_origins.extend([
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-    ])
+    allowed_origins.extend(
+        [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ]
+    )
 
 app.add_middleware(
     CORSMiddleware,

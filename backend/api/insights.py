@@ -1,11 +1,12 @@
 """
 Grant Insights API endpoints with Server-Sent Events (SSE) streaming.
 """
+
 import json
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -63,7 +64,7 @@ async def stream_grant_insights(
 
         except Exception as e:
             # Send error event
-            yield f"event: error\n"
+            yield "event: error\n"
             yield f"data: {json.dumps({'message': str(e)})}\n\n"
 
     return StreamingResponse(
@@ -97,9 +98,7 @@ async def check_insights_availability(
         raise HTTPException(status_code=404, detail="Grant not found")
 
     # Check user profile
-    profile_result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = profile_result.scalar_one_or_none()
 
     profile_completeness = 0

@@ -5,9 +5,10 @@ Factory functions for creating test data with sensible defaults and customizatio
 These factories create dictionaries suitable for creating model instances,
 allowing flexibility with different database backends (SQLite for tests, PostgreSQL for prod).
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Optional
 
 from backend.models import (
     AlertSent,
@@ -113,7 +114,8 @@ class GrantFactory:
             source=source or cls.SOURCES[cls._counter % len(cls.SOURCES)],
             external_id=external_id or f"GRANT-2024-{cls._counter:04d}",
             title=title or f"Research Grant Opportunity {cls._counter}",
-            description=description or f"This grant supports innovative research in various fields. Grant #{cls._counter}.",
+            description=description
+            or f"This grant supports innovative research in various fields. Grant #{cls._counter}.",
             agency=agency or cls.AGENCIES[cls._counter % len(cls.AGENCIES)],
             amount_min=amount_min if amount_min is not None else 50000 + (cls._counter * 10000),
             amount_max=amount_max if amount_max is not None else 200000 + (cls._counter * 50000),
@@ -121,7 +123,8 @@ class GrantFactory:
             posted_at=posted_at or (now - timedelta(days=cls._counter)),
             url=url or f"https://grants.gov/view-opportunity.html?oppId={cls._counter}",
             categories=categories or cls.CATEGORIES[cls._counter % len(cls.CATEGORIES)],
-            eligibility=eligibility or {
+            eligibility=eligibility
+            or {
                 "institution_types": ["universities", "research_institutions"],
                 "career_stages": ["early_career", "established"],
             },
@@ -197,13 +200,15 @@ class LabProfileFactory:
             research_areas=research_areas or cls.RESEARCH_AREAS[cls._counter % len(cls.RESEARCH_AREAS)],
             methods=methods or cls.METHODS[cls._counter % len(cls.METHODS)],
             career_stage=career_stage or cls.CAREER_STAGES[cls._counter % len(cls.CAREER_STAGES)],
-            past_grants=past_grants or {
+            past_grants=past_grants
+            or {
                 "awards": [
                     {"agency": "NSF", "amount": 500000, "year": 2023},
                     {"agency": "NIH", "amount": 300000, "year": 2022},
                 ]
             },
-            publications=publications or {
+            publications=publications
+            or {
                 "total": 20 + cls._counter * 5,
                 "h_index": 10 + cls._counter,
                 "recent_topics": ["AI", "healthcare", "research"],
@@ -252,10 +257,7 @@ class MatchFactory:
     @classmethod
     def create_batch(cls, count: int, user_id: uuid.UUID, grant_ids: list[uuid.UUID], **kwargs) -> list[Match]:
         """Create multiple matches for a user with different grants."""
-        return [
-            cls.create(user_id=user_id, grant_id=grant_id, **kwargs)
-            for grant_id in grant_ids[:count]
-        ]
+        return [cls.create(user_id=user_id, grant_id=grant_id, **kwargs) for grant_id in grant_ids[:count]]
 
     @classmethod
     def create_high_score(cls, **kwargs) -> Match:
@@ -314,11 +316,13 @@ class GrantApplicationFactory:
         applications = []
         for i, grant_id in enumerate(grant_ids):
             stage = stages[i % len(stages)]
-            applications.append(cls.create(
-                user_id=user_id,
-                grant_id=grant_id,
-                stage=stage,
-            ))
+            applications.append(
+                cls.create(
+                    user_id=user_id,
+                    grant_id=grant_id,
+                    stage=stage,
+                )
+            )
         return applications
 
 
@@ -344,7 +348,8 @@ class SavedSearchFactory:
             id=id or uuid.uuid4(),
             user_id=user_id or uuid.uuid4(),
             name=name or f"Saved Search {cls._counter}",
-            filters=filters or {
+            filters=filters
+            or {
                 "source": ["grants_gov", "nsf"],
                 "categories": ["machine_learning"],
                 "amount_min": 50000,

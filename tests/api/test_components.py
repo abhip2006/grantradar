@@ -2,15 +2,15 @@
 Tests for Document Component Library API endpoints.
 Tests CRUD operations, versioning, usage tracking, and document versions.
 """
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models import GrantApplication, User, ApplicationStage
+from backend.models import GrantApplication, User
 from backend.models.components import DocumentComponent, ComponentUsage, DocumentVersion
 
 
@@ -206,8 +206,8 @@ class TestListComponents:
         result = await async_session.execute(
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
             )
         )
         components = result.scalars().all()
@@ -224,8 +224,8 @@ class TestListComponents:
         result = await async_session.execute(
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
             )
         )
         components = result.scalars().all()
@@ -244,8 +244,8 @@ class TestListComponents:
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
                 DocumentComponent.category == "facilities",
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
             )
         )
         components = result.scalars().all()
@@ -263,7 +263,7 @@ class TestListComponents:
         result = await async_session.execute(
             select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current == True,
+                DocumentComponent.is_current,
             )
         )
         components = result.scalars().all()
@@ -334,9 +334,7 @@ class TestGetComponent:
     ):
         """Test getting a component by ID."""
         result = await async_session.execute(
-            select(DocumentComponent).where(
-                DocumentComponent.id == db_document_component.id
-            )
+            select(DocumentComponent).where(DocumentComponent.id == db_document_component.id)
         )
         component = result.scalar_one_or_none()
 
@@ -347,11 +345,7 @@ class TestGetComponent:
     @pytest.mark.asyncio
     async def test_get_component_not_found(self, async_session: AsyncSession):
         """Test getting a non-existent component."""
-        result = await async_session.execute(
-            select(DocumentComponent).where(
-                DocumentComponent.id == uuid4()
-            )
-        )
+        result = await async_session.execute(select(DocumentComponent).where(DocumentComponent.id == uuid4()))
         component = result.scalar_one_or_none()
         assert component is None
 
@@ -437,9 +431,7 @@ class TestDeleteComponent:
         await async_session.delete(db_document_component)
         await async_session.commit()
 
-        result = await async_session.execute(
-            select(DocumentComponent).where(DocumentComponent.id == component_id)
-        )
+        result = await async_session.execute(select(DocumentComponent).where(DocumentComponent.id == component_id))
         assert result.scalar_one_or_none() is None
 
 
@@ -518,9 +510,7 @@ class TestComponentUsage:
     ):
         """Test retrieving usage records for a component."""
         result = await async_session.execute(
-            select(ComponentUsage).where(
-                ComponentUsage.component_id == db_document_component.id
-            )
+            select(ComponentUsage).where(ComponentUsage.component_id == db_document_component.id)
         )
         usages = result.scalars().all()
 
@@ -536,9 +526,7 @@ class TestComponentUsage:
     ):
         """Test retrieving all components used in an application."""
         result = await async_session.execute(
-            select(ComponentUsage).where(
-                ComponentUsage.kanban_card_id == db_pipeline_item.id
-            )
+            select(ComponentUsage).where(ComponentUsage.kanban_card_id == db_pipeline_item.id)
         )
         usages = result.scalars().all()
 
@@ -624,9 +612,7 @@ class TestDocumentVersions:
     ):
         """Test retrieving a specific version by ID."""
         result = await async_session.execute(
-            select(DocumentVersion).where(
-                DocumentVersion.id == db_document_version.id
-            )
+            select(DocumentVersion).where(DocumentVersion.id == db_document_version.id)
         )
         version = result.scalar_one_or_none()
 
@@ -701,8 +687,8 @@ class TestCategories:
             select(DocumentComponent.category, func.count(DocumentComponent.id))
             .where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
             )
             .group_by(DocumentComponent.category)
         )
@@ -735,11 +721,10 @@ class TestComponentSearch:
 
         search_term = "Facilities"
         result = await async_session.execute(
-            select(DocumentComponent)
-            .where(
+            select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
                 or_(
                     DocumentComponent.name.ilike(f"%{search_term}%"),
                     DocumentComponent.description.ilike(f"%{search_term}%"),
@@ -762,10 +747,9 @@ class TestComponentSearch:
         # SQLite doesn't support PostgreSQL's JSONB array operations
         # so we query all and filter in Python
         result = await async_session.execute(
-            select(DocumentComponent)
-            .where(
+            select(DocumentComponent).where(
                 DocumentComponent.user_id == db_user.id,
-                DocumentComponent.is_current == True,
+                DocumentComponent.is_current,
             )
         )
         all_components = result.scalars().all()
@@ -835,9 +819,7 @@ class TestEdgeCases:
         version_id = db_document_version.id
 
         # Verify version exists before application deletion
-        result = await async_session.execute(
-            select(DocumentVersion).where(DocumentVersion.id == version_id)
-        )
+        result = await async_session.execute(select(DocumentVersion).where(DocumentVersion.id == version_id))
         existing = result.scalar_one_or_none()
         assert existing is not None
         assert existing.kanban_card_id == app_id
@@ -852,9 +834,7 @@ class TestEdgeCases:
         # In PostgreSQL, CASCADE would delete the version
         # In SQLite without FK enforcement, version may still exist
         # Either behavior is acceptable for this test
-        result = await async_session.execute(
-            select(DocumentVersion).where(DocumentVersion.id == version_id)
-        )
+        result = await async_session.execute(select(DocumentVersion).where(DocumentVersion.id == version_id))
         version = result.scalar_one_or_none()
         # Test passes if either deleted OR still exists (SQLite behavior)
         assert version is None or version is not None
@@ -867,7 +847,6 @@ class TestEdgeCases:
         db_component_usage: ComponentUsage,
     ):
         """Test that deleting a component cascades to usage records."""
-        component_id = db_document_component.id
         usage_id = db_component_usage.id
 
         # Delete the component
@@ -875,7 +854,5 @@ class TestEdgeCases:
         await async_session.commit()
 
         # Usage should also be deleted
-        result = await async_session.execute(
-            select(ComponentUsage).where(ComponentUsage.id == usage_id)
-        )
+        result = await async_session.execute(select(ComponentUsage).where(ComponentUsage.id == usage_id))
         assert result.scalar_one_or_none() is None

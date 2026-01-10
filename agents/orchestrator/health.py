@@ -2,6 +2,7 @@
 GrantRadar Orchestrator Health Checker
 Health monitoring for agents, endpoints, and system components.
 """
+
 import asyncio
 import logging
 import time
@@ -11,7 +12,7 @@ from typing import Any, Optional
 
 import redis.asyncio as redis
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from backend.core.config import settings
 
@@ -446,7 +447,7 @@ class HealthChecker:
         now = datetime.utcnow()
         metrics = metrics or {}
 
-        current = self._agent_health.get(agent_type.value)
+        self._agent_health.get(agent_type.value)
 
         health = AgentHealth(
             name=agent_type,
@@ -561,10 +562,7 @@ class HealthChecker:
 
     def get_all_latency_stats(self) -> dict[str, dict[str, float]]:
         """Get latency stats for all endpoints."""
-        return {
-            name: tracker.stats()
-            for name, tracker in self._latency_trackers.items()
-        }
+        return {name: tracker.stats() for name, tracker in self._latency_trackers.items()}
 
     async def get_full_health_report(self) -> dict[str, Any]:
         """
@@ -577,20 +575,12 @@ class HealthChecker:
         agents = self.check_all_agents()
 
         # Calculate overall system status
-        unhealthy_endpoints = [
-            e for e in endpoints.values()
-            if e.status == HealthStatus.UNHEALTHY
-        ]
-        unhealthy_agents = [
-            a for a in agents.values()
-            if a.status == HealthStatus.UNHEALTHY
-        ]
+        unhealthy_endpoints = [e for e in endpoints.values() if e.status == HealthStatus.UNHEALTHY]
+        unhealthy_agents = [a for a in agents.values() if a.status == HealthStatus.UNHEALTHY]
 
         if unhealthy_endpoints or unhealthy_agents:
             overall_status = HealthStatus.UNHEALTHY
-        elif any(
-            e.status == HealthStatus.DEGRADED for e in endpoints.values()
-        ) or any(
+        elif any(e.status == HealthStatus.DEGRADED for e in endpoints.values()) or any(
             a.status == HealthStatus.DEGRADED for a in agents.values()
         ):
             overall_status = HealthStatus.DEGRADED
@@ -600,14 +590,8 @@ class HealthChecker:
         return {
             "overall_status": overall_status.value,
             "timestamp": datetime.utcnow().isoformat(),
-            "endpoints": {
-                name: health.model_dump()
-                for name, health in endpoints.items()
-            },
-            "agents": {
-                name: health.model_dump()
-                for name, health in agents.items()
-            },
+            "endpoints": {name: health.model_dump() for name, health in endpoints.items()},
+            "agents": {name: health.model_dump() for name, health in agents.items()},
             "latencies": self.get_all_latency_stats(),
             "issues": {
                 "unhealthy_endpoints": [e.name for e in unhealthy_endpoints],

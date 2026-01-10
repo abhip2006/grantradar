@@ -1,4 +1,5 @@
 """Kanban board API router."""
+
 import os
 import uuid
 from typing import Optional, List
@@ -46,6 +47,7 @@ def get_service(db: AsyncSession = Depends(get_db)) -> KanbanService:
 
 
 # ===== Board Endpoints =====
+
 
 @router.get("", response_model=KanbanBoardResponse)
 async def get_board(
@@ -102,6 +104,7 @@ async def update_card(
 
 
 # ===== Subtask Endpoints =====
+
 
 @router.get("/{app_id}/subtasks", response_model=List[SubtaskResponse])
 async def get_subtasks(
@@ -174,6 +177,7 @@ async def reorder_subtasks(
 
 # ===== Activity Endpoints =====
 
+
 @router.get("/{app_id}/activities", response_model=List[ActivityResponse])
 async def get_activities(
     app_id: UUID,
@@ -227,6 +231,7 @@ async def add_comment(
 
 
 # ===== Attachment Endpoints =====
+
 
 @router.get("/{app_id}/attachments", response_model=List[AttachmentResponse])
 async def get_attachments(
@@ -345,6 +350,7 @@ async def download_attachment(
 
 # ===== Custom Field Endpoints =====
 
+
 @router.get("/fields", response_model=List[FieldDefinitionResponse])
 async def get_field_definitions(
     current_user: CurrentUser,
@@ -411,6 +417,7 @@ async def update_card_fields(
 
 
 # ===== Team Endpoints =====
+
 
 @router.get("/team", response_model=List[LabMemberResponse])
 async def get_team_members(

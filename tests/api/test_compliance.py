@@ -15,19 +15,21 @@ Covers:
 - GET /api/compliance/funders - List available funders
 - GET /api/compliance/document-types - List document types
 """
+
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import select
 
-from backend.models import GrantApplication, ApplicationStage, User, Grant
+from backend.models import GrantApplication, ApplicationStage, User
 from backend.models.compliance import ComplianceRule, ComplianceScan
 
 # Import factories
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from fixtures.compliance_factories import (
     ComplianceRuleFactory,
     ComplianceScanFactory,
@@ -143,9 +145,7 @@ class TestListComplianceRules:
 
     async def test_list_rules_empty(self, async_session, db_user):
         """Test listing rules when none exist."""
-        result = await async_session.execute(
-            select(ComplianceRule).where(ComplianceRule.is_active == True)
-        )
+        result = await async_session.execute(select(ComplianceRule).where(ComplianceRule.is_active))
         rules = result.scalars().all()
         # Just verify query works, may be empty or have existing rules
         assert isinstance(rules, list)
@@ -168,9 +168,7 @@ class TestListComplianceRules:
         await async_session.commit()
 
         # Query active rules only
-        result = await async_session.execute(
-            select(ComplianceRule).where(ComplianceRule.is_active == True)
-        )
+        result = await async_session.execute(select(ComplianceRule).where(ComplianceRule.is_active))
         rules = result.scalars().all()
 
         rule_ids = [r.id for r in rules]
@@ -189,7 +187,7 @@ class TestListComplianceRules:
         result = await async_session.execute(
             select(ComplianceRule).where(
                 ComplianceRule.funder.ilike("%NIH%"),
-                ComplianceRule.is_active == True,
+                ComplianceRule.is_active,
             )
         )
         rules = result.scalars().all()
@@ -221,7 +219,7 @@ class TestListComplianceRules:
         result = await async_session.execute(
             select(ComplianceRule).where(
                 ComplianceRule.mechanism == "R01",
-                ComplianceRule.is_active == True,
+                ComplianceRule.is_active,
             )
         )
         rules = result.scalars().all()
@@ -267,7 +265,7 @@ class TestGetFunderRules:
         result = await async_session.execute(
             select(ComplianceRule).where(
                 ComplianceRule.funder.ilike("%NIH%"),
-                ComplianceRule.is_active == True,
+                ComplianceRule.is_active,
             )
         )
         rules = result.scalars().all()
@@ -303,7 +301,7 @@ class TestGetFunderRules:
         result = await async_session.execute(
             select(ComplianceRule).where(
                 ComplianceRule.funder.ilike("%NIH%"),
-                ComplianceRule.is_active == True,
+                ComplianceRule.is_active,
             )
         )
         rules = result.scalars().all()
@@ -322,7 +320,7 @@ class TestGetFunderRules:
         result = await async_session.execute(
             select(ComplianceRule).where(
                 ComplianceRule.funder == "NONEXISTENT_FUNDER",
-                ComplianceRule.is_active == True,
+                ComplianceRule.is_active,
             )
         )
         rules = result.scalars().all()
@@ -340,9 +338,7 @@ class TestGetComplianceRuleById:
 
     async def test_get_rule_by_id_success(self, async_session, db_compliance_rule):
         """Test getting a rule by ID."""
-        result = await async_session.execute(
-            select(ComplianceRule).where(ComplianceRule.id == db_compliance_rule.id)
-        )
+        result = await async_session.execute(select(ComplianceRule).where(ComplianceRule.id == db_compliance_rule.id))
         rule = result.scalar_one_or_none()
 
         assert rule is not None
@@ -351,9 +347,7 @@ class TestGetComplianceRuleById:
 
     async def test_get_rule_by_id_not_found(self, async_session):
         """Test getting a non-existent rule."""
-        result = await async_session.execute(
-            select(ComplianceRule).where(ComplianceRule.id == uuid4())
-        )
+        result = await async_session.execute(select(ComplianceRule).where(ComplianceRule.id == uuid4()))
         rule = result.scalar_one_or_none()
 
         assert rule is None
@@ -522,9 +516,7 @@ class TestDeleteComplianceRule:
         await async_session.delete(rule)
         await async_session.commit()
 
-        result = await async_session.execute(
-            select(ComplianceRule).where(ComplianceRule.id == rule_id)
-        )
+        result = await async_session.execute(select(ComplianceRule).where(ComplianceRule.id == rule_id))
         deleted_rule = result.scalar_one_or_none()
         assert deleted_rule is None
 
@@ -598,9 +590,7 @@ class TestRunComplianceScan:
         async_session.add(scan)
         await async_session.commit()
 
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.id == scan.id)
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.id == scan.id))
         stored_scan = result.scalar_one_or_none()
 
         assert stored_scan is not None
@@ -619,9 +609,7 @@ class TestGetComplianceResults:
     async def test_get_results_success(self, async_session, db_pipeline_item, db_compliance_scan_passed):
         """Test getting scan results for an application."""
         result = await async_session.execute(
-            select(ComplianceScan).where(
-                ComplianceScan.kanban_card_id == db_pipeline_item.id
-            )
+            select(ComplianceScan).where(ComplianceScan.kanban_card_id == db_pipeline_item.id)
         )
         scans = result.scalars().all()
 
@@ -640,14 +628,14 @@ class TestGetComplianceResults:
         async_session.add(app)
         await async_session.commit()
 
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.kanban_card_id == app.id)
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.kanban_card_id == app.id))
         scans = result.scalars().all()
 
         assert len(scans) == 0
 
-    async def test_get_results_filter_by_document_type(self, async_session, db_pipeline_item, db_compliance_rule, db_user):
+    async def test_get_results_filter_by_document_type(
+        self, async_session, db_pipeline_item, db_compliance_rule, db_user
+    ):
         """Test filtering results by document type."""
         # Create scans for different document types
         aims_scan = ComplianceScanFactory.create(
@@ -740,15 +728,15 @@ class TestGetComplianceSummary:
         async_session.add(app)
         await async_session.commit()
 
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.kanban_card_id == app.id)
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.kanban_card_id == app.id))
         scans = result.scalars().all()
 
         assert len(scans) == 0
         # Summary would show total_scans=0, overall_compliance=pending
 
-    async def test_summary_calculates_overall_status_failed(self, async_session, db_pipeline_item, db_compliance_scan_failed):
+    async def test_summary_calculates_overall_status_failed(
+        self, async_session, db_pipeline_item, db_compliance_scan_failed
+    ):
         """Test that summary shows failed when any scan has failures."""
         result = await async_session.execute(
             select(ComplianceScan).where(ComplianceScan.kanban_card_id == db_pipeline_item.id)
@@ -765,7 +753,9 @@ class TestGetComplianceSummary:
 
         assert total_issues >= 1  # At least one failure
 
-    async def test_summary_aggregates_multiple_documents(self, async_session, db_pipeline_item, db_compliance_rule, db_user):
+    async def test_summary_aggregates_multiple_documents(
+        self, async_session, db_pipeline_item, db_compliance_rule, db_user
+    ):
         """Test summary aggregates results across multiple document types."""
         # Create scans for multiple document types
         document_types = ["specific_aims", "research_strategy", "budget"]
@@ -820,9 +810,7 @@ class TestGetScanStatus:
 
     async def test_get_status_not_found(self, async_session):
         """Test getting status for non-existent scan."""
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.id == uuid4())
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.id == uuid4()))
         scan = result.scalar_one_or_none()
 
         assert scan is None
@@ -890,10 +878,7 @@ class TestComplianceUtilities:
     async def test_list_funders(self, async_session, db_compliance_rule, db_compliance_rule_nsf):
         """Test listing available funders."""
         result = await async_session.execute(
-            select(ComplianceRule.funder)
-            .where(ComplianceRule.is_active == True)
-            .distinct()
-            .order_by(ComplianceRule.funder)
+            select(ComplianceRule.funder).where(ComplianceRule.is_active).distinct().order_by(ComplianceRule.funder)
         )
         funders = result.scalars().all()
 
@@ -922,14 +907,22 @@ class TestComplianceScoreCalculation:
 
     async def test_score_perfect(self, async_session, db_compliance_scan_passed):
         """Test perfect compliance score (100%)."""
-        total = db_compliance_scan_passed.passed_count + db_compliance_scan_passed.failed_count + db_compliance_scan_passed.warning_count
+        total = (
+            db_compliance_scan_passed.passed_count
+            + db_compliance_scan_passed.failed_count
+            + db_compliance_scan_passed.warning_count
+        )
         if total > 0:
             score = (db_compliance_scan_passed.passed_count / total) * 100
             assert score == 100.0
 
     async def test_score_with_failures(self, async_session, db_compliance_scan_failed):
         """Test compliance score with failures."""
-        total = db_compliance_scan_failed.passed_count + db_compliance_scan_failed.failed_count + db_compliance_scan_failed.warning_count
+        total = (
+            db_compliance_scan_failed.passed_count
+            + db_compliance_scan_failed.failed_count
+            + db_compliance_scan_failed.warning_count
+        )
         if total > 0:
             score = (db_compliance_scan_failed.passed_count / total) * 100
             assert score < 100.0
@@ -976,9 +969,7 @@ class TestComplianceScanHistory:
         await async_session.commit()
 
         result = await async_session.execute(
-            select(ComplianceScan).where(
-                ComplianceScan.kanban_card_id == db_pipeline_item.id
-            )
+            select(ComplianceScan).where(ComplianceScan.kanban_card_id == db_pipeline_item.id)
         )
         scans = result.scalars().all()
 
@@ -1062,9 +1053,7 @@ class TestComplianceEdgeCases:
         async_session.expire_all()
 
         # Re-query to check post-delete behavior
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.id == scan_id)
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.id == scan_id))
         stored_scan = result.scalar_one_or_none()
 
         # In PostgreSQL with SET NULL, scan exists with NULL rule_set_id
@@ -1099,9 +1088,7 @@ class TestComplianceEdgeCases:
         app_id = app.id
 
         # Verify scan exists before application deletion
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.id == scan_id)
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.id == scan_id))
         existing = result.scalar_one_or_none()
         assert existing is not None
         assert existing.kanban_card_id == app_id
@@ -1116,9 +1103,7 @@ class TestComplianceEdgeCases:
         # In PostgreSQL, CASCADE would delete the scan
         # In SQLite without FK enforcement, scan may still exist
         # Either behavior is acceptable for this test
-        result = await async_session.execute(
-            select(ComplianceScan).where(ComplianceScan.id == scan_id)
-        )
+        result = await async_session.execute(select(ComplianceScan).where(ComplianceScan.id == scan_id))
         deleted_scan = result.scalar_one_or_none()
         # Test passes if either deleted OR still exists (SQLite behavior)
         assert deleted_scan is None or deleted_scan is not None

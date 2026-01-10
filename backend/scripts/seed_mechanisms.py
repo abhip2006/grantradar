@@ -9,6 +9,7 @@ levels based on published NIH and NSF statistics.
 Usage:
     python -m backend.scripts.seed_mechanisms
 """
+
 import asyncio
 import uuid
 from datetime import datetime, timezone
@@ -31,19 +32,13 @@ MECHANISMS_DATA = [
         "success_rate_resubmission": 0.32,
         "competition_level": "high",
         "estimated_applicants_per_cycle": 8000,
-        "review_criteria": {
-            "significance": 1,
-            "investigators": 2,
-            "innovation": 3,
-            "approach": 4,
-            "environment": 5
-        },
+        "review_criteria": {"significance": 1, "investigators": 2, "innovation": 3, "approach": 4, "environment": 5},
         "tips": [
             "Include strong preliminary data",
             "Clearly state specific aims in 1 page",
             "Budget justification must align with aims",
-            "Address potential pitfalls and alternatives"
-        ]
+            "Address potential pitfalls and alternatives",
+        ],
     },
     {
         "code": "R21",
@@ -59,18 +54,12 @@ MECHANISMS_DATA = [
         "success_rate_resubmission": 0.25,
         "competition_level": "high",
         "estimated_applicants_per_cycle": 4000,
-        "review_criteria": {
-            "significance": 1,
-            "investigators": 2,
-            "innovation": 3,
-            "approach": 4,
-            "environment": 5
-        },
+        "review_criteria": {"significance": 1, "investigators": 2, "innovation": 3, "approach": 4, "environment": 5},
         "tips": [
             "Focus on high-risk, high-reward ideas",
             "Preliminary data not required but helpful",
-            "Emphasize innovation and novelty"
-        ]
+            "Emphasize innovation and novelty",
+        ],
     },
     {
         "code": "R03",
@@ -85,10 +74,7 @@ MECHANISMS_DATA = [
         "success_rate_new": 0.24,
         "competition_level": "medium",
         "estimated_applicants_per_cycle": 1500,
-        "tips": [
-            "Good for new investigators building track record",
-            "Focus on feasibility and pilot data collection"
-        ]
+        "tips": ["Good for new investigators building track record", "Focus on feasibility and pilot data collection"],
     },
     {
         "code": "R15",
@@ -106,8 +92,8 @@ MECHANISMS_DATA = [
         "tips": [
             "Eligibility limited to specific institution types",
             "Good for building research infrastructure",
-            "Requires faculty mentoring component for students"
-        ]
+            "Requires faculty mentoring component for students",
+        ],
     },
     # Career Development Awards
     {
@@ -126,8 +112,8 @@ MECHANISMS_DATA = [
         "tips": [
             "Strong mentor and mentoring plan essential",
             "Clear career development trajectory",
-            "75% protected time required"
-        ]
+            "75% protected time required",
+        ],
     },
     {
         "code": "K08",
@@ -142,10 +128,7 @@ MECHANISMS_DATA = [
         "success_rate_new": 0.36,
         "competition_level": "medium",
         "estimated_applicants_per_cycle": 600,
-        "tips": [
-            "Must have clinical degree (MD, DO, etc.)",
-            "Balance clinical and research training"
-        ]
+        "tips": ["Must have clinical degree (MD, DO, etc.)", "Balance clinical and research training"],
     },
     {
         "code": "K23",
@@ -160,10 +143,7 @@ MECHANISMS_DATA = [
         "success_rate_new": 0.38,
         "competition_level": "medium",
         "estimated_applicants_per_cycle": 700,
-        "tips": [
-            "Focus on patient-oriented research",
-            "Strong institutional support letter needed"
-        ]
+        "tips": ["Focus on patient-oriented research", "Strong institutional support letter needed"],
     },
     {
         "code": "K99",
@@ -181,8 +161,8 @@ MECHANISMS_DATA = [
         "tips": [
             "Must be within 4 years of terminal degree",
             "Strong publication record expected",
-            "Clear path to faculty position"
-        ]
+            "Clear path to faculty position",
+        ],
     },
     # Fellowship Awards
     {
@@ -198,10 +178,7 @@ MECHANISMS_DATA = [
         "success_rate_new": 0.26,
         "competition_level": "medium",
         "estimated_applicants_per_cycle": 2000,
-        "tips": [
-            "Focus on training plan and career goals",
-            "Strong sponsor and institutional support"
-        ]
+        "tips": ["Focus on training plan and career goals", "Strong sponsor and institutional support"],
     },
     {
         "code": "F32",
@@ -216,10 +193,7 @@ MECHANISMS_DATA = [
         "success_rate_new": 0.28,
         "competition_level": "medium",
         "estimated_applicants_per_cycle": 1800,
-        "tips": [
-            "Emphasize career development goals",
-            "Show how training complements PhD training"
-        ]
+        "tips": ["Emphasize career development goals", "Show how training complements PhD training"],
     },
     # NSF Programs
     {
@@ -238,8 +212,8 @@ MECHANISMS_DATA = [
         "tips": [
             "Must be in tenure-track position",
             "Strong integration of research and education",
-            "Broader impacts are critical"
-        ]
+            "Broader impacts are critical",
+        ],
     },
     {
         "code": "Standard",
@@ -254,10 +228,7 @@ MECHANISMS_DATA = [
         "success_rate_new": 0.23,
         "competition_level": "medium",
         "estimated_applicants_per_cycle": 5000,
-        "tips": [
-            "Focus on intellectual merit and broader impacts",
-            "Align with NSF program priorities"
-        ]
+        "tips": ["Focus on intellectual merit and broader impacts", "Align with NSF program priorities"],
     },
     {
         "code": "SBIR/STTR",
@@ -275,8 +246,8 @@ MECHANISMS_DATA = [
         "tips": [
             "Small business eligibility requirements apply",
             "Focus on commercialization potential",
-            "Phase I and II structure"
-        ]
+            "Phase I and II structure",
+        ],
     },
 ]
 
@@ -292,8 +263,7 @@ async def seed_mechanisms():
             for mechanism in MECHANISMS_DATA:
                 # Check if already exists
                 result = await session.execute(
-                    text("SELECT id FROM grant_mechanisms WHERE code = :code"),
-                    {"code": mechanism["code"]}
+                    text("SELECT id FROM grant_mechanisms WHERE code = :code"), {"code": mechanism["code"]}
                 )
                 existing = result.fetchone()
 
@@ -337,11 +307,13 @@ async def seed_mechanisms():
                         "success_rate_resubmission": mechanism.get("success_rate_resubmission"),
                         "competition_level": mechanism.get("competition_level"),
                         "estimated_applicants_per_cycle": mechanism.get("estimated_applicants_per_cycle"),
-                        "review_criteria": json.dumps(mechanism.get("review_criteria")) if mechanism.get("review_criteria") else None,
+                        "review_criteria": json.dumps(mechanism.get("review_criteria"))
+                        if mechanism.get("review_criteria")
+                        else None,
                         "tips": json.dumps(mechanism.get("tips")) if mechanism.get("tips") else None,
                         "last_updated": datetime.now(timezone.utc),
                         "created_at": datetime.now(timezone.utc),
-                    }
+                    },
                 )
                 print(f"Inserted mechanism: {mechanism['code']} - {mechanism['name']}")
 

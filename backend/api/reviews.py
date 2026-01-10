@@ -1,8 +1,9 @@
 """Internal review workflow API router."""
+
 from typing import Optional, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
@@ -18,7 +19,6 @@ from backend.schemas.reviews import (
     ReviewActionRequest,
     ApplicationReviewResponse,
     ReviewHistoryResponse,
-    ReviewStageActionResponse,
     AddTeamMemberRequest,
     UpdateTeamMemberRequest,
     TeamMemberResponse,
@@ -41,6 +41,7 @@ def get_service(db: AsyncSession = Depends(get_db)) -> ReviewWorkflowService:
 # ============================================================================
 # Workflow Endpoints
 # ============================================================================
+
 
 @router.get("/workflows", response_model=ReviewWorkflowList)
 async def list_workflows(
@@ -81,13 +82,15 @@ async def get_default_workflow_templates(
     """
     templates = []
     for key, template in DEFAULT_WORKFLOWS.items():
-        templates.append(DefaultWorkflowResponse(
-            key=key,
-            name=template["name"],
-            description=template["description"],
-            stages=[WorkflowStage(**stage) for stage in template["stages"]],
-            stage_count=len(template["stages"]),
-        ))
+        templates.append(
+            DefaultWorkflowResponse(
+                key=key,
+                name=template["name"],
+                description=template["description"],
+                stages=[WorkflowStage(**stage) for stage in template["stages"]],
+                stage_count=len(template["stages"]),
+            )
+        )
     return templates
 
 
@@ -103,7 +106,7 @@ async def get_workflow(
     try:
         workflow = await service.get_workflow(current_user.id, workflow_id)
         return service._build_workflow_response(workflow)
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Workflow", str(workflow_id))
 
 
@@ -160,7 +163,7 @@ async def update_workflow(
     try:
         workflow = await service.update_workflow(current_user.id, workflow_id, data)
         return service._build_workflow_response(workflow)
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Workflow", str(workflow_id))
 
 
@@ -186,6 +189,7 @@ async def delete_workflow(
 # Review Process Endpoints
 # ============================================================================
 
+
 @router.get("/kanban/{card_id}/review", response_model=Optional[ApplicationReviewResponse])
 async def get_review(
     card_id: UUID,
@@ -206,7 +210,7 @@ async def get_review(
         if review is None:
             return None
         return service._build_review_response(review)
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Review", str(card_id))
 
 
@@ -277,7 +281,7 @@ async def get_review_history(
             review=service._build_review_response(review),
             actions=[service._build_action_response(a) for a in actions],
         )
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Review history", str(card_id))
 
 
@@ -303,6 +307,7 @@ async def cancel_review(
 # Team Member Endpoints
 # ============================================================================
 
+
 @router.get("/kanban/{card_id}/team", response_model=TeamMemberList)
 async def get_team_members(
     card_id: UUID,
@@ -324,7 +329,7 @@ async def get_team_members(
                 has_more=False,
             ),
         )
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Team members", str(card_id))
 
 
@@ -370,7 +375,7 @@ async def update_team_member(
             data=data,
         )
         return service._build_team_member_response(member)
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Team member", str(member_id))
 
 
@@ -391,13 +396,14 @@ async def remove_team_member(
             member_id=member_id,
         )
         return {"status": "removed"}
-    except ValueError as e:
+    except ValueError:
         raise NotFoundError("Team member", str(member_id))
 
 
 # ============================================================================
 # Utility Endpoints
 # ============================================================================
+
 
 @router.get("/reviews/pending", response_model=List[ApplicationReviewResponse])
 async def get_pending_reviews(

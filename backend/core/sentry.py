@@ -2,6 +2,7 @@
 Sentry Error Tracking Configuration
 Centralized Sentry SDK initialization for the GrantRadar backend.
 """
+
 import logging
 from typing import Any
 
@@ -36,9 +37,7 @@ def before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] |
     return event
 
 
-def before_send_transaction(
-    event: dict[str, Any], hint: dict[str, Any]
-) -> dict[str, Any] | None:
+def before_send_transaction(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
     """
     Process transactions before sending to Sentry.
 
@@ -69,11 +68,9 @@ def init_sentry() -> bool:
             dsn=settings.sentry_dsn,
             environment=settings.sentry_environment or settings.environment,
             release=f"grantradar-backend@{settings.app_version}",
-
             # Performance monitoring
             traces_sample_rate=settings.sentry_traces_sample_rate,
             profiles_sample_rate=settings.sentry_profiles_sample_rate,
-
             # Integrations
             integrations=[
                 FastApiIntegration(transaction_style="endpoint"),
@@ -84,16 +81,13 @@ def init_sentry() -> bool:
                 ),
                 SqlalchemyIntegration(),
             ],
-
             # Event processing
             before_send=before_send,
             before_send_transaction=before_send_transaction,
-
             # Additional options
             send_default_pii=False,  # Don't send PII by default
             attach_stacktrace=True,  # Attach stack traces to log messages
             max_breadcrumbs=50,  # Limit breadcrumbs
-
             # Debug mode for development (logs Sentry events)
             debug=settings.debug and settings.environment == "development",
         )
@@ -179,10 +173,12 @@ def set_user_context(user_id: str, email: str | None = None) -> None:
 
     Call this after authentication to associate errors with users.
     """
-    sentry_sdk.set_user({
-        "id": user_id,
-        "email": email,
-    })
+    sentry_sdk.set_user(
+        {
+            "id": user_id,
+            "email": email,
+        }
+    )
 
 
 def clear_user_context() -> None:

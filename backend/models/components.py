@@ -2,6 +2,7 @@
 Document Component Library Database Models
 SQLAlchemy ORM models for reusable document components and version control.
 """
+
 import uuid
 from datetime import datetime
 from typing import Any, List, Optional
@@ -279,7 +280,9 @@ class DocumentVersion(Base):
         Index("ix_document_versions_section", section),
         Index("ix_document_versions_version_number", kanban_card_id, section, version_number),
         Index("ix_document_versions_created_at", created_at),
-        UniqueConstraint("kanban_card_id", "section", "version_number", name="uq_document_versions_card_section_version"),
+        UniqueConstraint(
+            "kanban_card_id", "section", "version_number", name="uq_document_versions_card_section_version"
+        ),
     )
 
     def __repr__(self) -> str:

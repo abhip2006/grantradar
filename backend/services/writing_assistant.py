@@ -3,8 +3,8 @@ Writing Assistant Service
 AI-powered analysis and feedback for grant application drafts.
 Focuses on structure and completeness rather than content quality.
 """
+
 import json
-import re
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Dict, List, Optional
 from uuid import UUID
@@ -12,13 +12,11 @@ from uuid import UUID
 import anthropic
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from backend.core.config import settings
 from backend.models import Grant
 from backend.schemas.writing import (
     AnalyzeResponse,
-    CriterionCategory,
     FeedbackResponse,
     SectionScore,
     SuggestionType,
@@ -108,18 +106,13 @@ class WritingAssistantService:
         relevant_criteria = criteria.criteria
         if section_type and section_type.lower() in SECTION_CRITERIA_MAP:
             criteria_names = SECTION_CRITERIA_MAP[section_type.lower()]
-            relevant_criteria = [
-                c for c in criteria.criteria
-                if c.name.lower() in [n.lower() for n in criteria_names]
-            ]
+            relevant_criteria = [c for c in criteria.criteria if c.name.lower() in [n.lower() for n in criteria_names]]
             # If no matches, use all criteria
             if not relevant_criteria:
                 relevant_criteria = criteria.criteria
 
         # Build analysis prompt
-        criteria_desc = "\n".join([
-            f"- {c.name}: {c.description}" for c in relevant_criteria
-        ])
+        criteria_desc = "\n".join([f"- {c.name}: {c.description}" for c in relevant_criteria])
 
         prompt = self._build_analysis_prompt(
             text=text,
@@ -136,11 +129,7 @@ class WritingAssistantService:
                 max_tokens=settings.llm_max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
-            result = self._parse_analysis_response(
-                response.content[0].text,
-                text,
-                relevant_criteria
-            )
+            result = self._parse_analysis_response(response.content[0].text, text, relevant_criteria)
         except Exception as e:
             logger.error("Failed to analyze text", error=str(e))
             # Return a basic analysis on error
@@ -209,12 +198,7 @@ SCORING GUIDELINES:
 - Be specific about gaps and suggestions
 - Do not evaluate writing style or grammar"""
 
-    def _parse_analysis_response(
-        self,
-        response_text: str,
-        original_text: str,
-        criteria
-    ) -> WritingAnalysis:
+    def _parse_analysis_response(self, response_text: str, original_text: str, criteria) -> WritingAnalysis:
         """Parse Claude's response into structured format."""
         try:
             # Extract JSON from response
@@ -266,15 +250,17 @@ SCORING GUIDELINES:
             if c.name.lower() in text.lower():
                 coverage = 0.7
 
-            section_scores.append(SectionScore(
-                criterion_name=c.name,
-                score=base_score,
-                score_label=get_score_label(base_score),
-                coverage=coverage,
-                strengths=[],
-                gaps=["Unable to perform detailed analysis"],
-                suggestions=["Consider reviewing " + c.name + " section"],
-            ))
+            section_scores.append(
+                SectionScore(
+                    criterion_name=c.name,
+                    score=base_score,
+                    score_label=get_score_label(base_score),
+                    coverage=coverage,
+                    strengths=[],
+                    gaps=["Unable to perform detailed analysis"],
+                    suggestions=["Consider reviewing " + c.name + " section"],
+                )
+            )
 
         return WritingAnalysis(
             overall_score=base_score,
@@ -325,18 +311,17 @@ SCORING GUIDELINES:
         relevant_criteria = criteria.criteria
         if section_type.lower() in SECTION_CRITERIA_MAP:
             criteria_names = SECTION_CRITERIA_MAP[section_type.lower()]
-            relevant_criteria = [
-                c for c in criteria.criteria
-                if c.name.lower() in [n.lower() for n in criteria_names]
-            ]
+            relevant_criteria = [c for c in criteria.criteria if c.name.lower() in [n.lower() for n in criteria_names]]
             if not relevant_criteria:
                 relevant_criteria = criteria.criteria
 
         # Build prompt for suggestions
-        criteria_info = "\n".join([
-            f"- {c.name}: {c.description}\n  Common weaknesses: {', '.join(c.common_weaknesses[:2])}"
-            for c in relevant_criteria
-        ])
+        criteria_info = "\n".join(
+            [
+                f"- {c.name}: {c.description}\n  Common weaknesses: {', '.join(c.common_weaknesses[:2])}"
+                for c in relevant_criteria
+            ]
+        )
 
         prompt = f"""You are an expert grant writing consultant. Analyze this {section_type} section for a {mechanism} grant and suggest specific improvements.
 
@@ -377,11 +362,7 @@ Focus on structure and completeness, not writing style. Limit to {max_suggestion
             logger.error("Failed to generate suggestions", error=str(e))
             return self._create_fallback_suggestions(relevant_criteria)
 
-    def _parse_suggestions_response(
-        self,
-        response_text: str,
-        criteria
-    ) -> SuggestionsResponse:
+    def _parse_suggestions_response(self, response_text: str, criteria) -> SuggestionsResponse:
         """Parse suggestions response."""
         try:
             json_start = response_text.find("{")
@@ -397,14 +378,16 @@ Focus on structure and completeness, not writing style. Limit to {max_suggestion
                 except ValueError:
                     stype = SuggestionType.CLARIFY
 
-                suggestions.append(WritingSuggestion(
-                    type=stype,
-                    criterion=s.get("criterion", "General"),
-                    priority=s.get("priority", "medium"),
-                    description=s.get("description", ""),
-                    rationale=s.get("rationale", ""),
-                    example=s.get("example"),
-                ))
+                suggestions.append(
+                    WritingSuggestion(
+                        type=stype,
+                        criterion=s.get("criterion", "General"),
+                        priority=s.get("priority", "medium"),
+                        description=s.get("description", ""),
+                        rationale=s.get("rationale", ""),
+                        example=s.get("example"),
+                    )
+                )
 
             criteria_coverage = data.get("criteria_coverage", {})
             # Ensure all criteria have coverage scores
@@ -429,14 +412,16 @@ Focus on structure and completeness, not writing style. Limit to {max_suggestion
         for c in criteria:
             coverage[c.name] = 0.5
             if c.tips:
-                suggestions.append(WritingSuggestion(
-                    type=SuggestionType.STRENGTHEN,
-                    criterion=c.name,
-                    priority="medium",
-                    description=c.tips[0] if c.tips else f"Review {c.name} section",
-                    rationale=c.description,
-                    example=None,
-                ))
+                suggestions.append(
+                    WritingSuggestion(
+                        type=SuggestionType.STRENGTHEN,
+                        criterion=c.name,
+                        priority="medium",
+                        description=c.tips[0] if c.tips else f"Review {c.name} section",
+                        rationale=c.description,
+                        example=None,
+                    )
+                )
 
         return SuggestionsResponse(
             suggestions=suggestions[:5],
@@ -471,9 +456,7 @@ Focus on structure and completeness, not writing style. Limit to {max_suggestion
                 grant_context = f"Grant: {grant.title}\nAgency: {grant.agency or 'Unknown'}\n"
 
         # Build criteria focus
-        criteria_focus = "\n".join([
-            f"- {c.name}: {c.description}" for c in criteria.criteria
-        ])
+        criteria_focus = "\n".join([f"- {c.name}: {c.description}" for c in criteria.criteria])
 
         focus_instruction = ""
         if focus_areas:
@@ -520,11 +503,7 @@ Focus on structure, completeness, and alignment with review criteria. Do not cri
             logger.error("Failed to generate feedback", error=str(e))
             return self._create_fallback_feedback(criteria.criteria)
 
-    def _parse_feedback_response(
-        self,
-        response_text: str,
-        criteria
-    ) -> FeedbackResponse:
+    def _parse_feedback_response(self, response_text: str, criteria) -> FeedbackResponse:
         """Parse feedback response."""
         try:
             json_start = response_text.find("{")
@@ -549,8 +528,7 @@ Focus on structure, completeness, and alignment with review criteria. Do not cri
     def _create_fallback_feedback(self, criteria) -> FeedbackResponse:
         """Create fallback feedback when AI fails."""
         criterion_feedback = {
-            c.name: f"Review this section against {c.name} criterion: {c.description}"
-            for c in criteria
+            c.name: f"Review this section against {c.name} criterion: {c.description}" for c in criteria
         }
 
         return FeedbackResponse(
@@ -625,9 +603,7 @@ Focus on structure, completeness, and alignment with review criteria. Do not cri
                 grant_context = f"Grant: {grant.title}\nAgency: {grant.agency or 'Unknown'}\n"
 
         # Build criteria focus
-        criteria_focus = "\n".join([
-            f"- {c.name}: {c.description}" for c in criteria.criteria
-        ])
+        criteria_focus = "\n".join([f"- {c.name}: {c.description}" for c in criteria.criteria])
 
         focus_instruction = ""
         if focus_areas:

@@ -5,8 +5,8 @@ Discovers active funding opportunities from the NIH Reporter API.
 This provides a reliable alternative to web scraping for NIH grant data.
 API documentation: https://api.reporter.nih.gov/
 """
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
+
+from datetime import datetime, timezone
 from typing import Any, Optional
 import asyncio
 
@@ -32,12 +32,14 @@ from agents.discovery.base import DiscoveryAgent
 
 class NIHAgencyInfo(BaseModel):
     """NIH agency/institute information."""
+
     abbreviation: Optional[str] = None
     name: Optional[str] = None
 
 
 class NIHOrganization(BaseModel):
     """Awardee organization information."""
+
     org_name: Optional[str] = None
     org_city: Optional[str] = None
     org_state: Optional[str] = None
@@ -47,6 +49,7 @@ class NIHOrganization(BaseModel):
 
 class NIHPrincipalInvestigator(BaseModel):
     """Principal investigator information."""
+
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     middle_name: Optional[str] = None
@@ -71,6 +74,7 @@ class NIHReporterProject(BaseModel):
 
     Maps the JSON response from the NIH Reporter Projects Search API.
     """
+
     # Core identifiers
     project_num: str = Field(..., description="Project number (unique ID)")
     project_title: str = Field(..., description="Project title")
@@ -97,8 +101,7 @@ class NIHReporterProject(BaseModel):
     # Organization and PI
     organization: Optional[NIHOrganization] = Field(default=None, description="Awardee organization")
     principal_investigators: Optional[list[NIHPrincipalInvestigator]] = Field(
-        default=None,
-        description="Principal investigators"
+        default=None, description="Principal investigators"
     )
 
     # Additional metadata
@@ -160,6 +163,7 @@ class NIHReporterProject(BaseModel):
 
 class NIHSearchCriteria(BaseModel):
     """Search criteria for NIH Reporter API."""
+
     fiscal_years: Optional[list[int]] = None
     is_active: Optional[bool] = None
     newly_added_projects_only: Optional[bool] = None
@@ -176,6 +180,7 @@ class NIHSearchCriteria(BaseModel):
 
 class NIHSearchRequest(BaseModel):
     """Request payload for NIH Reporter search."""
+
     criteria: NIHSearchCriteria = Field(default_factory=NIHSearchCriteria)
     limit: int = Field(default=500, ge=1, le=500)
     offset: int = Field(default=0, ge=0)
@@ -189,6 +194,7 @@ class DiscoveredGrant(BaseModel):
 
     This is the standard format used across all discovery agents.
     """
+
     external_id: str = Field(..., description="External ID from source (project_num)")
     source: str = Field(default="nih_reporter", description="Data source identifier")
     title: str = Field(..., description="Grant title")
@@ -256,8 +262,8 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/json",
-                    "User-Agent": "GrantRadar/1.0 (grant-discovery-agent)"
-                }
+                    "User-Agent": "GrantRadar/1.0 (grant-discovery-agent)",
+                },
             )
         return self.http_client
 
@@ -266,10 +272,8 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
         wait=wait_exponential(multiplier=1, min=2, max=30),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         before_sleep=lambda retry_state: structlog.get_logger().warning(
-            "nih_reporter_api_retry",
-            attempt=retry_state.attempt_number,
-            wait=retry_state.next_action.sleep
-        )
+            "nih_reporter_api_retry", attempt=retry_state.attempt_number, wait=retry_state.next_action.sleep
+        ),
     )
     async def _fetch_page(self, request: NIHSearchRequest) -> dict[str, Any]:
         """
@@ -381,10 +385,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
             raw_data=project.model_dump(mode="json"),
         )
 
-    async def _fetch_all_pages(
-        self,
-        base_request: NIHSearchRequest
-    ) -> list[NIHReporterProject]:
+    async def _fetch_all_pages(self, base_request: NIHSearchRequest) -> list[NIHReporterProject]:
         """
         Fetch all pages of results from the NIH Reporter API.
 
@@ -404,11 +405,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
             try:
                 response_data = await self._fetch_page(request)
             except httpx.HTTPError as e:
-                self.logger.error(
-                    "nih_reporter_api_fetch_failed",
-                    offset=current_offset,
-                    error=str(e)
-                )
+                self.logger.error("nih_reporter_api_fetch_failed", offset=current_offset, error=str(e))
                 break
 
             # Parse response structure
@@ -418,9 +415,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
 
             if not results:
                 self.logger.info(
-                    "nih_reporter_api_no_more_results",
-                    offset=current_offset,
-                    total_fetched=len(all_projects)
+                    "nih_reporter_api_no_more_results", offset=current_offset, total_fetched=len(all_projects)
                 )
                 break
 
@@ -431,9 +426,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
                     all_projects.append(project)
                 except Exception as e:
                     self.logger.warning(
-                        "nih_reporter_project_parse_failed",
-                        project_num=project_data.get("project_num"),
-                        error=str(e)
+                        "nih_reporter_project_parse_failed", project_num=project_data.get("project_num"), error=str(e)
                     )
 
             self.logger.info(
@@ -441,7 +434,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
                 offset=current_offset,
                 projects_in_page=len(results),
                 total_fetched=len(all_projects),
-                total_available=total
+                total_available=total,
             )
 
             # Check if we've fetched all results
@@ -508,10 +501,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
         # Fetch all projects
         projects = await self._fetch_all_pages(request)
 
-        self.logger.info(
-            "nih_reporter_projects_fetched",
-            total_projects=len(projects)
-        )
+        self.logger.info("nih_reporter_projects_fetched", total_projects=len(projects))
 
         # Filter duplicates and normalize
         new_grants: list[dict[str, Any]] = []
@@ -519,10 +509,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
         for project in projects:
             # Check for duplicates
             if self.is_duplicate(project.project_num, project.project_title):
-                self.logger.debug(
-                    "nih_reporter_project_duplicate",
-                    project_num=project.project_num
-                )
+                self.logger.debug("nih_reporter_project_duplicate", project_num=project.project_num)
                 continue
 
             # Normalize and add
@@ -532,11 +519,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
             # Mark as seen
             self.mark_as_seen(project.project_num, project.project_title)
 
-        self.logger.info(
-            "nih_reporter_discovery_complete",
-            total_fetched=len(projects),
-            new_grants=len(new_grants)
-        )
+        self.logger.info("nih_reporter_discovery_complete", total_fetched=len(projects), new_grants=len(new_grants))
 
         return new_grants
 
@@ -561,11 +544,7 @@ class NIHReporterDiscoveryAgent(DiscoveryAgent):
             return len(grants)
 
         except Exception as e:
-            self.logger.error(
-                "nih_reporter_discovery_failed",
-                error=str(e),
-                exc_info=True
-            )
+            self.logger.error("nih_reporter_discovery_failed", error=str(e), exc_info=True)
             raise
         finally:
             await self.close_async()
@@ -603,10 +582,7 @@ def discover_nih_reporter_grants(self) -> dict[str, Any]:
     Returns:
         Dict with discovery results
     """
-    logger = structlog.get_logger().bind(
-        task_id=self.request.id,
-        task_name="discover_nih_reporter_grants"
-    )
+    logger = structlog.get_logger().bind(task_id=self.request.id, task_name="discover_nih_reporter_grants")
 
     logger.info("nih_reporter_discovery_task_start")
 
@@ -621,21 +597,10 @@ def discover_nih_reporter_grants(self) -> dict[str, Any]:
         finally:
             loop.close()
 
-        logger.info(
-            "nih_reporter_discovery_task_complete",
-            grants_discovered=count
-        )
+        logger.info("nih_reporter_discovery_task_complete", grants_discovered=count)
 
-        return {
-            "status": "success",
-            "grants_discovered": count,
-            "source": "nih_reporter"
-        }
+        return {"status": "success", "grants_discovered": count, "source": "nih_reporter"}
 
     except Exception as e:
-        logger.error(
-            "nih_reporter_discovery_task_failed",
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("nih_reporter_discovery_task_failed", error=str(e), exc_info=True)
         raise

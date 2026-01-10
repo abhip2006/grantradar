@@ -2,6 +2,7 @@
 Similarity Service for GrantRadar
 Calculate grant similarity using algorithmic methods (no AI).
 """
+
 import re
 from dataclasses import dataclass
 from typing import Optional
@@ -15,10 +16,44 @@ from backend.models import Grant
 
 # Common words to exclude from keyword matching
 STOP_WORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
-    "in", "is", "it", "its", "of", "on", "or", "that", "the", "to", "was", "were",
-    "will", "with", "grant", "funding", "research", "program", "project", "award",
-    "application", "applicant", "applicants", "support", "opportunity", "opportunities"
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "has",
+    "he",
+    "in",
+    "is",
+    "it",
+    "its",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "to",
+    "was",
+    "were",
+    "will",
+    "with",
+    "grant",
+    "funding",
+    "research",
+    "program",
+    "project",
+    "award",
+    "application",
+    "applicant",
+    "applicants",
+    "support",
+    "opportunity",
+    "opportunities",
 }
 
 # Minimum word length for keyword extraction
@@ -28,6 +63,7 @@ MIN_WORD_LENGTH = 3
 @dataclass
 class SimilarityResult:
     """Result of similarity calculation between two grants."""
+
     grant: Grant
     similarity_score: float
     similarity_reasons: list[str]
@@ -46,13 +82,10 @@ def extract_keywords(text: str) -> set[str]:
     text = text.lower()
 
     # Extract words (alphanumeric only)
-    words = re.findall(r'\b[a-z]+\b', text)
+    words = re.findall(r"\b[a-z]+\b", text)
 
     # Filter out stop words and short words
-    keywords = {
-        word for word in words
-        if word not in STOP_WORDS and len(word) >= MIN_WORD_LENGTH
-    }
+    keywords = {word for word in words if word not in STOP_WORDS and len(word) >= MIN_WORD_LENGTH}
 
     return keywords
 
@@ -229,12 +262,7 @@ def calculate_similarity(
             reasons.append(f"Keywords: {', '.join(list(common_keywords)[:2])}")
 
     # Calculate weighted total score
-    total_score = (
-        category_score * 0.40 +
-        agency_score * 0.25 +
-        funding_score * 0.20 +
-        keyword_score * 0.15
-    )
+    total_score = category_score * 0.40 + agency_score * 0.25 + funding_score * 0.20 + keyword_score * 0.15
 
     # Convert to 0-100 scale
     similarity_percentage = round(total_score * 100)
@@ -273,9 +301,7 @@ async def find_similar_grants(
         List of SimilarityResult objects, sorted by similarity score descending
     """
     # Fetch the source grant
-    result = await db.execute(
-        select(Grant).where(Grant.id == grant_id)
-    )
+    result = await db.execute(select(Grant).where(Grant.id == grant_id))
     source_grant = result.scalar_one_or_none()
 
     if not source_grant:
@@ -300,17 +326,11 @@ async def find_similar_grants(
     # Similar funding range (within 2x)
     if source_grant.amount_max:
         or_conditions.append(
-            and_(
-                Grant.amount_min >= source_grant.amount_max * 0.5,
-                Grant.amount_min <= source_grant.amount_max * 2
-            )
+            and_(Grant.amount_min >= source_grant.amount_max * 0.5, Grant.amount_min <= source_grant.amount_max * 2)
         )
     elif source_grant.amount_min:
         or_conditions.append(
-            and_(
-                Grant.amount_max >= source_grant.amount_min * 0.5,
-                Grant.amount_max <= source_grant.amount_min * 2
-            )
+            and_(Grant.amount_max >= source_grant.amount_min * 0.5, Grant.amount_max <= source_grant.amount_min * 2)
         )
 
     # Same source (nih, nsf, grants_gov)

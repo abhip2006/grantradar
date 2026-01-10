@@ -3,8 +3,10 @@
 Test Matching Flow
 Tests the matching agent components without requiring database/Redis.
 """
+
 import sys
-sys.path.insert(0, '/Users/abhinavpenagalapati/Desktop/grantradar')
+
+sys.path.insert(0, "/Users/abhinavpenagalapati/Desktop/grantradar")
 
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -31,7 +33,7 @@ def test_grant_embedder():
     }
 
     text = embedder._grant_to_text(grant)
-    print(f"Grant to text conversion:")
+    print("Grant to text conversion:")
     print(f"  Input: {grant['title']}")
     print(f"  Output length: {len(text)} chars")
     print(f"  Contains title: {'Machine Learning' in text}")
@@ -120,7 +122,6 @@ def test_priority_levels():
     print("\n=== Testing Priority Levels ===")
 
     from agents.matching.matcher import GrantMatcher
-    from backend.core.events import PriorityLevel
     from unittest.mock import MagicMock
     from datetime import timedelta
 
@@ -236,9 +237,23 @@ def test_workflow_simulation():
     # Step 3: LLM evaluation (simulated)
     print("\nStep 3: LLM evaluation (simulated)")
     llm_results = [
-        MatchResult(match_score=90, reasoning="Excellent fit", key_strengths=["AI expertise"], concerns=[], predicted_success=85),
-        MatchResult(match_score=75, reasoning="Good fit", key_strengths=["ML background"], concerns=["No healthcare experience"], predicted_success=65),
-        MatchResult(match_score=55, reasoning="Moderate fit", key_strengths=["Data skills"], concerns=["Limited AI experience"], predicted_success=45),
+        MatchResult(
+            match_score=90, reasoning="Excellent fit", key_strengths=["AI expertise"], concerns=[], predicted_success=85
+        ),
+        MatchResult(
+            match_score=75,
+            reasoning="Good fit",
+            key_strengths=["ML background"],
+            concerns=["No healthcare experience"],
+            predicted_success=65,
+        ),
+        MatchResult(
+            match_score=55,
+            reasoning="Moderate fit",
+            key_strengths=["Data skills"],
+            concerns=["Limited AI experience"],
+            predicted_success=45,
+        ),
     ]
 
     # Step 4: Compute final scores
@@ -275,11 +290,11 @@ def main():
 
     results = {}
 
-    results['Grant Embedder'] = test_grant_embedder()
-    results['Models'] = test_models()
-    results['Priority Levels'] = test_priority_levels()
-    results['Score Computation'] = test_score_computation()
-    results['Workflow Simulation'] = test_workflow_simulation()
+    results["Grant Embedder"] = test_grant_embedder()
+    results["Models"] = test_models()
+    results["Priority Levels"] = test_priority_levels()
+    results["Score Computation"] = test_score_computation()
+    results["Workflow Simulation"] = test_workflow_simulation()
 
     print("\n" + "=" * 60)
     print("RESULTS:")

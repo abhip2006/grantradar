@@ -2,10 +2,11 @@
 GrantRadar Orchestrator Metrics Collector
 Collects and stores metrics in Redis for dashboard visualization.
 """
+
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 import redis.asyncio as redis
@@ -141,11 +142,13 @@ class MetricsCollector:
         now = time.time()
 
         key = f"{MetricKeys.PIPELINE_LATENCIES}:{stage}"
-        value = json.dumps({
-            "latency": latency_seconds,
-            "grant_id": grant_id,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        value = json.dumps(
+            {
+                "latency": latency_seconds,
+                "grant_id": grant_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
         # Add to sorted set with timestamp as score
         await r.zadd(key, {value: now})
@@ -172,11 +175,13 @@ class MetricsCollector:
         now = time.time()
 
         key = MetricKeys.AGENT_LATENCIES.format(agent=agent.value)
-        value = json.dumps({
-            "latency_ms": latency_ms,
-            "task_id": task_id,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        value = json.dumps(
+            {
+                "latency_ms": latency_ms,
+                "task_id": task_id,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
         await r.zadd(key, {value: now})
 
@@ -208,22 +213,26 @@ class MetricsCollector:
         now = time.time()
 
         # Record latency
-        latency_value = json.dumps({
-            "provider": provider,
-            "model": model,
-            "latency_ms": latency_ms,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        latency_value = json.dumps(
+            {
+                "provider": provider,
+                "model": model,
+                "latency_ms": latency_ms,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await r.zadd(MetricKeys.LLM_LATENCIES, {latency_value: now})
 
         # Record tokens
-        token_value = json.dumps({
-            "provider": provider,
-            "model": model,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        token_value = json.dumps(
+            {
+                "provider": provider,
+                "model": model,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
         await r.zadd(MetricKeys.LLM_TOKENS, {token_value: now})
 
         # Update daily cost
@@ -349,19 +358,13 @@ class MetricsCollector:
         """Get all stored agent health."""
         r = await self._ensure_connected()
         data = await r.hgetall(MetricKeys.AGENT_HEALTH)
-        return {
-            k: AgentHealth.model_validate_json(v)
-            for k, v in data.items()
-        }
+        return {k: AgentHealth.model_validate_json(v) for k, v in data.items()}
 
     async def get_stored_endpoint_health(self) -> dict[str, EndpointHealth]:
         """Get all stored endpoint health."""
         r = await self._ensure_connected()
         data = await r.hgetall(MetricKeys.ENDPOINT_HEALTH)
-        return {
-            k: EndpointHealth.model_validate_json(v)
-            for k, v in data.items()
-        }
+        return {k: EndpointHealth.model_validate_json(v) for k, v in data.items()}
 
     # =========================================================================
     # Metric Aggregation
@@ -498,43 +501,51 @@ class MetricsCollector:
             f"{MetricKeys.PIPELINE_LATENCIES}:completed",
             95,
         )
-        slos.append(SLOStatus.create(
-            name="Pipeline Latency (p95)",
-            target=self.SLO_PIPELINE_LATENCY_SECONDS,
-            current=p95_pipeline,
-            unit="seconds",
-            higher_is_better=False,
-        ))
+        slos.append(
+            SLOStatus.create(
+                name="Pipeline Latency (p95)",
+                target=self.SLO_PIPELINE_LATENCY_SECONDS,
+                current=p95_pipeline,
+                unit="seconds",
+                higher_is_better=False,
+            )
+        )
 
         # Success rate SLO
         success_rate = await self.get_pipeline_success_rate()
-        slos.append(SLOStatus.create(
-            name="Pipeline Success Rate",
-            target=self.SLO_SUCCESS_RATE_PERCENT,
-            current=success_rate * 100,
-            unit="percent",
-            higher_is_better=True,
-        ))
+        slos.append(
+            SLOStatus.create(
+                name="Pipeline Success Rate",
+                target=self.SLO_SUCCESS_RATE_PERCENT,
+                current=success_rate * 100,
+                unit="percent",
+                higher_is_better=True,
+            )
+        )
 
         # Alert delivery SLO
         delivery_rate = await self.get_alert_delivery_rate()
-        slos.append(SLOStatus.create(
-            name="Alert Delivery Rate",
-            target=self.SLO_ALERT_DELIVERY_RATE_PERCENT,
-            current=delivery_rate * 100,
-            unit="percent",
-            higher_is_better=True,
-        ))
+        slos.append(
+            SLOStatus.create(
+                name="Alert Delivery Rate",
+                target=self.SLO_ALERT_DELIVERY_RATE_PERCENT,
+                current=delivery_rate * 100,
+                unit="percent",
+                higher_is_better=True,
+            )
+        )
 
         # LLM latency SLO
         llm_metrics = await self.get_llm_metrics()
-        slos.append(SLOStatus.create(
-            name="LLM Latency (p95)",
-            target=self.SLO_LLM_LATENCY_MS,
-            current=llm_metrics["p95_latency_ms"],
-            unit="milliseconds",
-            higher_is_better=False,
-        ))
+        slos.append(
+            SLOStatus.create(
+                name="LLM Latency (p95)",
+                target=self.SLO_LLM_LATENCY_MS,
+                current=llm_metrics["p95_latency_ms"],
+                unit="milliseconds",
+                higher_is_better=False,
+            )
+        )
 
         return slos
 
@@ -571,9 +582,7 @@ class MetricsCollector:
 
         # Get alert metrics
         window = self._current_window()
-        alerts_sent = int(await r.get(
-            MetricKeys.ALERTS_SENT.format(window=window)
-        ) or 0)
+        alerts_sent = int(await r.get(MetricKeys.ALERTS_SENT.format(window=window)) or 0)
         alert_delivery_rate = await self.get_alert_delivery_rate()
 
         # Calculate average latencies per stage
@@ -651,10 +660,7 @@ class MetricsCollector:
         history_key = MetricKeys.METRICS_HISTORY.format(date=date)
         entries = await r.lrange(history_key, -limit, -1)
 
-        return [
-            SystemMetrics.model_validate_json(entry)
-            for entry in entries
-        ]
+        return [SystemMetrics.model_validate_json(entry) for entry in entries]
 
 
 # Global metrics collector instance

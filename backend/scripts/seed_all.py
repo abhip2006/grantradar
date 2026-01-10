@@ -14,12 +14,13 @@ Options:
     --dry-run       Print what would be seeded without making changes
     --verbose       Enable verbose output
 """
+
 import argparse
 import asyncio
 import logging
 import sys
 from datetime import datetime, timezone
-from typing import Callable, List, Tuple, Optional
+from typing import List, Tuple, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 class SeedResult:
     """Result of a seeding operation."""
+
     def __init__(self, name: str, success: bool, message: str, count: Optional[int] = None):
         self.name = name
         self.success = success
@@ -44,6 +46,7 @@ async def check_database_connection() -> bool:
     """Check if the database is accessible."""
     try:
         from backend.database import check_db_connection
+
         result = await check_db_connection()
         if result.get("status") == "healthy":
             logger.info("Database connection: OK")
@@ -78,9 +81,7 @@ async def check_migrations() -> Tuple[bool, str]:
                 return False, "Alembic version table not found. Run 'alembic upgrade head' first."
 
             # Get current version
-            result = await session.execute(
-                text("SELECT version_num FROM alembic_version LIMIT 1")
-            )
+            result = await session.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
             version = result.scalar()
 
             if version:
@@ -100,6 +101,7 @@ async def seed_mechanisms(dry_run: bool = False) -> SeedResult:
             return SeedResult(name, True, "Would seed grant mechanisms (NIH R01, R21, NSF CAREER, etc.)")
 
         from backend.scripts.seed_mechanisms import seed_mechanisms as do_seed
+
         await do_seed()
         return SeedResult(name, True, "Seeded grant mechanisms successfully")
     except Exception as e:
@@ -132,6 +134,7 @@ async def seed_compliance_requirements(dry_run: bool = False) -> SeedResult:
             return SeedResult(name, True, "Would seed compliance requirements for NIH, NSF, foundations")
 
         from backend.scripts.seed_compliance_requirements import seed_compliance_requirements as do_seed
+
         await do_seed()
         return SeedResult(name, True, "Seeded compliance requirements successfully")
     except Exception as e:
@@ -146,6 +149,7 @@ async def seed_templates(dry_run: bool = False) -> SeedResult:
             return SeedResult(name, True, "Would seed document templates (Specific Aims, Abstract, etc.)")
 
         from backend.services.seed_templates import seed_templates as do_seed
+
         await do_seed()
         return SeedResult(name, True, "Seeded document templates successfully")
     except Exception as e:
@@ -161,7 +165,7 @@ async def seed_checklists(dry_run: bool = False, reset: bool = False) -> SeedRes
 
         from backend.services.seed_checklists import (
             seed_checklist_templates as do_seed,
-            reset_and_seed_checklist_templates
+            reset_and_seed_checklist_templates,
         )
 
         if reset:
@@ -190,7 +194,7 @@ async def seed_compliance_rules(dry_run: bool = False, force: bool = False) -> S
         return SeedResult(
             name,
             True,
-            f"Created: {result.get('created', 0)}, Skipped: {result.get('skipped', 0)}, Updated: {result.get('updated', 0)}"
+            f"Created: {result.get('created', 0)}, Skipped: {result.get('skipped', 0)}, Updated: {result.get('updated', 0)}",
         )
     except Exception as e:
         return SeedResult(name, False, f"Error: {e}")
@@ -204,6 +208,7 @@ async def seed_demo_data(dry_run: bool = False, clean: bool = False) -> SeedResu
             return SeedResult(name, True, "Would seed demo users, grants, applications, and teams")
 
         from backend.scripts.seed_data import run_seed
+
         await run_seed(clean=clean, dry_run=dry_run, verbose=False)
         return SeedResult(name, True, "Seeded demo data successfully (3 users, 20+ grants, applications, team)")
     except Exception as e:
@@ -236,9 +241,7 @@ async def get_table_counts() -> dict:
         async with get_async_session() as session:
             for table_name, display_name in tables:
                 try:
-                    result = await session.execute(
-                        text(f"SELECT COUNT(*) FROM {table_name}")
-                    )
+                    result = await session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
                     count = result.scalar()
                     counts[display_name] = count
                 except Exception:
@@ -309,9 +312,7 @@ async def run_all_seeds(
 
     # Optionally include demo data
     if include_demo:
-        seed_operations.append(
-            ("Demo Data", lambda: seed_demo_data(dry_run, clean=force))
-        )
+        seed_operations.append(("Demo Data", lambda: seed_demo_data(dry_run, clean=force)))
 
     for name, seed_func in seed_operations:
         print(f"\n  Seeding {name}...")
@@ -372,32 +373,18 @@ Examples:
   python -m backend.scripts.seed_all --force      # Force re-seed (updates existing)
   python -m backend.scripts.seed_all --skip-check # Skip DB/migration checks
   python -m backend.scripts.seed_all --demo       # Include demo data (users, grants, apps)
-        """
+        """,
     )
     parser.add_argument(
-        "--force", "-f",
-        action="store_true",
-        help="Force re-seed even if data exists (where supported)"
+        "--force", "-f", action="store_true", help="Force re-seed even if data exists (where supported)"
     )
+    parser.add_argument("--skip-check", "-s", action="store_true", help="Skip database connection and migration checks")
     parser.add_argument(
-        "--skip-check", "-s",
-        action="store_true",
-        help="Skip database connection and migration checks"
+        "--dry-run", "-n", action="store_true", help="Print what would be seeded without making changes"
     )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
     parser.add_argument(
-        "--dry-run", "-n",
-        action="store_true",
-        help="Print what would be seeded without making changes"
-    )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
-    parser.add_argument(
-        "--demo", "-d",
-        action="store_true",
-        help="Include demo data (users, grants, applications, teams)"
+        "--demo", "-d", action="store_true", help="Include demo data (users, grants, applications, teams)"
     )
 
     args = parser.parse_args()
@@ -406,13 +393,15 @@ Examples:
         logging.getLogger().setLevel(logging.DEBUG)
 
     try:
-        results = asyncio.run(run_all_seeds(
-            force=args.force,
-            skip_check=args.skip_check,
-            dry_run=args.dry_run,
-            verbose=args.verbose,
-            include_demo=args.demo,
-        ))
+        results = asyncio.run(
+            run_all_seeds(
+                force=args.force,
+                skip_check=args.skip_check,
+                dry_run=args.dry_run,
+                verbose=args.verbose,
+                include_demo=args.demo,
+            )
+        )
 
         # Exit with error code if any seed failed
         failed = sum(1 for r in results if not r.success)

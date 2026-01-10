@@ -2,6 +2,7 @@
 Rate Limiting Module
 Redis-based distributed rate limiting for FastAPI endpoints.
 """
+
 import logging
 import time
 from dataclasses import dataclass
@@ -27,17 +28,19 @@ logger = logging.getLogger(__name__)
 
 class RateLimitTier(str, Enum):
     """Predefined rate limit tiers for different endpoint types."""
-    AUTH = "auth"           # Login, register - strict limits
-    AI = "ai"               # Chat, writing, insights - moderate limits
-    SEARCH = "search"       # Search endpoints - higher limits
-    STANDARD = "standard"   # Default API endpoints
+
+    AUTH = "auth"  # Login, register - strict limits
+    AI = "ai"  # Chat, writing, insights - moderate limits
+    SEARCH = "search"  # Search endpoints - higher limits
+    STANDARD = "standard"  # Default API endpoints
 
 
 @dataclass
 class RateLimitConfig:
     """Rate limit configuration for a tier."""
+
     requests: int  # Number of requests allowed
-    window: int    # Time window in seconds
+    window: int  # Time window in seconds
 
     @property
     def key_suffix(self) -> str:
@@ -370,9 +373,7 @@ class RateLimitDependency:
         try:
             # Try Redis first
             limiter = await get_rate_limiter()
-            is_limited, remaining, retry_after = await limiter.is_rate_limited(
-                key, limit, window
-            )
+            is_limited, remaining, retry_after = await limiter.is_rate_limited(key, limit, window)
             _redis_available = True
 
             # Store rate limit info in request state for response headers
@@ -406,9 +407,7 @@ class RateLimitDependency:
             try:
                 # SECURITY: Always enforce rate limiting, even when Redis is down
                 fallback = get_fallback_limiter()
-                is_limited, remaining, retry_after = await fallback.is_rate_limited(
-                    key, limit, window
-                )
+                is_limited, remaining, retry_after = await fallback.is_rate_limited(key, limit, window)
 
                 request.state.rate_limit_limit = limit
                 request.state.rate_limit_remaining = remaining
@@ -480,6 +479,7 @@ def rate_limit(
         async def wrapper(*args, request: Request, **kwargs):
             await dependency(request)
             return await func(*args, request=request, **kwargs)
+
         return wrapper
 
     return decorator
@@ -508,12 +508,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Add rate limit headers if available
         if hasattr(request.state, "rate_limit_limit"):
             response.headers["X-RateLimit-Limit"] = str(request.state.rate_limit_limit)
-            response.headers["X-RateLimit-Remaining"] = str(
-                getattr(request.state, "rate_limit_remaining", 0)
-            )
-            response.headers["X-RateLimit-Reset"] = str(
-                getattr(request.state, "rate_limit_reset", 0)
-            )
+            response.headers["X-RateLimit-Remaining"] = str(getattr(request.state, "rate_limit_remaining", 0))
+            response.headers["X-RateLimit-Reset"] = str(getattr(request.state, "rate_limit_reset", 0))
 
         return response
 

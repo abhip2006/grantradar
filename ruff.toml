@@ -1,0 +1,48 @@
+# Ruff configuration
+# https://docs.astral.sh/ruff/
+
+# Target Python 3.11
+target-version = "py311"
+
+# Exclude directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "node_modules",
+    ".mypy_cache",
+    ".pytest_cache",
+    "alembic/versions",
+]
+
+# Line length
+line-length = 120
+
+[lint]
+# Rules to check
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+]
+
+# Rules to ignore globally
+ignore = [
+    "E501",  # Line too long - handled by formatter
+]
+
+# Per-file ignores
+[lint.per-file-ignores]
+# Allow late imports in model __init__ (required for circular import avoidance)
+"backend/models/__init__.py" = ["E402"]
+# Allow late imports in reviews model (required for circular import avoidance)
+"backend/models/reviews.py" = ["E402"]
+# Allow late imports in audit service (required for TYPE_CHECKING)
+"backend/services/audit.py" = ["E402"]
+# Allow star imports in test fixtures
+"tests/fixtures/__init__.py" = ["F403", "F401"]
+# Allow late imports in test files
+"tests/**/*.py" = ["E402"]
+# Allow bare except in indexing task (intentional error swallowing for transaction isolation)
+"backend/tasks/indexing.py" = ["E722"]

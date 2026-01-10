@@ -1,4 +1,5 @@
 """Writing assistant schemas."""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
@@ -8,6 +9,7 @@ from enum import Enum
 
 class FundingAgency(str, Enum):
     """Supported funding agencies."""
+
     NIH = "NIH"
     NSF = "NSF"
     DOE = "DOE"
@@ -17,6 +19,7 @@ class FundingAgency(str, Enum):
 
 class CriterionCategory(str, Enum):
     """Categories of review criteria."""
+
     SCIENTIFIC_MERIT = "scientific_merit"
     INNOVATION = "innovation"
     FEASIBILITY = "feasibility"
@@ -27,6 +30,7 @@ class CriterionCategory(str, Enum):
 
 class ReviewCriterion(BaseModel):
     """Single review criterion definition."""
+
     name: str = Field(..., description="Name of the criterion")
     description: str = Field(..., description="Description of what reviewers look for")
     weight: float = Field(ge=0.0, le=1.0, description="Relative weight/importance (0.0-1.0)")
@@ -38,6 +42,7 @@ class ReviewCriterion(BaseModel):
 
 class MechanismCriteria(BaseModel):
     """Review criteria for a specific grant mechanism."""
+
     mechanism_code: str = Field(..., description="Grant mechanism code (e.g., R01, CAREER)")
     mechanism_name: str = Field(..., description="Full name of the mechanism")
     funding_agency: FundingAgency = Field(..., description="Funding agency")
@@ -48,11 +53,13 @@ class MechanismCriteria(BaseModel):
 
 class CriteriaRequest(BaseModel):
     """Request for review criteria by mechanism."""
+
     mechanism: str = Field(..., description="Grant mechanism code (e.g., R01, CAREER)")
 
 
 class SectionScore(BaseModel):
     """Score for a specific review criterion."""
+
     criterion_name: str = Field(..., description="Name of the criterion being scored")
     score: float = Field(ge=0.0, le=10.0, description="Score out of 10")
     score_label: str = Field(..., description="Score label (e.g., 'Strong', 'Moderate', 'Weak')")
@@ -64,6 +71,7 @@ class SectionScore(BaseModel):
 
 class WritingAnalysis(BaseModel):
     """Analysis result for a draft section."""
+
     overall_score: float = Field(ge=0.0, le=10.0, description="Overall score out of 10")
     overall_label: str = Field(..., description="Overall score label")
     section_scores: List[SectionScore] = Field(..., description="Scores for each criterion")
@@ -76,17 +84,18 @@ class WritingAnalysis(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     """Request to analyze draft text against review criteria."""
+
     text: str = Field(..., min_length=50, description="Draft text to analyze")
     mechanism: str = Field(..., description="Grant mechanism code")
     section_type: Optional[str] = Field(
-        default=None,
-        description="Type of section (e.g., 'specific_aims', 'significance', 'approach')"
+        default=None, description="Type of section (e.g., 'specific_aims', 'significance', 'approach')"
     )
     grant_id: Optional[UUID] = Field(default=None, description="Optional grant ID for context")
 
 
 class AnalyzeResponse(BaseModel):
     """Response from text analysis."""
+
     analysis: WritingAnalysis
     criteria_used: List[str] = Field(..., description="List of criteria names used in analysis")
     recommendations: List[str] = Field(..., description="Top recommendations for improvement")
@@ -94,45 +103,34 @@ class AnalyzeResponse(BaseModel):
 
 class FeedbackRequest(BaseModel):
     """Request for AI-powered feedback on a draft section."""
+
     text: str = Field(..., min_length=50, description="Draft text to get feedback on")
     mechanism: str = Field(..., description="Grant mechanism code")
     section_type: str = Field(..., description="Type of section")
-    focus_areas: Optional[List[str]] = Field(
-        default=None,
-        description="Specific areas to focus feedback on"
-    )
+    focus_areas: Optional[List[str]] = Field(default=None, description="Specific areas to focus feedback on")
     grant_id: Optional[UUID] = Field(default=None, description="Optional grant ID for context")
 
 
 class FeedbackResponse(BaseModel):
     """AI-powered feedback response."""
+
     overall_assessment: str = Field(..., description="Overall assessment of the draft")
-    criterion_feedback: Dict[str, str] = Field(
-        ...,
-        description="Feedback mapped to each review criterion"
-    )
+    criterion_feedback: Dict[str, str] = Field(..., description="Feedback mapped to each review criterion")
     structural_suggestions: List[str] = Field(
-        default_factory=list,
-        description="Suggestions for structural improvements"
+        default_factory=list, description="Suggestions for structural improvements"
     )
-    content_gaps: List[str] = Field(
-        default_factory=list,
-        description="Missing content that should be addressed"
-    )
+    content_gaps: List[str] = Field(default_factory=list, description="Missing content that should be addressed")
     specific_improvements: List[Dict[str, str]] = Field(
-        default_factory=list,
-        description="Specific text improvements with before/after suggestions"
+        default_factory=list, description="Specific text improvements with before/after suggestions"
     )
     strengths: List[str] = Field(default_factory=list, description="What's working well")
-    priority_actions: List[str] = Field(
-        default_factory=list,
-        description="Top priority actions to improve the draft"
-    )
+    priority_actions: List[str] = Field(default_factory=list, description="Top priority actions to improve the draft")
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class SuggestionType(str, Enum):
     """Types of writing suggestions."""
+
     ADD_CONTENT = "add_content"
     REMOVE_CONTENT = "remove_content"
     RESTRUCTURE = "restructure"
@@ -142,6 +140,7 @@ class SuggestionType(str, Enum):
 
 class WritingSuggestion(BaseModel):
     """Individual writing suggestion."""
+
     type: SuggestionType
     criterion: str = Field(..., description="Related review criterion")
     priority: str = Field(..., description="high, medium, or low")
@@ -152,6 +151,7 @@ class WritingSuggestion(BaseModel):
 
 class SuggestionsRequest(BaseModel):
     """Request for improvement suggestions based on gaps."""
+
     text: str = Field(..., min_length=50, description="Draft text to analyze")
     mechanism: str = Field(..., description="Grant mechanism code")
     section_type: str = Field(..., description="Type of section")
@@ -160,9 +160,7 @@ class SuggestionsRequest(BaseModel):
 
 class SuggestionsResponse(BaseModel):
     """Response with improvement suggestions."""
+
     suggestions: List[WritingSuggestion]
     gaps_identified: List[str] = Field(..., description="Gaps in coverage identified")
-    criteria_coverage: Dict[str, float] = Field(
-        ...,
-        description="Coverage score (0-1) for each criterion"
-    )
+    criteria_coverage: Dict[str, float] = Field(..., description="Coverage score (0-1) for each criterion")

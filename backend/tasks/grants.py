@@ -4,16 +4,15 @@ GrantRadar Grant Processing Tasks
 Celery tasks for processing, validating, and enriching grant data.
 Tasks consume from Redis streams and manage the grant lifecycle.
 """
+
 import json
 import logging
-import time
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
 import openai
 import redis
-from anthropic import Anthropic
 from celery import Task
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -21,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from agents.curation.validator import CurationValidator
 from backend.celery_app import celery_app
 from backend.core.config import settings
-from backend.database import SyncSessionLocal, get_sync_db
+from backend.database import get_sync_db
 from backend.models import Grant
 
 logger = logging.getLogger(__name__)
@@ -31,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Redis Stream Helper
 # =============================================================================
 
+
 def get_redis_client() -> redis.Redis:
     """Get a Redis client instance for stream operations."""
     return redis.from_url(settings.redis_url, decode_responses=True)
@@ -39,6 +39,7 @@ def get_redis_client() -> redis.Redis:
 # =============================================================================
 # Task 1: Process New Grant
 # =============================================================================
+
 
 @celery_app.task(
     name="backend.tasks.grants.process_new_grant",
@@ -256,6 +257,7 @@ def process_new_grant(self: Task, grant_data: dict[str, Any]) -> Optional[dict[s
 # Task 2: Validate Grant
 # =============================================================================
 
+
 @celery_app.task(
     name="backend.tasks.grants.validate_grant",
     bind=True,
@@ -294,9 +296,7 @@ def validate_grant(self: Task, grant_id: str) -> dict[str, Any]:
     try:
         # Step 1: Fetch grant from database
         db = get_sync_db()
-        grant = db.execute(
-            select(Grant).where(Grant.id == UUID(grant_id))
-        ).scalar_one_or_none()
+        grant = db.execute(select(Grant).where(Grant.id == UUID(grant_id))).scalar_one_or_none()
 
         if not grant:
             logger.error("Grant not found", extra={"grant_id": grant_id})
@@ -324,6 +324,7 @@ def validate_grant(self: Task, grant_id: str) -> dict[str, Any]:
 
         # Import asyncio to run async validation
         import asyncio
+
         validation_result = asyncio.run(validator.validate_quality(grant_data))
 
         logger.info(
@@ -389,6 +390,7 @@ def validate_grant(self: Task, grant_id: str) -> dict[str, Any]:
 # Task 3: Compute Grant Embedding
 # =============================================================================
 
+
 @celery_app.task(
     name="backend.tasks.grants.compute_grant_embedding",
     bind=True,
@@ -430,9 +432,7 @@ def compute_grant_embedding(self: Task, grant_id: str) -> dict[str, Any]:
     try:
         # Step 1: Fetch grant from database
         db = get_sync_db()
-        grant = db.execute(
-            select(Grant).where(Grant.id == UUID(grant_id))
-        ).scalar_one_or_none()
+        grant = db.execute(select(Grant).where(Grant.id == UUID(grant_id))).scalar_one_or_none()
 
         if not grant:
             logger.error("Grant not found", extra={"grant_id": grant_id})
@@ -500,7 +500,8 @@ def compute_grant_embedding(self: Task, grant_id: str) -> dict[str, Any]:
             )
             # Add jitter to retry delay to prevent thundering herd
             import random
-            retry_delay = self.default_retry_delay * (2 ** self.request.retries) + random.uniform(0, 5)
+
+            retry_delay = self.default_retry_delay * (2**self.request.retries) + random.uniform(0, 5)
             raise self.retry(exc=e, countdown=int(retry_delay))
 
         # Step 4: Store in grant.embedding field
@@ -559,6 +560,7 @@ def compute_grant_embedding(self: Task, grant_id: str) -> dict[str, Any]:
 # =============================================================================
 # Stream Consumer Task (Bonus)
 # =============================================================================
+
 
 @celery_app.task(
     name="backend.tasks.grants.consume_discovered_grants",

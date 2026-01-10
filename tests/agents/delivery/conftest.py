@@ -2,10 +2,10 @@
 Delivery agent test fixtures.
 Provides mock data and utilities for testing delivery components.
 """
+
 import pytest
 from datetime import datetime, timezone, timedelta
-from typing import Any
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
 from agents.delivery.models import (
@@ -193,6 +193,7 @@ def mock_slack_response():
 # Multiple alerts for digest testing
 # =============================================================================
 
+
 @pytest.fixture
 def sample_alerts_for_digest(sample_user_info):
     """Multiple alert payloads for digest testing."""
@@ -202,13 +203,13 @@ def sample_alerts_for_digest(sample_user_info):
     for i in range(5):
         grant = GrantInfo(
             grant_id=uuid4(),
-            title=f"Research Grant {i+1}",
-            description=f"Description for grant {i+1}",
+            title=f"Research Grant {i + 1}",
+            description=f"Description for grant {i + 1}",
             funding_agency=["NSF", "NIH", "DOE", "DARPA", "NASA"][i],
             amount_min=100000 * (i + 1),
             amount_max=200000 * (i + 1),
             deadline=datetime.now(timezone.utc) + timedelta(days=30 + i * 10),
-            url=f"https://example.com/grant/{i+1}",
+            url=f"https://example.com/grant/{i + 1}",
             categories=["research"],
             posted_at=datetime.now(timezone.utc) - timedelta(hours=i + 1),
         )
@@ -216,7 +217,7 @@ def sample_alerts_for_digest(sample_user_info):
             match_id=uuid4(),
             match_score=scores[i],  # 95%, 90%, 85%, 80%, 75%
             matching_criteria=["Expertise match"],
-            explanation=f"Good fit for grant {i+1}",
+            explanation=f"Good fit for grant {i + 1}",
         )
         alerts.append(
             AlertPayload(
@@ -234,6 +235,7 @@ def sample_alerts_for_digest(sample_user_info):
 # =============================================================================
 # Helper functions
 # =============================================================================
+
 
 def create_delivery_status(
     channel: DeliveryChannel,

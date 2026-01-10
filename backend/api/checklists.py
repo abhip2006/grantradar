@@ -2,13 +2,14 @@
 Checklist management API endpoints.
 CRUD operations for checklist templates and application checklists.
 """
+
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import selectinload
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -17,7 +18,6 @@ from backend.models import GrantApplication
 from backend.models.checklists import ApplicationChecklist, ChecklistTemplate
 from backend.schemas.checklists import (
     ApplicationChecklistCreate,
-    ApplicationChecklistList,
     ApplicationChecklistResponse,
     ChecklistItemCategory,
     ChecklistItemStatus,
@@ -68,11 +68,7 @@ def _calculate_progress(items: list) -> float:
     if total_weight == 0:
         return 0.0
 
-    completed_weight = sum(
-        item.get("weight", 1.0)
-        for item in items
-        if item.get("completed", False)
-    )
+    completed_weight = sum(item.get("weight", 1.0) for item in items if item.get("completed", False))
 
     return (completed_weight / total_weight) * 100.0
 
@@ -139,13 +135,13 @@ async def list_templates(
     if mechanism:
         query = query.where(ChecklistTemplate.mechanism.ilike(f"%{mechanism}%"))
     if system_only:
-        query = query.where(ChecklistTemplate.is_system == True)
+        query = query.where(ChecklistTemplate.is_system)
     else:
         # Show system templates and user's own templates only
         # Non-system templates are strictly filtered to those created by the current user
         query = query.where(
             or_(
-                ChecklistTemplate.is_system == True,
+                ChecklistTemplate.is_system,
                 ChecklistTemplate.created_by == current_user.id,
             )
         )
@@ -188,7 +184,7 @@ async def get_templates_by_funder(
         and_(
             ChecklistTemplate.funder.ilike(funder),
             or_(
-                ChecklistTemplate.is_system == True,
+                ChecklistTemplate.is_system,
                 ChecklistTemplate.created_by == current_user.id,
             ),
         )
@@ -221,9 +217,7 @@ async def get_template(
     template_id: UUID,
 ) -> ChecklistTemplateResponse:
     """Get a specific checklist template by ID."""
-    result = await db.execute(
-        select(ChecklistTemplate).where(ChecklistTemplate.id == template_id)
-    )
+    result = await db.execute(select(ChecklistTemplate).where(ChecklistTemplate.id == template_id))
     template = result.scalar_one_or_none()
 
     if not template:
@@ -325,9 +319,7 @@ async def create_checklist(
 
     # Handle template-based checklist
     if data.template_id:
-        result = await db.execute(
-            select(ChecklistTemplate).where(ChecklistTemplate.id == data.template_id)
-        )
+        result = await db.execute(select(ChecklistTemplate).where(ChecklistTemplate.id == data.template_id))
         template = result.scalar_one_or_none()
 
         if not template:
@@ -485,9 +477,7 @@ async def update_checklist_item(
         raise NotFoundError("Application")
 
     # Find the checklist containing this item
-    query = select(ApplicationChecklist).where(
-        ApplicationChecklist.kanban_card_id == card_id
-    )
+    query = select(ApplicationChecklist).where(ApplicationChecklist.kanban_card_id == card_id)
     if checklist_id:
         query = query.where(ApplicationChecklist.id == checklist_id)
 

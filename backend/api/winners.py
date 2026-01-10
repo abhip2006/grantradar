@@ -2,11 +2,12 @@
 Winners Intelligence API Endpoints.
 Access to 2.6M+ funded NIH/NSF projects for pattern analysis.
 """
+
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.api.deps import AsyncSessionDep, CurrentUser
+from backend.api.deps import CurrentUser
 from backend.services.winners import get_winners_service
 from backend.services.winners_analytics import get_winners_analytics_service
 from backend.schemas.winners import (
@@ -35,13 +36,9 @@ router = APIRouter(prefix="/api/winners", tags=["Winners Intelligence"])
 async def search_funded_projects(
     current_user: CurrentUser,
     query: Optional[str] = Query(None, description="Keyword search in titles and abstracts"),
-    activity_codes: Optional[str] = Query(
-        None, description="Activity codes comma-separated (R01,R21,K08)"
-    ),
+    activity_codes: Optional[str] = Query(None, description="Activity codes comma-separated (R01,R21,K08)"),
     institute: Optional[str] = Query(None, description="NIH institute abbreviation (NCI, NIMH)"),
-    fiscal_years: Optional[str] = Query(
-        None, description="Fiscal years comma-separated (2024,2023,2022)"
-    ),
+    fiscal_years: Optional[str] = Query(None, description="Fiscal years comma-separated (2024,2023,2022)"),
     institution: Optional[str] = Query(None, description="Institution name search"),
     pi_name: Optional[str] = Query(None, description="PI name search"),
     state: Optional[str] = Query(None, description="State abbreviation (CA, NY, TX)"),
@@ -152,9 +149,7 @@ async def get_institution_rankings(
     current_user: CurrentUser,
     research_area: Optional[str] = Query(None, description="Research area keywords"),
     mechanism: Optional[str] = Query(None, description="Activity code (R01, R21)"),
-    fiscal_years: Optional[str] = Query(
-        None, description="Fiscal years comma-separated (2024,2023)"
-    ),
+    fiscal_years: Optional[str] = Query(None, description="Fiscal years comma-separated (2024,2023)"),
     limit: int = Query(50, ge=10, le=200, description="Maximum institutions to return"),
 ) -> InstitutionsResponse:
     """
@@ -269,6 +264,7 @@ async def get_year_stats(
     Shows project counts and total funding for each year.
     """
     from datetime import datetime
+
     current_year = datetime.now().year
     years = list(range(current_year - years_back + 1, current_year + 1))
 

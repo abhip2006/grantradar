@@ -2,13 +2,12 @@
 Tests for notification service.
 Tests the notification service for WebSocket events and Redis pub/sub.
 """
-import json
+
 import uuid
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 
 from backend.core.events import (
     DeadlineReminderEvent,
@@ -279,7 +278,6 @@ class TestNotificationHelpers:
 
     def test_create_match_notification_payload(self):
         """Test creating a match notification payload."""
-        from backend.core.events import NewMatchEvent
 
         grant_id = uuid.uuid4()
         event = NewMatchEvent(
@@ -299,7 +297,6 @@ class TestNotificationHelpers:
 
     def test_create_deadline_reminder_payload(self):
         """Test creating a deadline reminder payload."""
-        from backend.core.events import DeadlineReminderEvent
 
         grant_id = uuid.uuid4()
         deadline = datetime.now(timezone.utc) + timedelta(days=3)
@@ -317,7 +314,6 @@ class TestNotificationHelpers:
 
     def test_create_grant_update_payload(self):
         """Test creating a grant update payload."""
-        from backend.core.events import GrantUpdateEvent
 
         grant_id = uuid.uuid4()
         event = GrantUpdateEvent(
@@ -335,7 +331,6 @@ class TestNotificationHelpers:
 
     def test_create_stats_update_payload(self):
         """Test creating a stats update payload."""
-        from backend.core.events import StatsUpdateEvent
 
         event = StatsUpdateEvent(
             new_grants_count=10,

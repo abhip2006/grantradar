@@ -2,15 +2,14 @@
 Tests for Alert Delivery Agent.
 Tests priority determination, channel selection, and alert routing.
 """
-import json
+
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, AsyncMock, patch
 from uuid import uuid4
 
 from agents.delivery.alerter import AlertDeliveryAgent
 from agents.delivery.models import (
-    AlertPayload,
     AlertPriority,
     DeliveryChannel,
     UserNotificationPreferences,
@@ -242,9 +241,7 @@ class TestAlertSending:
 
     @pytest.mark.asyncio
     @patch("agents.delivery.alerter.get_sendgrid_channel")
-    async def test_send_alert_email_success(
-        self, mock_get_sendgrid, sample_alert_payload, mock_redis_client
-    ):
+    async def test_send_alert_email_success(self, mock_get_sendgrid, sample_alert_payload, mock_redis_client):
         """Test successful email sending."""
         # Setup mocks
         mock_sendgrid = MagicMock()
@@ -264,9 +261,7 @@ class TestAlertSending:
         agent = AlertDeliveryAgent()
         agent._redis_client = mock_redis_client
         agent._anthropic_client = MagicMock()
-        agent._anthropic_client.messages.create.return_value = MagicMock(
-            content=[MagicMock(text="Test subject")]
-        )
+        agent._anthropic_client.messages.create.return_value = MagicMock(content=[MagicMock(text="Test subject")])
 
         statuses = await agent.send_alert(sample_alert_payload)
 
@@ -274,9 +269,7 @@ class TestAlertSending:
         assert statuses[0].status == "sent"
 
     @pytest.mark.asyncio
-    async def test_send_alert_channel_failure_logged(
-        self, sample_alert_payload, mock_redis_client
-    ):
+    async def test_send_alert_channel_failure_logged(self, sample_alert_payload, mock_redis_client):
         """Test that channel failures are logged but don't stop other channels."""
         agent = AlertDeliveryAgent()
         agent._redis_client = mock_redis_client
@@ -288,9 +281,7 @@ class TestAlertSending:
             mock_get.return_value.send = AsyncMock(side_effect=Exception("Send failed"))
 
             with patch.object(agent, "_anthropic_client") as mock_anthropic:
-                mock_anthropic.messages.create.return_value = MagicMock(
-                    content=[MagicMock(text="Subject")]
-                )
+                mock_anthropic.messages.create.return_value = MagicMock(content=[MagicMock(text="Subject")])
 
                 statuses = await agent.send_alert(sample_alert_payload)
 
@@ -301,9 +292,7 @@ class TestAlertSending:
 class TestAlertLogging:
     """Tests for alert logging to Redis."""
 
-    def test_log_alert_sent_creates_redis_entry(
-        self, mock_redis_client, sample_alert_payload
-    ):
+    def test_log_alert_sent_creates_redis_entry(self, mock_redis_client, sample_alert_payload):
         """Test that sent alerts are logged to Redis."""
         from tests.agents.delivery.conftest import create_delivery_status
 
@@ -319,9 +308,7 @@ class TestAlertLogging:
         mock_redis_client.hset.assert_called()
         mock_redis_client.expire.assert_called()
 
-    def test_log_alert_calculates_latency(
-        self, mock_redis_client, sample_alert_payload
-    ):
+    def test_log_alert_calculates_latency(self, mock_redis_client, sample_alert_payload):
         """Test that latency is calculated when posted_at is available."""
         from tests.agents.delivery.conftest import create_delivery_status
 

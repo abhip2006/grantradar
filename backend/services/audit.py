@@ -2,6 +2,7 @@
 Global Audit Logging Service
 Comprehensive service for logging and querying audit events.
 """
+
 import csv
 import io
 import json
@@ -19,7 +20,6 @@ from backend.models.audit import AuditLog
 from backend.models import User
 from backend.schemas.audit import (
     AuditExportFormat,
-    AuditLogCreate,
     AuditLogFilters,
     AuditLogResponse,
     AuditStats,
@@ -108,8 +108,7 @@ class AuditService:
         await self.db.refresh(audit_log)
 
         logger.debug(
-            f"Audit log created: {action} on {resource_type} "
-            f"(id={resource_id}, user={user_id}, success={success})"
+            f"Audit log created: {action} on {resource_type} (id={resource_id}, user={user_id}, success={success})"
         )
 
         return audit_log
@@ -248,9 +247,7 @@ class AuditService:
             conditions.append(AuditLog.timestamp <= end_date)
 
         # Get user info
-        user_result = await self.db.execute(
-            select(User).where(User.id == user_id)
-        )
+        user_result = await self.db.execute(select(User).where(User.id == user_id))
         user = user_result.scalar_one_or_none()
 
         # Get total and success/failure counts
@@ -283,10 +280,7 @@ class AuditService:
         resources_by_type = {row.resource_type: row.count for row in resources_result}
 
         # Get unique IP addresses
-        ips_query = (
-            select(distinct(AuditLog.ip_address))
-            .where(and_(*conditions, AuditLog.ip_address.isnot(None)))
-        )
+        ips_query = select(distinct(AuditLog.ip_address)).where(and_(*conditions, AuditLog.ip_address.isnot(None)))
         ips_result = await self.db.execute(ips_query)
         ip_addresses = [row[0] for row in ips_result if row[0]]
 
@@ -385,12 +379,7 @@ class AuditService:
         created_log = created_result.scalar_one_or_none()
 
         # Find last modification
-        modified_query = (
-            select(AuditLog)
-            .where(and_(*conditions))
-            .order_by(desc(AuditLog.timestamp))
-            .limit(1)
-        )
+        modified_query = select(AuditLog).where(and_(*conditions)).order_by(desc(AuditLog.timestamp)).limit(1)
         modified_result = await self.db.execute(modified_query)
         modified_log = modified_result.scalar_one_or_none()
 
@@ -486,11 +475,13 @@ class AuditService:
                     str(log.duration_ms) if log.duration_ms else "",
                 ]
                 if include_details:
-                    row.extend([
-                        json.dumps(log.old_values) if log.old_values else "",
-                        json.dumps(log.new_values) if log.new_values else "",
-                        json.dumps(log.extra_data) if log.extra_data else "",
-                    ])
+                    row.extend(
+                        [
+                            json.dumps(log.old_values) if log.old_values else "",
+                            json.dumps(log.new_values) if log.new_values else "",
+                            json.dumps(log.extra_data) if log.extra_data else "",
+                        ]
+                    )
                 writer.writerow(row)
 
             content = output.getvalue()
@@ -533,37 +524,27 @@ class AuditService:
         total_logs = total_result.scalar() or 0
 
         # Logs today
-        today_result = await self.db.execute(
-            select(func.count(AuditLog.id)).where(AuditLog.timestamp >= today_start)
-        )
+        today_result = await self.db.execute(select(func.count(AuditLog.id)).where(AuditLog.timestamp >= today_start))
         logs_today = today_result.scalar() or 0
 
         # Logs this week
-        week_result = await self.db.execute(
-            select(func.count(AuditLog.id)).where(AuditLog.timestamp >= week_start)
-        )
+        week_result = await self.db.execute(select(func.count(AuditLog.id)).where(AuditLog.timestamp >= week_start))
         logs_this_week = week_result.scalar() or 0
 
         # Logs this month
-        month_result = await self.db.execute(
-            select(func.count(AuditLog.id)).where(AuditLog.timestamp >= month_start)
-        )
+        month_result = await self.db.execute(select(func.count(AuditLog.id)).where(AuditLog.timestamp >= month_start))
         logs_this_month = month_result.scalar() or 0
 
         # Actions by type
-        actions_query = (
-            select(AuditLog.action, func.count(AuditLog.id).label("count"))
-            .group_by(AuditLog.action)
-        )
+        actions_query = select(AuditLog.action, func.count(AuditLog.id).label("count")).group_by(AuditLog.action)
         if conditions:
             actions_query = actions_query.where(and_(*conditions))
         actions_result = await self.db.execute(actions_query)
         actions_by_type = {row.action: row.count for row in actions_result}
 
         # Resources by type
-        resources_query = (
-            select(AuditLog.resource_type, func.count(AuditLog.id).label("count"))
-            .group_by(AuditLog.resource_type)
+        resources_query = select(AuditLog.resource_type, func.count(AuditLog.id).label("count")).group_by(
+            AuditLog.resource_type
         )
         if conditions:
             resources_query = resources_query.where(and_(*conditions))
@@ -571,7 +552,7 @@ class AuditService:
         resources_by_type = {row.resource_type: row.count for row in resources_result}
 
         # Success rate
-        success_query = select(func.count(AuditLog.id)).where(AuditLog.success == True)
+        success_query = select(func.count(AuditLog.id)).where(AuditLog.success)
         if conditions:
             success_query = success_query.where(and_(*conditions))
         success_result = await self.db.execute(success_query)
@@ -593,9 +574,7 @@ class AuditService:
         unique_ips = ips_result.scalar() or 0
 
         # Average duration
-        duration_query = select(func.avg(AuditLog.duration_ms)).where(
-            AuditLog.duration_ms.isnot(None)
-        )
+        duration_query = select(func.avg(AuditLog.duration_ms)).where(AuditLog.duration_ms.isnot(None))
         if conditions:
             duration_query = duration_query.where(and_(*conditions))
         duration_result = await self.db.execute(duration_query)
@@ -630,15 +609,14 @@ class AuditService:
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
 
         # Count records to delete
-        count_query = select(func.count(AuditLog.id)).where(
-            AuditLog.timestamp < cutoff_date
-        )
+        count_query = select(func.count(AuditLog.id)).where(AuditLog.timestamp < cutoff_date)
         count_result = await self.db.execute(count_query)
         count = count_result.scalar() or 0
 
         if count > 0:
             # Delete old records
             from sqlalchemy import delete
+
             delete_query = delete(AuditLog).where(AuditLog.timestamp < cutoff_date)
             await self.db.execute(delete_query)
             await self.db.flush()

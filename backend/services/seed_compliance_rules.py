@@ -2,6 +2,7 @@
 Seed Data for Compliance Rules
 Pre-defined compliance rules for major funders (NIH, NSF).
 """
+
 import uuid
 from datetime import datetime, timezone
 from typing import List, Dict, Any
@@ -440,6 +441,7 @@ NSF_CAREER_RULES: List[Dict[str, Any]] = [
 # Seeding Functions
 # =============================================================================
 
+
 async def seed_compliance_rules(db: AsyncSession, force: bool = False) -> dict:
     """
     Seed the database with default compliance rules.
@@ -525,9 +527,7 @@ async def seed_compliance_rules(db: AsyncSession, force: bool = False) -> dict:
                 existing.rules = rule_set_data["rules"]
                 existing.updated_at = datetime.now(timezone.utc)
                 results["updated"] += 1
-                logger.info(
-                    f"Updated rule set: {rule_set_data['funder']} / {rule_set_data['mechanism'] or 'General'}"
-                )
+                logger.info(f"Updated rule set: {rule_set_data['funder']} / {rule_set_data['mechanism'] or 'General'}")
             else:
                 results["skipped"] += 1
                 logger.info(
@@ -548,9 +548,7 @@ async def seed_compliance_rules(db: AsyncSession, force: bool = False) -> dict:
             )
             db.add(rule_set)
             results["created"] += 1
-            logger.info(
-                f"Created rule set: {rule_set_data['funder']} / {rule_set_data['mechanism'] or 'General'}"
-            )
+            logger.info(f"Created rule set: {rule_set_data['funder']} / {rule_set_data['mechanism'] or 'General'}")
 
     await db.commit()
     logger.info(f"Compliance rules seeding complete: {results}")
@@ -559,11 +557,7 @@ async def seed_compliance_rules(db: AsyncSession, force: bool = False) -> dict:
 
 async def get_all_funders_with_rules(db: AsyncSession) -> List[str]:
     """Get list of all funders that have compliance rules."""
-    result = await db.execute(
-        select(ComplianceRule.funder)
-        .where(ComplianceRule.is_active == True)
-        .distinct()
-    )
+    result = await db.execute(select(ComplianceRule.funder).where(ComplianceRule.is_active).distinct())
     return [row[0] for row in result.fetchall()]
 
 
@@ -573,7 +567,7 @@ async def get_mechanisms_for_funder(db: AsyncSession, funder: str) -> List[str]:
         select(ComplianceRule.mechanism)
         .where(
             ComplianceRule.funder == funder,
-            ComplianceRule.is_active == True,
+            ComplianceRule.is_active,
             ComplianceRule.mechanism.isnot(None),
         )
         .distinct()

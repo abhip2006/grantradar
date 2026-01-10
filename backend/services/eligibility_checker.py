@@ -1,8 +1,9 @@
 """Eligibility checking service using Claude."""
+
 import anthropic
 import json
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 import structlog
 
@@ -42,9 +43,7 @@ class EligibilityChecker:
             raise ValueError(f"Grant {grant_id} not found")
 
         # Fetch user's lab profile
-        profile_result = await db.execute(
-            select(LabProfile).where(LabProfile.user_id == user.id)
-        )
+        profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
         profile = profile_result.scalar_one_or_none()
 
         # Build researcher context
@@ -72,23 +71,15 @@ class EligibilityChecker:
             title=f"Eligibility: {grant.title[:50]}",
             session_type="eligibility",
             context_grant_id=grant_id,
-            metadata_={"grant_title": grant.title, "initial_status": result.overall_status.value}
+            metadata_={"grant_title": grant.title, "initial_status": result.overall_status.value},
         )
         db.add(session)
         # Flush to ensure session.id is assigned before creating messages
         await db.flush()
 
         # Save initial exchange
-        user_msg = ChatMessage(
-            session_id=session.id,
-            role="user",
-            content=f"Check my eligibility for: {grant.title}"
-        )
-        assistant_msg = ChatMessage(
-            session_id=session.id,
-            role="assistant",
-            content=result.summary
-        )
+        user_msg = ChatMessage(session_id=session.id, role="user", content=f"Check my eligibility for: {grant.title}")
+        assistant_msg = ChatMessage(session_id=session.id, role="assistant", content=result.summary)
         db.add_all([user_msg, assistant_msg])
         await db.commit()
         await db.refresh(session)
@@ -137,7 +128,9 @@ class EligibilityChecker:
         if grant.description:
             parts.append(f"Description: {grant.description[:1000]}")
         if grant.eligibility:
-            eligibility_str = json.dumps(grant.eligibility) if isinstance(grant.eligibility, dict) else str(grant.eligibility)
+            eligibility_str = (
+                json.dumps(grant.eligibility) if isinstance(grant.eligibility, dict) else str(grant.eligibility)
+            )
             parts.append(f"Eligibility Requirements: {eligibility_str}")
         if grant.amount_min or grant.amount_max:
             parts.append(f"Funding: ${grant.amount_min or 0:,} - ${grant.amount_max or 0:,}")
@@ -194,9 +187,7 @@ Be honest about uncertainty - use "unknown" status if key information is missing
             json_str = response_text[json_start:json_end]
             data = json.loads(json_str)
 
-            criteria = [
-                EligibilityCriterion(**c) for c in data.get("criteria", [])
-            ]
+            criteria = [EligibilityCriterion(**c) for c in data.get("criteria", [])]
 
             return EligibilityCheckResponse(
                 grant_id=grant.id,
@@ -239,19 +230,14 @@ Be honest about uncertainty - use "unknown" status if key information is missing
 
         # Get conversation history
         messages_result = await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.created_at)
+            select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at)
         )
         history = messages_result.scalars().all()
 
         # Build conversation for Claude
         claude_messages = []
         for msg in history:
-            claude_messages.append({
-                "role": msg.role if msg.role != "system" else "user",
-                "content": msg.content
-            })
+            claude_messages.append({"role": msg.role if msg.role != "system" else "user", "content": msg.content})
         claude_messages.append({"role": "user", "content": message})
 
         # Get grant context if available
@@ -261,8 +247,8 @@ Be honest about uncertainty - use "unknown" status if key information is missing
 
         system_prompt = f"""You are an expert grant eligibility advisor helping a researcher understand their eligibility for a grant.
 
-Grant: {grant.title if grant else 'Unknown'}
-Funder: {grant.agency if grant else 'Unknown'}
+Grant: {grant.title if grant else "Unknown"}
+Funder: {grant.agency if grant else "Unknown"}
 
 Continue the conversation naturally, answering questions about eligibility, requirements, and how to strengthen their application.
 If they provide new information about themselves, update your eligibility assessment accordingly."""

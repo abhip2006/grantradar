@@ -2,9 +2,9 @@
 Tests for forecast service.
 Tests grant forecasting based on historical patterns.
 """
+
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -114,8 +114,8 @@ async def sample_grants_for_forecast(async_session: AsyncSession):
             grant = Grant(
                 id=uuid.uuid4(),
                 source="doe",
-                external_id=f"DOE-{year}-Q{month//3}",
-                title=f"DOE Energy Grant Q{month//3} {year}",
+                external_id=f"DOE-{year}-Q{month // 3}",
+                title=f"DOE Energy Grant Q{month // 3} {year}",
                 description="Energy research",
                 agency="Department of Energy",
                 deadline=datetime(year, month, 15, tzinfo=timezone.utc),
@@ -456,9 +456,7 @@ class TestAnalyzeFunderPatterns:
     """Tests for analyzing funder patterns (requires PostgreSQL array_agg)."""
 
     @pytest.mark.asyncio
-    async def test_returns_list_of_patterns(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_returns_list_of_patterns(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that analysis returns list of patterns."""
         patterns = await analyze_funder_patterns(async_session)
 
@@ -467,9 +465,7 @@ class TestAnalyzeFunderPatterns:
         assert all(isinstance(p, FunderPattern) for p in patterns)
 
     @pytest.mark.asyncio
-    async def test_filters_by_min_grants(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_filters_by_min_grants(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that patterns are filtered by minimum grants."""
         patterns = await analyze_funder_patterns(async_session, min_grants=5)
 
@@ -477,9 +473,7 @@ class TestAnalyzeFunderPatterns:
             assert pattern.grant_count >= 5
 
     @pytest.mark.asyncio
-    async def test_extracts_typical_months(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_extracts_typical_months(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that typical months are extracted."""
         patterns = await analyze_funder_patterns(async_session)
 
@@ -489,9 +483,7 @@ class TestAnalyzeFunderPatterns:
                 assert 1 <= month <= 12
 
     @pytest.mark.asyncio
-    async def test_extracts_historical_dates(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_extracts_historical_dates(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that historical dates are extracted."""
         patterns = await analyze_funder_patterns(async_session)
 
@@ -511,9 +503,7 @@ class TestGetUpcomingForecasts:
     """Tests for getting upcoming forecasts (requires PostgreSQL array_agg)."""
 
     @pytest.mark.asyncio
-    async def test_returns_forecast_list(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_returns_forecast_list(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that forecasts are returned as a list."""
         forecasts = await get_upcoming_forecasts(async_session)
 
@@ -521,9 +511,7 @@ class TestGetUpcomingForecasts:
         assert all(isinstance(f, ForecastResult) for f in forecasts)
 
     @pytest.mark.asyncio
-    async def test_forecasts_sorted_by_date(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_forecasts_sorted_by_date(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that forecasts are sorted by predicted date."""
         forecasts = await get_upcoming_forecasts(async_session)
 
@@ -532,18 +520,14 @@ class TestGetUpcomingForecasts:
             assert dates == sorted(dates)
 
     @pytest.mark.asyncio
-    async def test_respects_limit(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_respects_limit(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that forecasts respect limit parameter."""
         forecasts = await get_upcoming_forecasts(async_session, limit=2)
 
         assert len(forecasts) <= 2
 
     @pytest.mark.asyncio
-    async def test_includes_fiscal_quarter(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_includes_fiscal_quarter(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that forecasts include fiscal quarter."""
         forecasts = await get_upcoming_forecasts(async_session)
 
@@ -552,9 +536,7 @@ class TestGetUpcomingForecasts:
                 assert 1 <= forecast.fiscal_quarter <= 4
 
     @pytest.mark.asyncio
-    async def test_identifies_federal_funders(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_identifies_federal_funders(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that federal funders are identified."""
         forecasts = await get_upcoming_forecasts(async_session)
 
@@ -573,18 +555,14 @@ class TestGetSeasonalTrends:
     """Tests for seasonal trend analysis (requires PostgreSQL array_agg)."""
 
     @pytest.mark.asyncio
-    async def test_returns_twelve_months(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_returns_twelve_months(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that all 12 months are returned."""
         trends = await get_seasonal_trends(async_session)
 
         assert len(trends) == 12
 
     @pytest.mark.asyncio
-    async def test_months_in_order(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_months_in_order(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that months are returned in order."""
         trends = await get_seasonal_trends(async_session)
 
@@ -592,9 +570,7 @@ class TestGetSeasonalTrends:
         assert months == list(range(1, 13))
 
     @pytest.mark.asyncio
-    async def test_includes_month_names(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_includes_month_names(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that month names are included."""
         trends = await get_seasonal_trends(async_session)
 
@@ -602,9 +578,7 @@ class TestGetSeasonalTrends:
             assert trend.month_name == MONTH_NAMES[trend.month]
 
     @pytest.mark.asyncio
-    async def test_result_structure(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_result_structure(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that results have correct structure."""
         trends = await get_seasonal_trends(async_session)
 
@@ -629,9 +603,7 @@ class TestGetRecommendations:
         self, async_session: AsyncSession, sample_grants_for_forecast, sample_user
     ):
         """Test recommendations without user profile."""
-        recommendations = await get_recommendations(
-            async_session, sample_user.id
-        )
+        recommendations = await get_recommendations(async_session, sample_user.id)
 
         assert isinstance(recommendations, list)
         for rec in recommendations:
@@ -643,9 +615,7 @@ class TestGetRecommendations:
         self, async_session: AsyncSession, sample_grants_for_forecast, sample_user, sample_profile
     ):
         """Test recommendations with user profile."""
-        recommendations = await get_recommendations(
-            async_session, sample_user.id
-        )
+        recommendations = await get_recommendations(async_session, sample_user.id)
 
         assert isinstance(recommendations, list)
         for rec in recommendations:
@@ -658,9 +628,7 @@ class TestGetRecommendations:
         self, async_session: AsyncSession, sample_grants_for_forecast, sample_user, sample_profile
     ):
         """Test that recommendations are sorted by match score."""
-        recommendations = await get_recommendations(
-            async_session, sample_user.id
-        )
+        recommendations = await get_recommendations(async_session, sample_user.id)
 
         if len(recommendations) > 1:
             scores = [r.match_score for r in recommendations]
@@ -671,9 +639,7 @@ class TestGetRecommendations:
         self, async_session: AsyncSession, sample_grants_for_forecast, sample_user, sample_profile
     ):
         """Test that recommendations respect limit."""
-        recommendations = await get_recommendations(
-            async_session, sample_user.id, limit=3
-        )
+        recommendations = await get_recommendations(async_session, sample_user.id, limit=3)
 
         assert len(recommendations) <= 3
 
@@ -682,9 +648,7 @@ class TestGetRecommendations:
         self, async_session: AsyncSession, sample_grants_for_forecast, sample_user, sample_profile
     ):
         """Test that profile overlap is included."""
-        recommendations = await get_recommendations(
-            async_session, sample_user.id
-        )
+        recommendations = await get_recommendations(async_session, sample_user.id)
 
         for rec in recommendations:
             assert isinstance(rec.profile_overlap, list)
@@ -717,9 +681,7 @@ class TestForecastIntegration:
         assert len(trends) == 12
 
         # Step 4: Get recommendations
-        recommendations = await get_recommendations(
-            async_session, sample_user.id
-        )
+        recommendations = await get_recommendations(async_session, sample_user.id)
         assert len(recommendations) > 0
 
         # Verify data consistency
@@ -728,9 +690,7 @@ class TestForecastIntegration:
             assert 0 <= forecast.confidence <= 1
 
     @pytest.mark.asyncio
-    async def test_forecasts_match_patterns(
-        self, async_session: AsyncSession, sample_grants_for_forecast
-    ):
+    async def test_forecasts_match_patterns(self, async_session: AsyncSession, sample_grants_for_forecast):
         """Test that forecasts are based on analyzed patterns."""
         patterns = await analyze_funder_patterns(async_session)
         forecasts = await get_upcoming_forecasts(async_session)

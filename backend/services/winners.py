@@ -2,6 +2,7 @@
 Winners Service for querying funded grant projects from NIH and NSF.
 Provides access to 2.6M+ funded projects with caching and aggregations.
 """
+
 import logging
 from collections import defaultdict
 from typing import Any, Optional
@@ -10,7 +11,7 @@ import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from backend.core.config import settings
-from backend.services.cache import cached, cache_key, get_cached, set_cached
+from backend.services.cache import cache_key, get_cached, set_cached
 from backend.schemas.winners import (
     FundedProject,
     FundedProjectOrg,
@@ -86,8 +87,8 @@ class WinnersService:
                 headers={
                     "Accept": "application/json",
                     "Content-Type": "application/json",
-                    "User-Agent": "GrantRadar/1.0 (winners-intelligence)"
-                }
+                    "User-Agent": "GrantRadar/1.0 (winners-intelligence)",
+                },
             )
         return self.http_client
 
@@ -161,12 +162,16 @@ class WinnersService:
 
         # Extract organization info
         org_data = data.get("organization", {}) or {}
-        org = FundedProjectOrg(
-            name=org_data.get("org_name"),
-            city=org_data.get("org_city"),
-            state=org_data.get("org_state"),
-            country=org_data.get("org_country"),
-        ) if org_data else None
+        org = (
+            FundedProjectOrg(
+                name=org_data.get("org_name"),
+                city=org_data.get("org_city"),
+                state=org_data.get("org_state"),
+                country=org_data.get("org_country"),
+            )
+            if org_data
+            else None
+        )
 
         # Extract institute info
         agency_info = data.get("agency_ic_admin", {}) or {}
@@ -237,6 +242,7 @@ class WinnersService:
         else:
             # Default to last 5 years
             from datetime import datetime
+
             current_year = datetime.now().year
             criteria["fiscal_years"] = list(range(current_year - 4, current_year + 1))
 
@@ -319,19 +325,13 @@ class WinnersService:
 
             by_mechanism = [
                 MechanismAggregation(
-                    code=code,
-                    count=d["count"],
-                    avg_award=d["total"] // d["count"] if d["count"] > 0 else None
+                    code=code, count=d["count"], avg_award=d["total"] // d["count"] if d["count"] > 0 else None
                 )
                 for code, d in sorted(mechanism_counts.items(), key=lambda x: -x[1]["count"])
             ]
 
             by_institute = [
-                InstituteAggregation(
-                    abbreviation=inst,
-                    name=NIH_INSTITUTES.get(inst),
-                    count=count
-                )
+                InstituteAggregation(abbreviation=inst, name=NIH_INSTITUTES.get(inst), count=count)
                 for inst, count in sorted(institute_counts.items(), key=lambda x: -x[1])
             ]
 
@@ -388,6 +388,7 @@ class WinnersService:
         criteria: dict[str, Any] = {}
 
         from datetime import datetime
+
         current_year = datetime.now().year
         criteria["fiscal_years"] = [current_year, current_year - 1, current_year - 2]
 
@@ -412,13 +413,15 @@ class WinnersService:
             results = response.get("results", [])
 
             # Aggregate by program officer
-            po_data: dict[str, dict] = defaultdict(lambda: {
-                "name": "",
-                "institute": "",
-                "projects": [],
-                "total_funding": 0,
-                "mechanisms": defaultdict(int),
-            })
+            po_data: dict[str, dict] = defaultdict(
+                lambda: {
+                    "name": "",
+                    "institute": "",
+                    "projects": [],
+                    "total_funding": 0,
+                    "mechanisms": defaultdict(int),
+                }
+            )
 
             for project_data in results:
                 po_name = project_data.get("program_officer_name")
@@ -452,36 +455,26 @@ class WinnersService:
 
             # Build PO models
             officers = []
-            for po_name, data in sorted(
-                po_data.items(),
-                key=lambda x: -len(x[1]["projects"])
-            )[:limit]:
+            for po_name, data in sorted(po_data.items(), key=lambda x: -len(x[1]["projects"]))[:limit]:
                 # Get top mechanisms
-                top_mechanisms = sorted(
-                    data["mechanisms"].items(),
-                    key=lambda x: -x[1]
-                )[:5]
+                top_mechanisms = sorted(data["mechanisms"].items(), key=lambda x: -x[1])[:5]
 
                 # Get recent projects
-                recent = sorted(
-                    data["projects"],
-                    key=lambda x: x.get("fiscal_year") or 0,
-                    reverse=True
-                )[:5]
+                recent = sorted(data["projects"], key=lambda x: x.get("fiscal_year") or 0, reverse=True)[:5]
 
-                officers.append(ProgramOfficer(
-                    name=data["name"],
-                    institute=data["institute"],
-                    institute_name=NIH_INSTITUTES.get(data["institute"]),
-                    total_projects=len(data["projects"]),
-                    total_funding=data["total_funding"],
-                    avg_award_size=data["total_funding"] // len(data["projects"]) if data["projects"] else None,
-                    top_mechanisms=[m[0] for m in top_mechanisms],
-                    research_themes=[],  # Would need NLP to extract
-                    recent_projects=[
-                        ProgramOfficerProject(**p) for p in recent
-                    ],
-                ))
+                officers.append(
+                    ProgramOfficer(
+                        name=data["name"],
+                        institute=data["institute"],
+                        institute_name=NIH_INSTITUTES.get(data["institute"]),
+                        total_projects=len(data["projects"]),
+                        total_funding=data["total_funding"],
+                        avg_award_size=data["total_funding"] // len(data["projects"]) if data["projects"] else None,
+                        top_mechanisms=[m[0] for m in top_mechanisms],
+                        research_themes=[],  # Would need NLP to extract
+                        recent_projects=[ProgramOfficerProject(**p) for p in recent],
+                    )
+                )
 
             result = ProgramOfficersResponse(
                 officers=officers,
@@ -526,6 +519,7 @@ class WinnersService:
             criteria["fiscal_years"] = fiscal_years
         else:
             from datetime import datetime
+
             current_year = datetime.now().year
             criteria["fiscal_years"] = [current_year, current_year - 1, current_year - 2]
 
@@ -550,15 +544,17 @@ class WinnersService:
             results = response.get("results", [])
 
             # Aggregate by institution
-            inst_data: dict[str, dict] = defaultdict(lambda: {
-                "name": "",
-                "city": "",
-                "state": "",
-                "awards": 0,
-                "funding": 0,
-                "mechanisms": defaultdict(int),
-                "pis": set(),
-            })
+            inst_data: dict[str, dict] = defaultdict(
+                lambda: {
+                    "name": "",
+                    "city": "",
+                    "state": "",
+                    "awards": 0,
+                    "funding": 0,
+                    "mechanisms": defaultdict(int),
+                    "pis": set(),
+                }
+            )
 
             for project_data in results:
                 org = project_data.get("organization", {}) or {}
@@ -586,30 +582,26 @@ class WinnersService:
 
             # Build institution models
             institutions = []
-            sorted_insts = sorted(
-                inst_data.items(),
-                key=lambda x: -x[1]["funding"]
-            )[:limit]
+            sorted_insts = sorted(inst_data.items(), key=lambda x: -x[1]["funding"])[:limit]
 
             for rank, (org_name, data) in enumerate(sorted_insts, 1):
-                top_mechanisms = sorted(
-                    data["mechanisms"].items(),
-                    key=lambda x: -x[1]
-                )[:5]
+                top_mechanisms = sorted(data["mechanisms"].items(), key=lambda x: -x[1])[:5]
 
                 top_pis = list(data["pis"])[:5]
 
-                institutions.append(InstitutionStats(
-                    name=data["name"],
-                    city=data["city"],
-                    state=data["state"],
-                    total_awards=data["awards"],
-                    total_funding=data["funding"],
-                    avg_award_size=data["funding"] // data["awards"] if data["awards"] > 0 else None,
-                    top_mechanisms=[m[0] for m in top_mechanisms],
-                    top_pis=top_pis,
-                    rank=rank,
-                ))
+                institutions.append(
+                    InstitutionStats(
+                        name=data["name"],
+                        city=data["city"],
+                        state=data["state"],
+                        total_awards=data["awards"],
+                        total_funding=data["funding"],
+                        avg_award_size=data["funding"] // data["awards"] if data["awards"] > 0 else None,
+                        top_mechanisms=[m[0] for m in top_mechanisms],
+                        top_pis=top_pis,
+                        rank=rank,
+                    )
+                )
 
             result = InstitutionsResponse(
                 institutions=institutions,

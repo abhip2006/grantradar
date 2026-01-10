@@ -2,11 +2,12 @@
 Resource Sharing API Endpoints
 API endpoints for fine-grained resource-level access control and sharing.
 """
+
 import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 
 from backend.api.deps import AsyncSessionDep, CurrentUser, OptionalUser
 from backend.core.config import settings
@@ -15,8 +16,6 @@ from backend.schemas.sharing import (
     # Request schemas
     ShareResourceRequest,
     CreateShareLinkRequest,
-    AccessShareLinkRequest,
-    UpdatePermissionRequest,
     UpdateShareLinkRequest,
     BatchShareRequest,
     CheckPermissionRequest,
@@ -32,9 +31,6 @@ from backend.schemas.sharing import (
     RevokePermissionResponse,
     BatchShareResponse,
     BatchShareResultItem,
-    # Enums
-    ResourceType,
-    PermissionLevel,
 )
 
 
@@ -109,9 +105,7 @@ async def _build_shared_resource_info(
 ) -> SharedResourceInfo:
     """Build a SharedResourceInfo from a ResourcePermission model."""
     # Get resource info
-    resource_info = await service.get_resource_info(
-        permission.resource_type, permission.resource_id
-    )
+    resource_info = await service.get_resource_info(permission.resource_type, permission.resource_id)
 
     return SharedResourceInfo(
         permission_id=permission.id,
@@ -390,9 +384,7 @@ async def access_share_link(
         )
 
     # Get resource data
-    resource_info = await service.get_resource_info(
-        link.resource_type, link.resource_id
-    )
+    resource_info = await service.get_resource_info(link.resource_type, link.resource_id)
 
     return AccessShareLinkResponse(
         success=True,

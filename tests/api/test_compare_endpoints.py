@@ -2,15 +2,15 @@
 Tests for Grant Comparison API endpoints.
 Tests comparing multiple grants side-by-side.
 """
+
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models import Grant, Match, User
+from backend.models import Grant, User
 
 
 @pytest_asyncio.fixture

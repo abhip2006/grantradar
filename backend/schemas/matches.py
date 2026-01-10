@@ -1,6 +1,7 @@
 """
 Match schemas for grant-researcher match results.
 """
+
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
@@ -77,31 +78,17 @@ class MatchFilter(BaseModel):
 class MatchAction(BaseModel):
     """Schema for user action on a match."""
 
-    action: str = Field(
-        ...,
-        description="Action type",
-        pattern="^(saved|dismissed|applied|interested)$"
-    )
+    action: str = Field(..., description="Action type", pattern="^(saved|dismissed|applied|interested)$")
 
 
 class MatchFeedback(BaseModel):
     """Schema for user feedback on a match."""
 
-    relevance_rating: int = Field(
-        ...,
-        ge=1,
-        le=5,
-        description="Relevance rating (1-5)"
-    )
+    relevance_rating: int = Field(..., ge=1, le=5, description="Relevance rating (1-5)")
     would_apply: bool = Field(..., description="Would user apply for this grant")
-    feedback_text: Optional[str] = Field(
-        None,
-        max_length=1000,
-        description="Additional feedback text"
-    )
+    feedback_text: Optional[str] = Field(None, max_length=1000, description="Additional feedback text")
     match_quality_issues: Optional[list[str]] = Field(
-        None,
-        description="List of quality issues (e.g., 'wrong_field', 'ineligible', 'too_small')"
+        None, description="List of quality issues (e.g., 'wrong_field', 'ineligible', 'too_small')"
     )
 
 

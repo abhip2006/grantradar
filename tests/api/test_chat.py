@@ -4,12 +4,13 @@ Tests chat sessions, message handling, and RAG context retrieval.
 These tests are database-independent and focus on business logic.
 Database integration tests require a PostgreSQL database with proper fixtures.
 """
+
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from uuid import uuid4
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from backend.models import User, Grant, LabProfile, ChatSession, ChatMessage
+from backend.models import User, Grant, ChatSession
 from backend.schemas.chat import ChatSessionType, ChatSource, ChatMessageResponse
 
 
@@ -158,14 +159,17 @@ class TestRAGChatServiceSystemPrompt:
         session = MagicMock(spec=ChatSession)
         session.session_type = "proposal_chat"
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
                 prompt = service._build_system_prompt(session, "", user)
 
@@ -186,14 +190,17 @@ Funder: NIH
 Requirements: Must be PI at eligible institution
 """
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
                 prompt = service._build_system_prompt(session, context, user)
 
@@ -209,14 +216,17 @@ Requirements: Must be PI at eligible institution
         session = MagicMock(spec=ChatSession)
         session.session_type = "proposal_chat"
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
                 prompt = service._build_system_prompt(session, "", user)
 
@@ -234,14 +244,17 @@ Requirements: Must be PI at eligible institution
             session = MagicMock(spec=ChatSession)
             session.session_type = session_type
 
-            with patch('backend.services.rag_chat.settings') as mock_settings:
+            with patch("backend.services.rag_chat.settings") as mock_settings:
                 mock_settings.anthropic_api_key = "test-key"
                 mock_settings.openai_api_key = "test-key"
                 mock_settings.embedding_model = "text-embedding-3-small"
 
-                with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                     patch('backend.services.rag_chat.openai.OpenAI'):
+                with (
+                    patch("backend.services.rag_chat.anthropic.Anthropic"),
+                    patch("backend.services.rag_chat.openai.OpenAI"),
+                ):
                     from backend.services.rag_chat import RAGChatService
+
                     service = RAGChatService()
                     prompt = service._build_system_prompt(session, "", user)
 
@@ -264,14 +277,17 @@ class TestRAGChatServiceSessionManagement:
 
         mock_db.get = AsyncMock(return_value=mock_grant)
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 # Mock the session creation
@@ -280,7 +296,7 @@ class TestRAGChatServiceSessionManagement:
                 mock_session.user_id = mock_user.id
                 mock_session.context_grant_id = mock_grant.id
 
-                session = await service.create_session(
+                await service.create_session(
                     db=mock_db,
                     user=mock_user,
                     context_grant_id=mock_grant.id,
@@ -303,19 +319,20 @@ class TestRAGChatServiceSessionManagement:
 
         mock_db.get = AsyncMock(return_value=mock_session)
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
-                result = await service.delete_session(
-                    mock_db, mock_user.id, mock_session.id
-                )
+                result = await service.delete_session(mock_db, mock_user.id, mock_session.id)
 
                 assert result is False
                 mock_db.delete.assert_not_called()
@@ -329,19 +346,20 @@ class TestRAGChatServiceSessionManagement:
 
         mock_db.get = AsyncMock(return_value=None)
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
-                result = await service.delete_session(
-                    mock_db, mock_user.id, uuid4()
-                )
+                result = await service.delete_session(mock_db, mock_user.id, uuid4())
 
                 assert result is False
 
@@ -363,14 +381,17 @@ class TestRAGChatServiceMessageHandling:
 
         mock_db.get = AsyncMock(return_value=mock_session)
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 with pytest.raises(ValueError, match="not found"):
@@ -394,20 +415,21 @@ class TestRAGChatServiceMessageHandling:
 
         mock_db.get = AsyncMock(return_value=mock_session)
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 with pytest.raises(ValueError, match="not found"):
-                    await service.get_session_messages(
-                        mock_db, mock_user_id, mock_session.id
-                    )
+                    await service.get_session_messages(mock_db, mock_user_id, mock_session.id)
 
     @pytest.mark.asyncio
     async def test_get_session_messages_not_found_raises_error(self):
@@ -417,20 +439,21 @@ class TestRAGChatServiceMessageHandling:
 
         mock_db.get = AsyncMock(return_value=None)
 
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic'), \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic"),
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 with pytest.raises(ValueError, match="not found"):
-                    await service.get_session_messages(
-                        mock_db, mock_user_id, uuid4()
-                    )
+                    await service.get_session_messages(mock_db, mock_user_id, uuid4())
 
 
 class TestRAGChatServiceResponseGeneration:
@@ -439,19 +462,22 @@ class TestRAGChatServiceResponseGeneration:
     @pytest.mark.asyncio
     async def test_generate_response_handles_api_error(self):
         """Test that API errors return graceful error message."""
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
             mock_settings.llm_model = "claude-3-opus"
             mock_settings.llm_max_tokens = 4096
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic') as mock_anthropic, \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic") as mock_anthropic,
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 # Configure mock to raise an exception
                 mock_anthropic.return_value.messages.create.side_effect = Exception("API Error")
 
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 result = await service._generate_response(
@@ -465,21 +491,24 @@ class TestRAGChatServiceResponseGeneration:
     @pytest.mark.asyncio
     async def test_generate_response_returns_text(self):
         """Test successful response generation."""
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-key"
             mock_settings.openai_api_key = "test-key"
             mock_settings.embedding_model = "text-embedding-3-small"
             mock_settings.llm_model = "claude-3-opus"
             mock_settings.llm_max_tokens = 4096
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic') as mock_anthropic, \
-                 patch('backend.services.rag_chat.openai.OpenAI'):
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic") as mock_anthropic,
+                patch("backend.services.rag_chat.openai.OpenAI"),
+            ):
                 # Configure mock to return a response
                 mock_response = MagicMock()
                 mock_response.content = [MagicMock(text="This is a test response.")]
                 mock_anthropic.return_value.messages.create.return_value = mock_response
 
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 result = await service._generate_response(
@@ -518,10 +547,7 @@ class TestConversationHistoryLogic:
         ]
 
         # Filter like the service does
-        filtered = [
-            msg for msg in all_messages
-            if msg["role"] in ("user", "assistant")
-        ]
+        filtered = [msg for msg in all_messages if msg["role"] in ("user", "assistant")]
 
         assert len(filtered) == 2
         roles = [m["role"] for m in filtered]
@@ -544,11 +570,11 @@ class TestRAGContextProcessing:
 
         # Format like the service would
         context = f"""
-Grant: {grant_data['title']}
-Agency: {grant_data['agency']}
-Categories: {', '.join(grant_data['categories'])}
-Description: {grant_data['description']}
-Amount: ${grant_data['amount_min']:,} - ${grant_data['amount_max']:,}
+Grant: {grant_data["title"]}
+Agency: {grant_data["agency"]}
+Categories: {", ".join(grant_data["categories"])}
+Description: {grant_data["description"]}
+Amount: ${grant_data["amount_min"]:,} - ${grant_data["amount_max"]:,}
 ---"""
 
         assert "NIH Cancer Research Grant" in context
@@ -568,11 +594,11 @@ Amount: ${grant_data['amount_min']:,} - ${grant_data['amount_max']:,}
 
         # Format with defaults
         context = f"""
-Grant: {grant_data['title']}
-Agency: {grant_data['agency'] or 'Unknown'}
-Categories: {', '.join(grant_data['categories']) if grant_data['categories'] else 'N/A'}
-Description: {grant_data['description'] or 'No description'}
-Amount: ${grant_data['amount_min'] or 0:,} - ${grant_data['amount_max'] or 0:,}
+Grant: {grant_data["title"]}
+Agency: {grant_data["agency"] or "Unknown"}
+Categories: {", ".join(grant_data["categories"]) if grant_data["categories"] else "N/A"}
+Description: {grant_data["description"] or "No description"}
+Amount: ${grant_data["amount_min"] or 0:,} - ${grant_data["amount_max"] or 0:,}
 ---"""
 
         assert "Test Grant" in context
@@ -669,14 +695,17 @@ class TestEdgeCasesAndErrors:
     @pytest.mark.asyncio
     async def test_service_initialization(self):
         """Test RAGChatService initializes correctly."""
-        with patch('backend.services.rag_chat.settings') as mock_settings:
+        with patch("backend.services.rag_chat.settings") as mock_settings:
             mock_settings.anthropic_api_key = "test-anthropic-key"
             mock_settings.openai_api_key = "test-openai-key"
             mock_settings.embedding_model = "text-embedding-3-small"
 
-            with patch('backend.services.rag_chat.anthropic.Anthropic') as mock_anthropic, \
-                 patch('backend.services.rag_chat.openai.OpenAI') as mock_openai:
+            with (
+                patch("backend.services.rag_chat.anthropic.Anthropic") as mock_anthropic,
+                patch("backend.services.rag_chat.openai.OpenAI") as mock_openai,
+            ):
                 from backend.services.rag_chat import RAGChatService
+
                 service = RAGChatService()
 
                 # Verify clients were initialized

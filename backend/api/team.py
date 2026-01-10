@@ -1,9 +1,10 @@
 """Team collaboration API endpoints for member management and activity tracking."""
+
 import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 
 from backend.api.deps import AsyncSessionDep, CurrentUser, OptionalUser
 from backend.api.team_service import TeamService
@@ -93,12 +94,8 @@ def _build_activity_response(activity) -> TeamActivityResponse:
 async def list_team_members(
     db: AsyncSessionDep,
     current_user: CurrentUser,
-    include_pending: bool = Query(
-        True, description="Include pending invitations in the list"
-    ),
-    search: Optional[str] = Query(
-        None, description="Search by email or name"
-    ),
+    include_pending: bool = Query(True, description="Include pending invitations in the list"),
+    search: Optional[str] = Query(None, description="Search by email or name"),
 ) -> TeamMembersListResponse:
     """
     List all team members for the current user's lab.
@@ -116,7 +113,8 @@ async def list_team_members(
     if search:
         search_lower = search.lower()
         members = [
-            m for m in members
+            m
+            for m in members
             if search_lower in m.member_email.lower()
             or (m.member_user and m.member_user.name and search_lower in m.member_user.name.lower())
         ]
@@ -163,12 +161,8 @@ async def get_team_stats(
 async def get_team_activity(
     db: AsyncSessionDep,
     current_user: CurrentUser,
-    action_type: Optional[str] = Query(
-        None, description="Filter by action type (comma-separated for multiple)"
-    ),
-    entity_type: Optional[str] = Query(
-        None, description="Filter by entity type (comma-separated for multiple)"
-    ),
+    action_type: Optional[str] = Query(None, description="Filter by action type (comma-separated for multiple)"),
+    entity_type: Optional[str] = Query(None, description="Filter by entity type (comma-separated for multiple)"),
     actor_id: Optional[UUID] = Query(None, description="Filter by actor"),
     entity_id: Optional[UUID] = Query(None, description="Filter by entity"),
     limit: int = Query(50, ge=1, le=200, description="Maximum results"),
@@ -332,10 +326,7 @@ async def send_invitation(
         message=data.message,
     )
 
-    logger.info(
-        f"Invitation sent: from={current_user.id}, to={member.member_email}, "
-        f"role={member.role}"
-    )
+    logger.info(f"Invitation sent: from={current_user.id}, to={member.member_email}, role={member.role}")
 
     return InvitationResponse(
         success=True,
@@ -424,9 +415,7 @@ async def bulk_invite(
             )
             successful_count += 1
 
-            logger.info(
-                f"Bulk invitation sent: from={current_user.id}, to={invite.email}"
-            )
+            logger.info(f"Bulk invitation sent: from={current_user.id}, to={invite.email}")
 
         except Exception as e:
             results.append(
@@ -439,13 +428,10 @@ async def bulk_invite(
             )
             failed_count += 1
 
-            logger.warning(
-                f"Bulk invitation failed: to={invite.email}, error={str(e)}"
-            )
+            logger.warning(f"Bulk invitation failed: to={invite.email}, error={str(e)}")
 
     logger.info(
-        f"Bulk invite completed: total={len(data.invites)}, "
-        f"successful={successful_count}, failed={failed_count}"
+        f"Bulk invite completed: total={len(data.invites)}, successful={successful_count}, failed={failed_count}"
     )
 
     return BulkInviteResponse(

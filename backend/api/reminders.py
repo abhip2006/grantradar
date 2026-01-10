@@ -2,12 +2,12 @@
 Deadline Reminder API Endpoints
 Manage reminder schedules for user deadlines.
 """
+
 import logging
-from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import and_, delete, select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -86,9 +86,7 @@ async def get_deadline_reminders(
         raise HTTPException(status_code=404, detail="Deadline not found")
 
     # Get reminders
-    result = await db.execute(
-        select(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id)
-    )
+    result = await db.execute(select(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id))
     reminders = result.scalars().all()
 
     return [ReminderScheduleResponse.model_validate(r) for r in reminders]
@@ -116,9 +114,7 @@ async def create_deadline_reminders(
         raise HTTPException(status_code=404, detail="Deadline not found")
 
     # Delete existing reminders
-    await db.execute(
-        delete(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id)
-    )
+    await db.execute(delete(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id))
 
     # Create new reminders
     created = []
@@ -160,17 +156,13 @@ async def delete_deadline_reminders(
     if not deadline:
         raise HTTPException(status_code=404, detail="Deadline not found")
 
-    await db.execute(
-        delete(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id)
-    )
+    await db.execute(delete(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id))
     await db.commit()
 
     return {"message": "Reminders deleted"}
 
 
-@router.post(
-    "/deadline/{deadline_id}/default", response_model=List[ReminderScheduleResponse]
-)
+@router.post("/deadline/{deadline_id}/default", response_model=List[ReminderScheduleResponse])
 async def create_default_reminders(
     deadline_id: UUID,
     current_user: CurrentUser,
@@ -191,9 +183,7 @@ async def create_default_reminders(
         raise HTTPException(status_code=404, detail="Deadline not found")
 
     # Delete existing reminders
-    await db.execute(
-        delete(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id)
-    )
+    await db.execute(delete(ReminderSchedule).where(ReminderSchedule.deadline_id == deadline_id))
 
     # Create default reminders for each type user has enabled
     created = []

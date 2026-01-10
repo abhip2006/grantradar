@@ -1,6 +1,7 @@
 """
 Win Probability API Endpoints
 """
+
 from typing import Optional
 from fastapi import APIRouter, Query
 

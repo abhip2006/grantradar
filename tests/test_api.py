@@ -2,16 +2,12 @@
 API Endpoint Tests
 Tests for FastAPI endpoints including authentication, grants, matches, and profiles.
 """
-import json
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from jose import jwt
-
-from backend.models import Grant, User, LabProfile, Match
-from backend.core.config import settings
 
 
 # =============================================================================
@@ -25,6 +21,7 @@ class TestAuthentication:
     @pytest.fixture
     def auth_handler(self):
         """Create an auth handler for testing."""
+
         class AuthHandler:
             SECRET_KEY = "test-secret-key"
             ALGORITHM = "HS256"
@@ -53,11 +50,13 @@ class TestAuthentication:
             def hash_password(self, password: str) -> str:
                 """Hash a password using bcrypt."""
                 import bcrypt
+
                 return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
             def verify_password(self, password: str, hashed: str) -> bool:
                 """Verify a password against its hash."""
                 import bcrypt
+
                 return bcrypt.checkpw(password.encode(), hashed.encode())
 
         return AuthHandler()
@@ -130,6 +129,7 @@ class TestGrantEndpoints:
     @pytest.fixture
     def grant_router(self):
         """Create a mock grant router."""
+
         class GrantRouter:
             def __init__(self, session):
                 self.session = session
@@ -229,6 +229,7 @@ class TestMatchEndpoints:
     @pytest.fixture
     def match_router(self):
         """Create a mock match router."""
+
         class MatchRouter:
             def __init__(self, session):
                 self.session = session
@@ -376,6 +377,7 @@ class TestProfileEndpoints:
     @pytest.fixture
     def profile_router(self):
         """Create a mock profile router."""
+
         class ProfileRouter:
             def __init__(self, session):
                 self.session = session
@@ -472,6 +474,7 @@ class TestStatsEndpoints:
     @pytest.fixture
     def stats_router(self):
         """Create a mock stats router."""
+
         class StatsRouter:
             async def get_platform_stats(self) -> dict:
                 """Get platform-wide statistics."""
@@ -575,6 +578,7 @@ class TestRequestValidation:
 
     def test_invalid_match_score_range(self):
         """Test validation of match score range."""
+
         def validate_score(score: float) -> float:
             if not 0.0 <= score <= 1.0:
                 raise ValueError("Score must be between 0 and 1")
@@ -685,6 +689,7 @@ class TestRateLimiting:
     @pytest.fixture
     def rate_limiter(self):
         """Create a rate limiter for testing."""
+
         class RateLimiter:
             def __init__(self, requests_per_minute: int = 60):
                 self.requests_per_minute = requests_per_minute
@@ -701,9 +706,7 @@ class TestRateLimiting:
                     self.requests[client_id] = []
 
                 # Remove old requests
-                self.requests[client_id] = [
-                    t for t in self.requests[client_id] if t > window_start
-                ]
+                self.requests[client_id] = [t for t in self.requests[client_id] if t > window_start]
 
                 # Check rate limit
                 if len(self.requests[client_id]) >= self.requests_per_minute:
@@ -767,6 +770,7 @@ class TestHealthCheck:
     @pytest.fixture
     def health_checker(self):
         """Create a health checker."""
+
         class HealthChecker:
             async def check_database(self) -> dict:
                 """Check database connectivity."""

@@ -1,6 +1,7 @@
 """
 Authentication schemas for user registration, login, and JWT tokens.
 """
+
 import re
 from datetime import datetime
 from typing import Optional
@@ -33,12 +34,18 @@ def validate_password_strength(password: str) -> str:
         raise ValueError("Password must contain at least one number")
 
     if not re.search(r"[!@#$%^&*(),.?\":{}|<>_\-+=\[\]\\;'/`~]", password):
-        raise ValueError("Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)")
+        raise ValueError('Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)')
 
     # Check for common weak passwords
     common_passwords = [
-        "password123!", "Password123!", "Welcome123!", "Qwerty123456!",
-        "Admin123456!", "Passw0rd123!", "123456789Aa!", "Abcd1234567!",
+        "password123!",
+        "Password123!",
+        "Welcome123!",
+        "Qwerty123456!",
+        "Admin123456!",
+        "Passw0rd123!",
+        "123456789Aa!",
+        "Abcd1234567!",
     ]
     if password in common_passwords:
         raise ValueError("Password is too common, please choose a stronger password")
@@ -53,7 +60,7 @@ class UserCreate(BaseModel):
     password: str = Field(
         ...,
         min_length=12,
-        description="Password (min 12 characters, must include uppercase, lowercase, number, and special character)"
+        description="Password (min 12 characters, must include uppercase, lowercase, number, and special character)",
     )
     name: Optional[str] = Field(None, description="User's full name")
     institution: Optional[str] = Field(None, description="Research institution")
@@ -116,7 +123,7 @@ class ForgotPasswordResponse(BaseModel):
 
     message: str = Field(
         default="If an account with this email exists, a password reset link has been sent.",
-        description="Response message"
+        description="Response message",
     )
 
 
@@ -127,7 +134,7 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(
         ...,
         min_length=12,
-        description="New password (min 12 characters, must include uppercase, lowercase, number, and special character)"
+        description="New password (min 12 characters, must include uppercase, lowercase, number, and special character)",
     )
 
     @field_validator("new_password")
@@ -152,8 +159,7 @@ class SendVerificationRequest(BaseModel):
     """Schema for requesting verification email (resend)."""
 
     email: Optional[EmailStr] = Field(
-        None,
-        description="User email address (optional - uses current user's email if not provided)"
+        None, description="User email address (optional - uses current user's email if not provided)"
     )
 
 
@@ -162,7 +168,7 @@ class SendVerificationResponse(BaseModel):
 
     message: str = Field(
         default="If this email is registered and not yet verified, a verification link has been sent.",
-        description="Response message"
+        description="Response message",
     )
     success: bool = Field(default=True, description="Whether the request was processed")
 

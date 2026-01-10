@@ -2,6 +2,7 @@
 Curation/Validation Agent
 Consumes from 'grants:discovered' stream, validates, enriches, and deduplicates grants.
 """
+
 import json
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -45,37 +46,23 @@ class ValidationResult(BaseModel):
     """Result of grant quality validation."""
 
     is_valid: bool = Field(..., description="Whether the grant passed validation")
-    quality_score: int = Field(
-        ..., ge=0, le=100, description="Quality score from 0-100"
-    )
-    issues: list[str] = Field(
-        default_factory=list, description="List of validation issues found"
-    )
-    categories: list[str] = Field(
-        default_factory=list, description="Assigned research categories"
-    )
+    quality_score: int = Field(..., ge=0, le=100, description="Quality score from 0-100")
+    issues: list[str] = Field(default_factory=list, description="List of validation issues found")
+    categories: list[str] = Field(default_factory=list, description="Assigned research categories")
 
 
 class EnrichedGrant(BaseModel):
     """Grant with all enriched fields including embedding."""
 
     grant_id: UUID = Field(..., description="Unique identifier for the grant")
-    external_id: Optional[str] = Field(
-        default=None, description="External ID from source"
-    )
+    external_id: Optional[str] = Field(default=None, description="External ID from source")
     source: str = Field(..., description="Source of the grant")
     title: str = Field(..., description="Grant title")
     description: Optional[str] = Field(default=None, description="Grant description")
     url: str = Field(..., description="URL to the original grant posting")
-    funding_agency: Optional[str] = Field(
-        default=None, description="Name of the funding agency"
-    )
-    estimated_amount: Optional[float] = Field(
-        default=None, description="Estimated funding amount in USD"
-    )
-    deadline: Optional[datetime] = Field(
-        default=None, description="Application deadline"
-    )
+    funding_agency: Optional[str] = Field(default=None, description="Name of the funding agency")
+    estimated_amount: Optional[float] = Field(default=None, description="Estimated funding amount in USD")
+    deadline: Optional[datetime] = Field(default=None, description="Application deadline")
     discovered_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When the grant was discovered",
@@ -84,27 +71,13 @@ class EnrichedGrant(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="When the grant was validated",
     )
-    categories: list[str] = Field(
-        default_factory=list, description="Research categories"
-    )
-    embedding: Optional[list[float]] = Field(
-        default=None, description="Vector embedding for semantic search"
-    )
-    quality_score: int = Field(
-        default=0, ge=0, le=100, description="Quality score from validation"
-    )
-    confidence_score: float = Field(
-        default=1.0, ge=0.0, le=1.0, description="Confidence after deduplication"
-    )
-    eligibility_criteria: Optional[list[str]] = Field(
-        default=None, description="Extracted eligibility criteria"
-    )
-    keywords: Optional[list[str]] = Field(
-        default=None, description="Extracted keywords"
-    )
-    raw_data: Optional[dict] = Field(
-        default=None, description="Original raw data from source"
-    )
+    categories: list[str] = Field(default_factory=list, description="Research categories")
+    embedding: Optional[list[float]] = Field(default=None, description="Vector embedding for semantic search")
+    quality_score: int = Field(default=0, ge=0, le=100, description="Quality score from validation")
+    confidence_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Confidence after deduplication")
+    eligibility_criteria: Optional[list[str]] = Field(default=None, description="Extracted eligibility criteria")
+    keywords: Optional[list[str]] = Field(default=None, description="Extracted keywords")
+    raw_data: Optional[dict] = Field(default=None, description="Original raw data from source")
 
 
 class ManualReviewEntry(BaseModel):
@@ -112,19 +85,13 @@ class ManualReviewEntry(BaseModel):
 
     grant_id: UUID = Field(..., description="ID of the grant requiring review")
     reason: str = Field(..., description="Reason for manual review")
-    quality_score: int = Field(
-        default=0, ge=0, le=100, description="Quality score that triggered review"
-    )
-    issues: list[str] = Field(
-        default_factory=list, description="Validation issues found"
-    )
+    quality_score: int = Field(default=0, ge=0, le=100, description="Quality score that triggered review")
+    issues: list[str] = Field(default_factory=list, description="Validation issues found")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="When the review entry was created",
     )
-    grant_data: Optional[dict] = Field(
-        default=None, description="Original grant data for review"
-    )
+    grant_data: Optional[dict] = Field(default=None, description="Original grant data for review")
 
 
 # ===== Core Validator Class =====
@@ -171,9 +138,7 @@ class CurationValidator:
     def redis_client(self) -> redis.Redis:
         """Lazy-loaded Redis client."""
         if self._redis_client is None:
-            self._redis_client = redis.from_url(
-                settings.redis_url, decode_responses=True
-            )
+            self._redis_client = redis.from_url(settings.redis_url, decode_responses=True)
         return self._redis_client
 
     @property
@@ -182,9 +147,7 @@ class CurationValidator:
         if self._anthropic_client is None:
             if not settings.anthropic_api_key:
                 raise ValueError("ANTHROPIC_API_KEY is required for validation")
-            self._anthropic_client = anthropic.Anthropic(
-                api_key=settings.anthropic_api_key
-            )
+            self._anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         return self._anthropic_client
 
     @property
@@ -199,9 +162,7 @@ class CurationValidator:
     def _ensure_consumer_group(self) -> None:
         """Create consumer group if it doesn't exist."""
         try:
-            self.redis_client.xgroup_create(
-                self.INPUT_STREAM, self.CONSUMER_GROUP, id="0", mkstream=True
-            )
+            self.redis_client.xgroup_create(self.INPUT_STREAM, self.CONSUMER_GROUP, id="0", mkstream=True)
             self.logger.info(
                 "consumer_group_created",
                 stream=self.INPUT_STREAM,
@@ -246,9 +207,9 @@ class CurationValidator:
 
 Grant Details:
 - Title: {title}
-- Description: {description[:1000] if description else 'Not provided'}
-- Deadline: {deadline if deadline else 'Not provided'}
-- Funding Agency: {funding_agency if funding_agency else 'Not provided'}
+- Description: {description[:1000] if description else "Not provided"}
+- Deadline: {deadline if deadline else "Not provided"}
+- Funding Agency: {funding_agency if funding_agency else "Not provided"}
 - Is Expired: {is_expired}
 
 Return ONLY a JSON object with this exact structure:
@@ -325,7 +286,7 @@ The quality_score should reflect:
         prompt = f"""Assign research categories to this grant.
 
 Title: {title}
-Description: {description[:1500] if description else 'Not provided'}
+Description: {description[:1500] if description else "Not provided"}
 
 Return an array of 2-5 categories from this list ONLY: [{categories_str}]
 
@@ -347,9 +308,7 @@ Return ONLY a JSON array, e.g.: ["Computer Science", "Engineering"]"""
                 categories = json.loads(json_str)
 
                 # Validate categories against allowed list
-                valid_categories = [
-                    c for c in categories if c in self.VALID_CATEGORIES
-                ]
+                valid_categories = [c for c in categories if c in self.VALID_CATEGORIES]
                 if valid_categories:
                     return valid_categories[:5]  # Max 5 categories
         except Exception as e:
@@ -405,9 +364,7 @@ Return ONLY a JSON array, e.g.: ["Computer Science", "Engineering"]"""
 
         return previous_row[-1]
 
-    async def find_potential_duplicates(
-        self, grant_data: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    async def find_potential_duplicates(self, grant_data: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Find potential duplicate grants in the database.
 
@@ -442,9 +399,7 @@ Return ONLY a JSON array, e.g.: ["Computer Science", "Engineering"]"""
 
                     # Check title similarity
                     if title and existing_title:
-                        distance = self._levenshtein_distance(
-                            title.lower()[:100], existing_title.lower()[:100]
-                        )
+                        distance = self._levenshtein_distance(title.lower()[:100], existing_title.lower()[:100])
                         if distance < 3:
                             duplicates.append(existing_grant)
                             continue
@@ -464,9 +419,7 @@ Return ONLY a JSON array, e.g.: ["Computer Science", "Engineering"]"""
 
         return duplicates
 
-    async def check_is_duplicate(
-        self, grant1: dict[str, Any], grant2: dict[str, Any]
-    ) -> bool:
+    async def check_is_duplicate(self, grant1: dict[str, Any], grant2: dict[str, Any]) -> bool:
         """
         Use LLM to determine if two grants are duplicates.
 
@@ -480,20 +433,20 @@ Return ONLY a JSON array, e.g.: ["Computer Science", "Engineering"]"""
         prompt = f"""Are these two grants the same grant opportunity (possibly from different sources)?
 
 Grant 1:
-- Title: {grant1.get('title', 'N/A')}
-- Funding Agency: {grant1.get('funding_agency', 'N/A')}
-- Deadline: {grant1.get('deadline', 'N/A')}
-- Amount: {grant1.get('estimated_amount', 'N/A')}
-- Source: {grant1.get('source', 'N/A')}
-- Description snippet: {str(grant1.get('description', ''))[:500]}
+- Title: {grant1.get("title", "N/A")}
+- Funding Agency: {grant1.get("funding_agency", "N/A")}
+- Deadline: {grant1.get("deadline", "N/A")}
+- Amount: {grant1.get("estimated_amount", "N/A")}
+- Source: {grant1.get("source", "N/A")}
+- Description snippet: {str(grant1.get("description", ""))[:500]}
 
 Grant 2:
-- Title: {grant2.get('title', 'N/A')}
-- Funding Agency: {grant2.get('funding_agency', 'N/A')}
-- Deadline: {grant2.get('deadline', 'N/A')}
-- Amount: {grant2.get('estimated_amount', 'N/A')}
-- Source: {grant2.get('source', 'N/A')}
-- Description snippet: {str(grant2.get('description', ''))[:500]}
+- Title: {grant2.get("title", "N/A")}
+- Funding Agency: {grant2.get("funding_agency", "N/A")}
+- Deadline: {grant2.get("deadline", "N/A")}
+- Amount: {grant2.get("estimated_amount", "N/A")}
+- Source: {grant2.get("source", "N/A")}
+- Description snippet: {str(grant2.get("description", ""))[:500]}
 
 Return ONLY "true" if these are the same grant, or "false" if they are different grants."""
 
@@ -510,9 +463,7 @@ Return ONLY "true" if these are the same grant, or "false" if they are different
             self.logger.error("duplicate_check_llm_error", error=str(e))
             return False
 
-    def _merge_grants(
-        self, grant1: dict[str, Any], grant2: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _merge_grants(self, grant1: dict[str, Any], grant2: dict[str, Any]) -> dict[str, Any]:
         """
         Merge two duplicate grants, keeping the most complete version.
 
@@ -573,9 +524,7 @@ Return ONLY "true" if these are the same grant, or "false" if they are different
 
         return merged
 
-    async def log_manual_review(
-        self, grant_data: dict[str, Any], validation_result: ValidationResult
-    ) -> None:
+    async def log_manual_review(self, grant_data: dict[str, Any], validation_result: ValidationResult) -> None:
         """
         Log a grant to the manual review queue.
 
@@ -594,9 +543,7 @@ Return ONLY "true" if these are the same grant, or "false" if they are different
         )
 
         try:
-            self.redis_client.lpush(
-                self.MANUAL_REVIEW_KEY, review_entry.model_dump_json()
-            )
+            self.redis_client.lpush(self.MANUAL_REVIEW_KEY, review_entry.model_dump_json())
             self.logger.info(
                 "grant_logged_for_review",
                 grant_id=str(grant_id),
@@ -604,9 +551,7 @@ Return ONLY "true" if these are the same grant, or "false" if they are different
                 issues=validation_result.issues,
             )
         except Exception as e:
-            self.logger.error(
-                "manual_review_log_error", grant_id=str(grant_id), error=str(e)
-            )
+            self.logger.error("manual_review_log_error", grant_id=str(grant_id), error=str(e))
 
     async def publish_validated_grant(self, enriched_grant: EnrichedGrant) -> str:
         """
@@ -784,9 +729,7 @@ Return ONLY "true" if these are the same grant, or "false" if they are different
                         result = await self.process_grant(grant_data)
 
                         # Acknowledge the message
-                        self.redis_client.xack(
-                            self.INPUT_STREAM, self.CONSUMER_GROUP, message_id
-                        )
+                        self.redis_client.xack(self.INPUT_STREAM, self.CONSUMER_GROUP, message_id)
 
                         if result:
                             processed += 1
@@ -799,9 +742,7 @@ Return ONLY "true" if these are the same grant, or "false" if they are different
                         )
                         # Still acknowledge to prevent reprocessing
                         # In production, might want to move to DLQ instead
-                        self.redis_client.xack(
-                            self.INPUT_STREAM, self.CONSUMER_GROUP, message_id
-                        )
+                        self.redis_client.xack(self.INPUT_STREAM, self.CONSUMER_GROUP, message_id)
 
         except Exception as e:
             self.logger.error("stream_consumption_error", error=str(e))
@@ -851,9 +792,7 @@ def validate_grant_task(self, grant_data: dict[str, Any]) -> Optional[dict]:
     name="agents.curation.validator.consume_discovery_stream_task",
     bind=True,
 )
-def consume_discovery_stream_task(
-    self, count: int = 10, block_ms: int = 5000
-) -> dict[str, int]:
+def consume_discovery_stream_task(self, count: int = 10, block_ms: int = 5000) -> dict[str, int]:
     """
     Celery task to consume and process grants from discovery stream.
 
@@ -902,6 +841,7 @@ def run_validator_worker(batch_size: int = 10, iterations: int = 100) -> dict[st
             if processed == 0:
                 # No messages available, wait a bit before next iteration
                 import time
+
                 time.sleep(1)
 
         return {"total_processed": total_processed, "iterations": iterations}

@@ -1,6 +1,6 @@
 """Specific Aims analysis API endpoints."""
+
 from typing import List
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,10 +61,7 @@ async def analyze_aims(
             additional_context=request.additional_context,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Aims analysis failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Aims analysis failed: {str(e)}")
 
 
 @router.post("/scope-check", response_model=ScopeCheckResponse)
@@ -88,10 +85,7 @@ async def check_scope(
             aim_number=request.aim_number,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Scope check failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Scope check failed: {str(e)}")
 
 
 @router.get("/template/{mechanism}", response_model=MechanismTemplateResponse)
@@ -115,8 +109,7 @@ async def get_template(
         return get_mechanism_template(mechanism)
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get template: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get template: {str(e)}"
         )
 
 
@@ -139,8 +132,7 @@ async def get_examples(
         return examples
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get examples: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to get examples: {str(e)}"
         )
 
 
@@ -167,10 +159,7 @@ async def compare_to_funded(
             research_area=request.research_area,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Comparison failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Comparison failed: {str(e)}")
 
 
 @router.post("/follow-up", response_model=AimsFollowUpResponse)
@@ -194,15 +183,9 @@ async def aims_follow_up(
             message=request.message,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Follow-up failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Follow-up failed: {str(e)}")
 
 
 @router.get("/mechanisms", response_model=List[dict])
@@ -219,13 +202,15 @@ async def list_mechanisms(
 
     mechanisms = []
     for mechanism, guidelines in MECHANISM_GUIDELINES.items():
-        mechanisms.append({
-            "mechanism": mechanism.value,
-            "recommended_aims": guidelines.recommended_aims_count,
-            "aims_range": f"{guidelines.min_aims}-{guidelines.max_aims}",
-            "focus_areas": guidelines.focus_areas[:3],  # Top 3 focus areas
-            "word_count_guidance": guidelines.word_count_guidance,
-        })
+        mechanisms.append(
+            {
+                "mechanism": mechanism.value,
+                "recommended_aims": guidelines.recommended_aims_count,
+                "aims_range": f"{guidelines.min_aims}-{guidelines.max_aims}",
+                "focus_areas": guidelines.focus_areas[:3],  # Top 3 focus areas
+                "word_count_guidance": guidelines.word_count_guidance,
+            }
+        )
 
     return mechanisms
 
@@ -249,8 +234,7 @@ async def get_guidelines(
     guidelines = MECHANISM_GUIDELINES.get(mechanism)
     if not guidelines:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Guidelines not found for mechanism: {mechanism.value}"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Guidelines not found for mechanism: {mechanism.value}"
         )
 
     return {

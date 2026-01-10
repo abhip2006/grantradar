@@ -1,8 +1,7 @@
 """
 Tests for Grant Embedder.
 """
-import pytest
-from datetime import datetime, timezone
+
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -115,7 +114,9 @@ class TestBuildEmbedding:
         # Setup mocks
         mock_engine = MagicMock()
         mock_session = MagicMock()
-        mock_engine.begin = MagicMock(return_value=MagicMock(__enter__=MagicMock(return_value=mock_session), __exit__=MagicMock()))
+        mock_engine.begin = MagicMock(
+            return_value=MagicMock(__enter__=MagicMock(return_value=mock_session), __exit__=MagicMock())
+        )
 
         # Mock grant fetch
         grant_id = uuid4()

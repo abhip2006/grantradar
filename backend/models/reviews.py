@@ -7,6 +7,7 @@ JSONB Field Types:
 - permissions: TeamMemberPermissionsDict - see backend.schemas.jsonb_types for structure
 - metadata_: ReviewActionMetadataDict - see backend.schemas.jsonb_types for structure
 """
+
 import uuid
 from datetime import datetime
 from typing import Any, List, Optional
@@ -377,5 +378,6 @@ class ApplicationTeamMember(Base):
 
 # Type hints for relationships (to avoid circular imports)
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from backend.models import User, GrantApplication

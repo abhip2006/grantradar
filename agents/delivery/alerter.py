@@ -2,9 +2,10 @@
 GrantRadar Alert Delivery Agent
 Consumes from 'matches:computed' stream and sends personalized alerts.
 """
+
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Optional
 from uuid import UUID, uuid4
 
 import anthropic
@@ -15,7 +16,7 @@ from celery import Celery
 from sqlalchemy import select
 
 from backend.core.config import settings
-from backend.core.events import MatchComputedEvent, PriorityLevel
+from backend.core.events import MatchComputedEvent
 from backend.database import get_async_session
 from backend.models import AlertSent, Grant, Match, User
 from agents.delivery.models import (
@@ -23,7 +24,6 @@ from agents.delivery.models import (
     AlertPriority,
     DeliveryChannel,
     DeliveryStatus,
-    DigestBatch,
     EmailContent,
     GrantInfo,
     MatchInfo,
@@ -91,9 +91,7 @@ class AlertDeliveryAgent:
     def redis_client(self) -> redis.Redis:
         """Lazy-loaded Redis client."""
         if self._redis_client is None:
-            self._redis_client = redis.from_url(
-                settings.redis_url, decode_responses=True
-            )
+            self._redis_client = redis.from_url(settings.redis_url, decode_responses=True)
         return self._redis_client
 
     @property
@@ -102,9 +100,7 @@ class AlertDeliveryAgent:
         if self._anthropic_client is None:
             if not settings.anthropic_api_key:
                 raise ValueError("Anthropic API key not configured")
-            self._anthropic_client = anthropic.Anthropic(
-                api_key=settings.anthropic_api_key
-            )
+            self._anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         return self._anthropic_client
 
     def _ensure_consumer_group(self) -> None:
@@ -123,9 +119,7 @@ class AlertDeliveryAgent:
             else:
                 raise
 
-    def determine_priority(
-        self, match_score: float, deadline: Optional[datetime]
-    ) -> AlertPriority:
+    def determine_priority(self, match_score: float, deadline: Optional[datetime]) -> AlertPriority:
         """
         Determine alert priority based on match score and deadline.
 
@@ -221,7 +215,7 @@ class AlertDeliveryAgent:
         subject_prompt = f"""Write an engaging subject line (under 50 characters) for this grant alert:
 Grant title: {grant.title}
 Match score: {int(match.match_score * 100)}%
-Deadline: {grant.deadline.strftime('%B %d, %Y') if grant.deadline else 'Open'}
+Deadline: {grant.deadline.strftime("%B %d, %Y") if grant.deadline else "Open"}
 
 Return ONLY the subject line, no quotes or explanation."""
 
@@ -237,13 +231,13 @@ Return ONLY the subject line, no quotes or explanation."""
 
 Grant Title: {grant.title}
 Funding Agency: {grant.funding_agency}
-Amount: {f'${grant.amount_min:,.0f} - ${grant.amount_max:,.0f}' if grant.amount_min and grant.amount_max else 'Not specified'}
-Deadline: {grant.deadline.strftime('%B %d, %Y') if grant.deadline else 'Rolling/Open'}
+Amount: {f"${grant.amount_min:,.0f} - ${grant.amount_max:,.0f}" if grant.amount_min and grant.amount_max else "Not specified"}
+Deadline: {grant.deadline.strftime("%B %d, %Y") if grant.deadline else "Rolling/Open"}
 Description: {grant.description[:500]}
 
 Match Score: {int(match.match_score * 100)}%
-Matching Criteria: {', '.join(match.matching_criteria) if match.matching_criteria else 'Strong overall fit'}
-Reasoning: {match.explanation or 'This grant aligns well with your research profile.'}
+Matching Criteria: {", ".join(match.matching_criteria) if match.matching_criteria else "Strong overall fit"}
+Reasoning: {match.explanation or "This grant aligns well with your research profile."}
 
 Requirements:
 1. Tone: Professional but friendly
@@ -332,11 +326,7 @@ Return the email body only, no subject line or signature."""
         title_max_len = 50
         title = grant.title[:title_max_len] + "..." if len(grant.title) > title_max_len else grant.title
 
-        deadline_str = (
-            grant.deadline.strftime("%m/%d")
-            if grant.deadline
-            else "Open"
-        )
+        deadline_str = grant.deadline.strftime("%m/%d") if grant.deadline else "Open"
 
         message = (
             f"GrantRadar Alert: {title} matches your research "
@@ -420,9 +410,7 @@ Return the email body only, no subject line or signature."""
         for channel in payload.channels:
             try:
                 if channel == DeliveryChannel.EMAIL:
-                    email_content = await self.generate_email_content(
-                        payload.user, payload.grant, payload.match
-                    )
+                    email_content = await self.generate_email_content(payload.user, payload.grant, payload.match)
                     sendgrid = get_sendgrid_channel()
                     status = await sendgrid.send(email_content)
                     status.match_id = payload.match_id
@@ -447,9 +435,7 @@ Return the email body only, no subject line or signature."""
                     slack_content = SlackContent(
                         webhook_url=payload.user.slack_webhook_url,
                         text=f"New {int(payload.match.match_score * 100)}% grant match: {payload.grant.title}",
-                        blocks=self.generate_slack_blocks(
-                            payload.user, payload.grant, payload.match
-                        ),
+                        blocks=self.generate_slack_blocks(payload.user, payload.grant, payload.match),
                     )
                     status = await slack.send(slack_content)
                     status.match_id = payload.match_id
@@ -477,9 +463,7 @@ Return the email body only, no subject line or signature."""
 
         return statuses
 
-    async def _send_digest_email(
-        self, alerts: list[AlertPayload]
-    ) -> Optional[DeliveryStatus]:
+    async def _send_digest_email(self, alerts: list[AlertPayload]) -> Optional[DeliveryStatus]:
         """
         Generate and send a digest email combining multiple grant alerts.
 
@@ -496,9 +480,7 @@ Return the email body only, no subject line or signature."""
         user = alerts[0].user
 
         # Sort alerts by match score descending
-        sorted_alerts = sorted(
-            alerts, key=lambda a: a.match.match_score, reverse=True
-        )
+        sorted_alerts = sorted(alerts, key=lambda a: a.match.match_score, reverse=True)
 
         # Generate digest content
         email_content = await self._generate_digest_email_content(user, sorted_alerts)
@@ -552,14 +534,13 @@ Return the email body only, no subject line or signature."""
         grant_summaries = []
         for i, alert in enumerate(alerts[:10], 1):  # Limit to 10 grants
             grant_summaries.append(
-                f"{i}. {alert.grant.title} ({alert.grant.funding_agency}) - "
-                f"{int(alert.match.match_score * 100)}% match"
+                f"{i}. {alert.grant.title} ({alert.grant.funding_agency}) - {int(alert.match.match_score * 100)}% match"
             )
 
         # Generate personalized intro using Claude
         intro_prompt = f"""Write a brief, friendly intro paragraph (2-3 sentences) for a grant digest email to {user.name}.
-They have {len(alerts)} new grant match{'es' if len(alerts) > 1 else ''}.
-Top matches: {'; '.join(grant_summaries[:3])}
+They have {len(alerts)} new grant match{"es" if len(alerts) > 1 else ""}.
+Top matches: {"; ".join(grant_summaries[:3])}
 Keep it professional but warm. Don't list the grants, just intro the digest."""
 
         try:
@@ -576,11 +557,7 @@ Keep it professional but warm. Don't list the grants, just intro the digest."""
         # Build HTML for each grant
         grant_html_blocks = []
         for alert in alerts[:10]:
-            deadline_str = (
-                alert.grant.deadline.strftime("%B %d, %Y")
-                if alert.grant.deadline
-                else "Open/Rolling"
-            )
+            deadline_str = alert.grant.deadline.strftime("%B %d, %Y") if alert.grant.deadline else "Open/Rolling"
             amount_str = (
                 f"${alert.grant.amount_min:,.0f} - ${alert.grant.amount_max:,.0f}"
                 if alert.grant.amount_min and alert.grant.amount_max
@@ -595,7 +572,7 @@ Keep it professional but warm. Don't list the grants, just intro the digest."""
                 </div>
                 <p style="color: #6b7280; margin: 4px 0; font-size: 14px;">{alert.grant.funding_agency} • {amount_str}</p>
                 <p style="color: #6b7280; margin: 4px 0; font-size: 14px;">Deadline: {deadline_str}</p>
-                <p style="color: #374151; margin: 8px 0 12px; font-size: 14px;">{alert.match.explanation or 'Strong alignment with your research profile.'}</p>
+                <p style="color: #374151; margin: 8px 0 12px; font-size: 14px;">{alert.match.explanation or "Strong alignment with your research profile."}</p>
                 <a href="{alert.grant.url}" style="display: inline-block; background: #667eea; color: white; padding: 8px 16px; border-radius: 4px; text-decoration: none; font-size: 14px;">View Details →</a>
             </div>
             """)
@@ -619,7 +596,7 @@ Keep it professional but warm. Don't list the grants, just intro the digest."""
     <div class="container">
         <div class="header">
             <h1 style="margin: 0; font-size: 24px;">Your Grant Digest</h1>
-            <p style="margin: 8px 0 0; opacity: 0.9;">{len(alerts)} new match{'es' if len(alerts) > 1 else ''} found</p>
+            <p style="margin: 8px 0 0; opacity: 0.9;">{len(alerts)} new match{"es" if len(alerts) > 1 else ""} found</p>
         </div>
         <div class="content">
             <p style="margin-top: 0;">{intro_text}</p>
@@ -643,11 +620,7 @@ Keep it professional but warm. Don't list the grants, just intro the digest."""
         # Build plain text version
         grant_text_blocks = []
         for i, alert in enumerate(alerts[:10], 1):
-            deadline_str = (
-                alert.grant.deadline.strftime("%B %d, %Y")
-                if alert.grant.deadline
-                else "Open/Rolling"
-            )
+            deadline_str = alert.grant.deadline.strftime("%B %d, %Y") if alert.grant.deadline else "Open/Rolling"
             grant_text_blocks.append(
                 f"{i}. {alert.grant.title}\n"
                 f"   {alert.grant.funding_agency} - {int(alert.match.match_score * 100)}% match\n"
@@ -680,9 +653,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
             tracking_id=str(alerts[0].match_id),  # Use first match ID for tracking
         )
 
-    def _log_alert_sent(
-        self, payload: AlertPayload, statuses: list[DeliveryStatus]
-    ) -> None:
+    def _log_alert_sent(self, payload: AlertPayload, statuses: list[DeliveryStatus]) -> None:
         """Log sent alert to Redis and database for tracking and analytics."""
         import asyncio
 
@@ -696,11 +667,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
                 "sent_at": status.sent_at.isoformat() if status.sent_at else None,
                 "provider_message_id": status.provider_message_id,
                 "error_message": status.error_message,
-                "grant_posted_at": (
-                    payload.grant.posted_at.isoformat()
-                    if payload.grant.posted_at
-                    else None
-                ),
+                "grant_posted_at": (payload.grant.posted_at.isoformat() if payload.grant.posted_at else None),
             }
 
             # Calculate latency if we have posted_at
@@ -738,9 +705,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
                 # Run async db operation
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    asyncio.ensure_future(
-                        self._persist_alert_to_db(payload, status)
-                    )
+                    asyncio.ensure_future(self._persist_alert_to_db(payload, status))
                 else:
                     asyncio.run(self._persist_alert_to_db(payload, status))
             except Exception as e:
@@ -750,9 +715,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
                     error=str(e),
                 )
 
-    async def _persist_alert_to_db(
-        self, payload: AlertPayload, status: DeliveryStatus
-    ) -> None:
+    async def _persist_alert_to_db(self, payload: AlertPayload, status: DeliveryStatus) -> None:
         """
         Persist alert to the alerts_sent database table.
 
@@ -763,9 +726,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
         try:
             async with get_async_session() as session:
                 # First, verify the match exists in database
-                match_result = await session.execute(
-                    select(Match).where(Match.id == payload.match_id)
-                )
+                match_result = await session.execute(select(Match).where(Match.id == payload.match_id))
                 match = match_result.scalar_one_or_none()
 
                 if not match:
@@ -816,21 +777,13 @@ Manage preferences: {settings.frontend_url}/settings/notifications
 
     def add_to_digest_batch(self, payload: AlertPayload) -> None:
         """Add alert to user's digest batch."""
-        digest_key = (
-            f"{self.DIGEST_KEY_PREFIX}{payload.user.user_id}:"
-            f"{datetime.utcnow().strftime('%Y-%m-%d')}"
-        )
+        digest_key = f"{self.DIGEST_KEY_PREFIX}{payload.user.user_id}:{datetime.utcnow().strftime('%Y-%m-%d')}"
 
         self.redis_client.lpush(digest_key, payload.model_dump_json())
         # Expire at end of day + 1 hour buffer
         self.redis_client.expireat(
             digest_key,
-            int(
-                (
-                    datetime.utcnow().replace(hour=23, minute=59, second=59)
-                    + timedelta(hours=1)
-                ).timestamp()
-            ),
+            int((datetime.utcnow().replace(hour=23, minute=59, second=59) + timedelta(hours=1)).timestamp()),
         )
 
     async def process_match_event(self, event_data: dict) -> None:
@@ -874,9 +827,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
                 return
 
             # Determine priority and channels (respecting user preferences)
-            priority = self.determine_priority(
-                match_event.match_score, match_event.grant_deadline
-            )
+            priority = self.determine_priority(match_event.match_score, match_event.grant_deadline)
 
             if priority == AlertPriority.LOW:
                 self.logger.debug(
@@ -969,9 +920,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
         """
         try:
             async with get_async_session() as session:
-                result = await session.execute(
-                    select(User).where(User.id == user_id)
-                )
+                result = await session.execute(select(User).where(User.id == user_id))
                 user = result.scalar_one_or_none()
 
                 if user is None:
@@ -1025,9 +974,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
         """
         try:
             async with get_async_session() as session:
-                result = await session.execute(
-                    select(Grant).where(Grant.id == grant_id)
-                )
+                result = await session.execute(select(Grant).where(Grant.id == grant_id))
                 grant = result.scalar_one_or_none()
 
                 if grant is None:
@@ -1043,7 +990,8 @@ Manage preferences: {settings.frontend_url}/settings/notifications
                     # Handle various eligibility formats
                     if isinstance(grant.eligibility, dict):
                         eligibility_criteria = [
-                            f"{k}: {v}" for k, v in grant.eligibility.items()
+                            f"{k}: {v}"
+                            for k, v in grant.eligibility.items()
                             if v and isinstance(v, (str, bool, int, float))
                         ]
                     elif isinstance(grant.eligibility, list):
@@ -1132,6 +1080,7 @@ Manage preferences: {settings.frontend_url}/settings/notifications
 
 # Celery Tasks
 
+
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def send_critical_alert(self, payload_json: str) -> dict:
     """
@@ -1157,10 +1106,7 @@ def send_critical_alert(self, payload_json: str) -> dict:
             "match_id": str(payload.match_id),
             "priority": "critical",
             "channels_sent": len(statuses),
-            "statuses": [
-                {"channel": s.channel.value, "status": s.status}
-                for s in statuses
-            ],
+            "statuses": [{"channel": s.channel.value, "status": s.status} for s in statuses],
         }
 
     except Exception as e:
@@ -1192,10 +1138,7 @@ def send_high_priority_alert(self, payload_json: str) -> dict:
             "match_id": str(payload.match_id),
             "priority": "high",
             "channels_sent": len(statuses),
-            "statuses": [
-                {"channel": s.channel.value, "status": s.status}
-                for s in statuses
-            ],
+            "statuses": [{"channel": s.channel.value, "status": s.status} for s in statuses],
         }
 
     except Exception as e:
@@ -1227,10 +1170,7 @@ def send_medium_priority_alert(self, payload_json: str) -> dict:
             "match_id": str(payload.match_id),
             "priority": "medium",
             "channels_sent": len(statuses),
-            "statuses": [
-                {"channel": s.channel.value, "status": s.status}
-                for s in statuses
-            ],
+            "statuses": [{"channel": s.channel.value, "status": s.status} for s in statuses],
         }
 
     except Exception as e:
@@ -1262,9 +1202,7 @@ def process_digest_batch(user_id: str, date_str: str) -> dict:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        status = loop.run_until_complete(
-            agent._send_digest_email(alerts)
-        )
+        status = loop.run_until_complete(agent._send_digest_email(alerts))
     finally:
         loop.close()
 

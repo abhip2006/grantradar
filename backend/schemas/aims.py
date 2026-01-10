@@ -1,13 +1,15 @@
 """Specific Aims analysis schemas."""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
-from typing import Optional, List, Dict
+from typing import Optional, List
 from enum import Enum
 
 
 class GrantMechanism(str, Enum):
     """Grant mechanism types for specific aims analysis."""
+
     R01 = "R01"
     R21 = "R21"
     R03 = "R03"
@@ -23,6 +25,7 @@ class GrantMechanism(str, Enum):
 
 class ScopeStatus(str, Enum):
     """Scope assessment status for an aim."""
+
     TOO_BROAD = "too_broad"
     TOO_NARROW = "too_narrow"
     APPROPRIATE = "appropriate"
@@ -31,6 +34,7 @@ class ScopeStatus(str, Enum):
 
 class IssueType(str, Enum):
     """Types of issues detected in specific aims."""
+
     CIRCULAR_LOGIC = "circular_logic"
     OVERLAPPING_AIMS = "overlapping_aims"
     MISSING_CONTROLS = "missing_controls"
@@ -45,6 +49,7 @@ class IssueType(str, Enum):
 
 class IssueSeverity(str, Enum):
     """Severity level of detected issues."""
+
     CRITICAL = "critical"
     MAJOR = "major"
     MINOR = "minor"
@@ -58,6 +63,7 @@ class IssueSeverity(str, Enum):
 
 class AimsAnalysisRequest(BaseModel):
     """Request to analyze a specific aims page."""
+
     text: str = Field(..., min_length=50, description="Full text of the Specific Aims page")
     mechanism: GrantMechanism = Field(..., description="Grant mechanism type")
     research_area: Optional[str] = Field(None, description="Research area for context")
@@ -66,6 +72,7 @@ class AimsAnalysisRequest(BaseModel):
 
 class ScopeCheckRequest(BaseModel):
     """Request to check scope of a single aim."""
+
     aim_text: str = Field(..., min_length=20, description="Text of the specific aim")
     mechanism: GrantMechanism = Field(..., description="Grant mechanism type")
     aim_number: Optional[int] = Field(None, ge=1, le=5, description="Aim number (1-5)")
@@ -73,6 +80,7 @@ class ScopeCheckRequest(BaseModel):
 
 class CompareToFundedRequest(BaseModel):
     """Request to compare aims structure to funded applications."""
+
     aims_text: str = Field(..., min_length=50, description="Full text of the Specific Aims")
     mechanism: GrantMechanism = Field(..., description="Grant mechanism type")
     research_area: Optional[str] = Field(None, description="Research area for better matching")
@@ -85,6 +93,7 @@ class CompareToFundedRequest(BaseModel):
 
 class AimStructure(BaseModel):
     """Parsed structure of a single aim."""
+
     aim_number: int = Field(..., ge=1, le=5)
     aim_text: str
     hypothesis: Optional[str] = None
@@ -98,6 +107,7 @@ class AimStructure(BaseModel):
 
 class ScopeAssessment(BaseModel):
     """Scope assessment for a single aim."""
+
     aim_number: int
     status: ScopeStatus
     explanation: str
@@ -107,6 +117,7 @@ class ScopeAssessment(BaseModel):
 
 class DetectedIssue(BaseModel):
     """A detected issue in the specific aims."""
+
     issue_type: IssueType
     severity: IssueSeverity
     description: str
@@ -116,6 +127,7 @@ class DetectedIssue(BaseModel):
 
 class ImprovementSuggestion(BaseModel):
     """A specific improvement suggestion."""
+
     category: str = Field(..., description="Category of improvement (structure, clarity, scope, etc.)")
     current_issue: str
     suggested_change: str
@@ -125,6 +137,7 @@ class ImprovementSuggestion(BaseModel):
 
 class MechanismGuidelines(BaseModel):
     """Guidelines for specific aims based on mechanism."""
+
     mechanism: GrantMechanism
     recommended_aims_count: int
     min_aims: int
@@ -138,6 +151,7 @@ class MechanismGuidelines(BaseModel):
 
 class AimsAnalysisResponse(BaseModel):
     """Full analysis response for specific aims."""
+
     # Overall assessment
     overall_score: float = Field(ge=0.0, le=100.0, description="Overall quality score 0-100")
     overall_assessment: str
@@ -178,6 +192,7 @@ class AimsAnalysisResponse(BaseModel):
 
 class ScopeCheckResponse(BaseModel):
     """Response for single aim scope check."""
+
     aim_number: Optional[int]
     aim_text: str
     mechanism: GrantMechanism
@@ -191,6 +206,7 @@ class ScopeCheckResponse(BaseModel):
 
 class MechanismTemplateResponse(BaseModel):
     """Template structure for a specific mechanism."""
+
     mechanism: GrantMechanism
     guidelines: MechanismGuidelines
     template_sections: List[str]
@@ -203,6 +219,7 @@ class MechanismTemplateResponse(BaseModel):
 
 class FundedExampleSummary(BaseModel):
     """Summary of a funded grant's aims structure."""
+
     mechanism: GrantMechanism
     research_area: str
     aims_count: int
@@ -213,6 +230,7 @@ class FundedExampleSummary(BaseModel):
 
 class CompareToFundedResponse(BaseModel):
     """Response comparing aims to funded applications."""
+
     mechanism: GrantMechanism
     similarity_score: float = Field(ge=0.0, le=100.0)
     structure_comparison: str
@@ -229,12 +247,14 @@ class CompareToFundedResponse(BaseModel):
 
 class AimsFollowUpRequest(BaseModel):
     """Follow-up question about aims analysis."""
+
     session_id: UUID
     message: str
 
 
 class AimsFollowUpResponse(BaseModel):
     """Response to follow-up question."""
+
     session_id: UUID
     response: str
     revised_suggestions: Optional[List[ImprovementSuggestion]] = None

@@ -1,8 +1,9 @@
 """Deep research service for intelligent grant discovery."""
+
 import anthropic
 import openai
 from datetime import datetime, timezone
-from typing import Optional, List, Callable, Any, AsyncIterator
+from typing import Optional, List, AsyncIterator
 from uuid import UUID
 import time
 import json
@@ -31,9 +32,7 @@ class DeepResearchService:
         self.anthropic = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self.openai = openai.OpenAI(api_key=settings.openai_api_key)
 
-    async def create_session(
-        self, db: AsyncSession, user: User, query: str
-    ) -> ResearchSession:
+    async def create_session(self, db: AsyncSession, user: User, query: str) -> ResearchSession:
         """Create a new research session."""
         session = ResearchSession(
             user_id=user.id,
@@ -45,9 +44,7 @@ class DeepResearchService:
         await db.refresh(session)
         return session
 
-    async def run_research(
-        self, db: AsyncSession, session_id: UUID
-    ) -> ResearchSessionResponse:
+    async def run_research(self, db: AsyncSession, session_id: UUID) -> ResearchSessionResponse:
         """Execute deep research for a session."""
         start_time = time.time()
 
@@ -61,12 +58,10 @@ class DeepResearchService:
 
         try:
             # Get user profile for personalization
-            profile_result = await db.execute(
-                select(LabProfile).where(LabProfile.user_id == session.user_id)
-            )
+            profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == session.user_id))
             profile = profile_result.scalar_one_or_none()
 
-            user = await db.get(User, session.user_id)
+            await db.get(User, session.user_id)
 
             # Step 1: Analyze and expand the query with Claude
             expanded_query = await self._expand_query(session.query, profile)
@@ -88,7 +83,7 @@ class DeepResearchService:
 
             # Update session with results
             session.status = "completed"
-            session.results = [r.model_dump(mode='json') for r in scored_results]
+            session.results = [r.model_dump(mode="json") for r in scored_results]
             session.insights = insights
             session.grants_found = len(scored_results)
             session.processing_time_ms = processing_time
@@ -116,9 +111,7 @@ class DeepResearchService:
             await db.commit()
             raise
 
-    async def run_research_with_progress(
-        self, db: AsyncSession, session_id: UUID
-    ) -> AsyncIterator[dict]:
+    async def run_research_with_progress(self, db: AsyncSession, session_id: UUID) -> AsyncIterator[dict]:
         """
         Execute deep research for a session with progress streaming.
 
@@ -128,10 +121,7 @@ class DeepResearchService:
 
         session = await db.get(ResearchSession, session_id)
         if not session:
-            yield {
-                "event": "error",
-                "data": {"error": "Session not found", "phase": ResearchPhase.PENDING.value}
-            }
+            yield {"event": "error", "data": {"error": "Session not found", "phase": ResearchPhase.PENDING.value}}
             return
 
         # Update status to processing
@@ -140,63 +130,49 @@ class DeepResearchService:
 
         try:
             # Emit initial status
-            yield {
-                "event": "status",
-                "data": {"phase": ResearchPhase.PENDING.value, "message": "Starting research..."}
-            }
-            yield {
-                "event": "progress",
-                "data": {"percent": 5, "message": "Initializing research session"}
-            }
+            yield {"event": "status", "data": {"phase": ResearchPhase.PENDING.value, "message": "Starting research..."}}
+            yield {"event": "progress", "data": {"percent": 5, "message": "Initializing research session"}}
 
             # Get user profile for personalization
-            profile_result = await db.execute(
-                select(LabProfile).where(LabProfile.user_id == session.user_id)
-            )
+            profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == session.user_id))
             profile = profile_result.scalar_one_or_none()
-            user = await db.get(User, session.user_id)
+            await db.get(User, session.user_id)
 
             # Step 1: Analyze and expand the query with Claude
             yield {
                 "event": "status",
-                "data": {"phase": ResearchPhase.EXPANDING_QUERY.value, "message": "Analyzing and expanding your query..."}
+                "data": {
+                    "phase": ResearchPhase.EXPANDING_QUERY.value,
+                    "message": "Analyzing and expanding your query...",
+                },
             }
-            yield {
-                "event": "progress",
-                "data": {"percent": 15, "message": "Expanding query with related terms"}
-            }
+            yield {"event": "progress", "data": {"percent": 15, "message": "Expanding query with related terms"}}
 
             expanded_query = await self._expand_query(session.query, profile)
 
             # Step 2: Generate embedding for semantic search
             yield {
                 "event": "status",
-                "data": {"phase": ResearchPhase.GENERATING_EMBEDDING.value, "message": "Generating semantic embeddings..."}
+                "data": {
+                    "phase": ResearchPhase.GENERATING_EMBEDDING.value,
+                    "message": "Generating semantic embeddings...",
+                },
             }
-            yield {
-                "event": "progress",
-                "data": {"percent": 25, "message": "Creating search vectors"}
-            }
+            yield {"event": "progress", "data": {"percent": 25, "message": "Creating search vectors"}}
 
             embedding = await self._generate_embedding(expanded_query)
 
             # Step 3: Search grants using vector similarity
             yield {
                 "event": "status",
-                "data": {"phase": ResearchPhase.SEARCHING.value, "message": "Searching grant database..."}
+                "data": {"phase": ResearchPhase.SEARCHING.value, "message": "Searching grant database..."},
             }
-            yield {
-                "event": "progress",
-                "data": {"percent": 40, "message": "Performing semantic search"}
-            }
+            yield {"event": "progress", "data": {"percent": 40, "message": "Performing semantic search"}}
 
             grants = await self._search_grants(db, embedding, profile)
 
             # Emit found grants incrementally
-            yield {
-                "event": "progress",
-                "data": {"percent": 50, "message": f"Found {len(grants)} potential matches"}
-            }
+            yield {"event": "progress", "data": {"percent": 50, "message": f"Found {len(grants)} potential matches"}}
 
             # Emit grants as they are found (in batches for efficiency)
             for i, grant in enumerate(grants[:10]):  # Stream first 10 immediately
@@ -213,9 +189,9 @@ class DeepResearchService:
                             "amount_min": grant.amount_min,
                             "amount_max": grant.amount_max,
                             "relevance_score": 0.5,  # Preliminary score
-                            "match_reasons": ["Semantic match to your query"]
+                            "match_reasons": ["Semantic match to your query"],
                         }
-                    }
+                    },
                 }
                 # Small delay to avoid overwhelming the client
                 if i % 3 == 2:
@@ -224,44 +200,38 @@ class DeepResearchService:
             # Step 4: Score and rank results with Claude
             yield {
                 "event": "status",
-                "data": {"phase": ResearchPhase.SCORING.value, "message": "AI is scoring and ranking results..."}
+                "data": {"phase": ResearchPhase.SCORING.value, "message": "AI is scoring and ranking results..."},
             }
-            yield {
-                "event": "progress",
-                "data": {"percent": 65, "message": "Analyzing relevance with AI"}
-            }
+            yield {"event": "progress", "data": {"percent": 65, "message": "Analyzing relevance with AI"}}
 
             scored_results = await self._score_results(session.query, grants, profile)
 
             yield {
                 "event": "progress",
-                "data": {"percent": 80, "message": f"Scored {len(scored_results)} relevant grants"}
+                "data": {"percent": 80, "message": f"Scored {len(scored_results)} relevant grants"},
             }
 
             # Step 5: Generate insights
             yield {
                 "event": "status",
-                "data": {"phase": ResearchPhase.GENERATING_INSIGHTS.value, "message": "Generating strategic insights..."}
+                "data": {
+                    "phase": ResearchPhase.GENERATING_INSIGHTS.value,
+                    "message": "Generating strategic insights...",
+                },
             }
-            yield {
-                "event": "progress",
-                "data": {"percent": 90, "message": "Creating recommendations"}
-            }
+            yield {"event": "progress", "data": {"percent": 90, "message": "Creating recommendations"}}
 
             insights = await self._generate_insights(session.query, scored_results, profile)
 
             # Emit insights
-            yield {
-                "event": "insights",
-                "data": {"insights": insights}
-            }
+            yield {"event": "insights", "data": {"insights": insights}}
 
             # Calculate processing time
             processing_time = int((time.time() - start_time) * 1000)
 
             # Update session with results
             session.status = "completed"
-            session.results = [r.model_dump(mode='json') for r in scored_results]
+            session.results = [r.model_dump(mode="json") for r in scored_results]
             session.insights = insights
             session.grants_found = len(scored_results)
             session.processing_time_ms = processing_time
@@ -269,17 +239,11 @@ class DeepResearchService:
             await db.commit()
 
             # Emit completion
-            yield {
-                "event": "status",
-                "data": {"phase": ResearchPhase.COMPLETED.value, "message": "Research complete!"}
-            }
-            yield {
-                "event": "progress",
-                "data": {"percent": 100, "message": "Research completed successfully"}
-            }
+            yield {"event": "status", "data": {"phase": ResearchPhase.COMPLETED.value, "message": "Research complete!"}}
+            yield {"event": "progress", "data": {"percent": 100, "message": "Research completed successfully"}}
             yield {
                 "event": "complete",
-                "data": {"grants_found": len(scored_results), "processing_time_ms": processing_time}
+                "data": {"grants_found": len(scored_results), "processing_time_ms": processing_time},
             }
 
         except Exception as e:
@@ -290,24 +254,19 @@ class DeepResearchService:
 
             yield {
                 "event": "status",
-                "data": {"phase": ResearchPhase.FAILED.value, "message": f"Research failed: {str(e)}"}
+                "data": {"phase": ResearchPhase.FAILED.value, "message": f"Research failed: {str(e)}"},
             }
-            yield {
-                "event": "error",
-                "data": {"error": str(e), "phase": ResearchPhase.FAILED.value}
-            }
+            yield {"event": "error", "data": {"error": str(e), "phase": ResearchPhase.FAILED.value}}
 
-    async def _expand_query(
-        self, query: str, profile: Optional[LabProfile]
-    ) -> str:
+    async def _expand_query(self, query: str, profile: Optional[LabProfile]) -> str:
         """Expand query with related terms using Claude."""
         profile_context = ""
         if profile:
             profile_context = f"""
 Researcher's background:
-- Research areas: {', '.join(profile.research_areas or [])}
-- Institution: {profile.institution or 'Unknown'}
-- Career stage: {profile.career_stage or 'Unknown'}
+- Research areas: {", ".join(profile.research_areas or [])}
+- Institution: {profile.institution or "Unknown"}
+- Career stage: {profile.career_stage or "Unknown"}
 """
 
         prompt = f"""You are a grant search expert. Expand this research query with relevant funding-related terms and synonyms.
@@ -387,21 +346,21 @@ Return ONLY the expanded query text, no explanations. Keep it under 300 words.""
         grants_text = ""
         for i, g in enumerate(grants[:20]):  # Limit for token management
             grants_text += f"""
-{i+1}. {g.title}
-   Agency: {g.agency or 'Unknown'}
-   Deadline: {g.deadline.strftime('%Y-%m-%d') if g.deadline else 'Open'}
+{i + 1}. {g.title}
+   Agency: {g.agency or "Unknown"}
+   Deadline: {g.deadline.strftime("%Y-%m-%d") if g.deadline else "Open"}
    Amount: ${g.amount_min or 0:,} - ${g.amount_max or 0:,}
-   Description: {(g.description or '')[:200]}
-   Eligibility: {str(g.eligibility or '')[:100]}
+   Description: {(g.description or "")[:200]}
+   Eligibility: {str(g.eligibility or "")[:100]}
 ---"""
 
         profile_context = ""
         if profile:
             profile_context = f"""
 Researcher profile:
-- Research areas: {', '.join(profile.research_areas or [])}
-- Career stage: {profile.career_stage or 'Unknown'}
-- Institution: {profile.institution or 'Unknown'}
+- Research areas: {", ".join(profile.research_areas or [])}
+- Career stage: {profile.career_stage or "Unknown"}
+- Institution: {profile.institution or "Unknown"}
 """
 
         prompt = f"""You are a grant matching expert. Score these grants for relevance to the research query.
@@ -440,18 +399,20 @@ Return ONLY the JSON array, no other text. Example:
                 idx = score_item["index"] - 1
                 if 0 <= idx < len(grants):
                     grant = grants[idx]
-                    results.append(ResearchGrantResult(
-                        id=grant.id,
-                        title=grant.title,
-                        funder=grant.agency or "Unknown",
-                        mechanism=None,  # Extract from grant if available
-                        description=(grant.description or "")[:500],
-                        deadline=grant.deadline,
-                        amount_min=grant.amount_min,
-                        amount_max=grant.amount_max,
-                        relevance_score=score_item["relevance_score"],
-                        match_reasons=score_item["match_reasons"],
-                    ))
+                    results.append(
+                        ResearchGrantResult(
+                            id=grant.id,
+                            title=grant.title,
+                            funder=grant.agency or "Unknown",
+                            mechanism=None,  # Extract from grant if available
+                            description=(grant.description or "")[:500],
+                            deadline=grant.deadline,
+                            amount_min=grant.amount_min,
+                            amount_max=grant.amount_max,
+                            relevance_score=score_item["relevance_score"],
+                            match_reasons=score_item["match_reasons"],
+                        )
+                    )
 
             # Sort by relevance score
             results.sort(key=lambda x: x.relevance_score, reverse=True)
@@ -487,10 +448,7 @@ Return ONLY the JSON array, no other text. Example:
             return "No matching grants found. Consider broadening your search terms or exploring different funding agencies."
 
         # Summarize results for Claude
-        results_summary = "\n".join([
-            f"- {r.title} ({r.funder}, score: {r.relevance_score:.0%})"
-            for r in results[:10]
-        ])
+        results_summary = "\n".join([f"- {r.title} ({r.funder}, score: {r.relevance_score:.0%})" for r in results[:10]])
 
         funders = list(set(r.funder for r in results))
 
@@ -502,7 +460,7 @@ Found {len(results)} relevant grants
 Top results:
 {results_summary}
 
-Funders represented: {', '.join(funders[:5])}
+Funders represented: {", ".join(funders[:5])}
 
 Provide insights about:
 1. Most promising opportunities
@@ -532,9 +490,7 @@ Keep response under 200 words. Be specific and actionable."""
     ) -> List[ResearchGrantResult]:
         """Quick synchronous search without full research pipeline."""
         # Get profile
-        profile_result = await db.execute(
-            select(LabProfile).where(LabProfile.user_id == user.id)
-        )
+        profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
         profile = profile_result.scalar_one_or_none()
 
         # Generate embedding
@@ -560,9 +516,7 @@ Keep response under 200 words. Be specific and actionable."""
             for g in grants[:max_results]
         ]
 
-    async def get_sessions(
-        self, db: AsyncSession, user_id: UUID, limit: int = 20
-    ) -> List[ResearchSession]:
+    async def get_sessions(self, db: AsyncSession, user_id: UUID, limit: int = 20) -> List[ResearchSession]:
         """Get user's research sessions."""
         result = await db.execute(
             select(ResearchSession)

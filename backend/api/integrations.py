@@ -2,9 +2,9 @@
 Calendar Integration API Endpoints
 Google Calendar OAuth and sync functionality.
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -44,19 +44,11 @@ async def get_integration_status(
     Returns connection status, calendar ID, last sync time,
     and sync enabled state for Google and Outlook.
     """
-    result = await db.execute(
-        select(CalendarIntegration).where(
-            CalendarIntegration.user_id == current_user.id
-        )
-    )
+    result = await db.execute(select(CalendarIntegration).where(CalendarIntegration.user_id == current_user.id))
     integrations = result.scalars().all()
 
-    google_integration = next(
-        (i for i in integrations if i.provider == "google"), None
-    )
-    outlook_integration = next(
-        (i for i in integrations if i.provider == "outlook"), None
-    )
+    google_integration = next((i for i in integrations if i.provider == "google"), None)
+    outlook_integration = next((i for i in integrations if i.provider == "outlook"), None)
 
     return CalendarStatusResponse(
         google=ProviderStatus(
@@ -135,9 +127,7 @@ async def google_oauth_callback(
             # Update existing integration
             existing.access_token = tokens["access_token"]
             existing.refresh_token = tokens.get("refresh_token", existing.refresh_token)
-            existing.token_expires_at = datetime.now(timezone.utc) + timedelta(
-                seconds=tokens["expires_in"]
-            )
+            existing.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"])
             existing.updated_at = datetime.now(timezone.utc)
         else:
             # Create new integration
@@ -146,8 +136,7 @@ async def google_oauth_callback(
                 provider="google",
                 access_token=tokens["access_token"],
                 refresh_token=tokens.get("refresh_token"),
-                token_expires_at=datetime.now(timezone.utc)
-                + timedelta(seconds=tokens["expires_in"]),
+                token_expires_at=datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"]),
                 calendar_id="primary",  # Default to primary calendar
                 sync_enabled=True,
             )
@@ -378,14 +367,10 @@ async def list_google_calendars(
     service = GoogleCalendarService()
 
     # Refresh token if needed
-    if integration.token_expires_at and integration.token_expires_at < datetime.now(
-        timezone.utc
-    ):
+    if integration.token_expires_at and integration.token_expires_at < datetime.now(timezone.utc):
         tokens = await service.refresh_token(integration.refresh_token)
         integration.access_token = tokens["access_token"]
-        integration.token_expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=tokens["expires_in"]
-        )
+        integration.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"])
         await db.commit()
 
     calendars = await service.get_calendars(integration.access_token)

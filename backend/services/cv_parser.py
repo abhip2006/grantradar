@@ -3,7 +3,7 @@ CV Parser Service
 Extract profile information from CV/resume PDFs using basic text extraction.
 No AI required - uses regex patterns and keyword matching.
 """
-import io
+
 import logging
 import re
 from typing import Any, Optional
@@ -62,10 +62,10 @@ def extract_name(text: str) -> Optional[str]:
         # Skip empty lines and common headers
         if not line or len(line) < 3:
             continue
-        if any(skip in line.lower() for skip in [
-            "curriculum vitae", "cv", "resume", "email", "phone",
-            "address", "http", "www.", "@"
-        ]):
+        if any(
+            skip in line.lower()
+            for skip in ["curriculum vitae", "cv", "resume", "email", "phone", "address", "http", "www.", "@"]
+        ):
             continue
 
         # Check if it looks like a name (2-4 capitalized words)
@@ -92,7 +92,7 @@ def extract_institution(text: str) -> Optional[str]:
         idx = text_lower.find(marker)
         if idx != -1:
             # Search in nearby text
-            nearby = text[max(0, idx - 50):idx + 200]
+            nearby = text[max(0, idx - 50) : idx + 200]
             for pattern in institution_patterns:
                 match = re.search(pattern, nearby, re.IGNORECASE)
                 if match:
@@ -131,7 +131,7 @@ def extract_research_interests(text: str) -> list[str]:
         if match:
             # Extract text after header until next section (capitalized line or double newline)
             start = match.end()
-            section_text = text[start:start + 500]
+            section_text = text[start : start + 500]
 
             # Extract bullet points or comma-separated items
             items = re.split(r"[•\-\n,;]", section_text)
@@ -145,17 +145,43 @@ def extract_research_interests(text: str) -> list[str]:
 
     # Also extract from common research keywords anywhere in text
     common_fields = [
-        "machine learning", "artificial intelligence", "deep learning",
-        "natural language processing", "computer vision", "data science",
-        "bioinformatics", "genomics", "proteomics", "computational biology",
-        "cancer research", "immunology", "neuroscience", "genetics",
-        "molecular biology", "cell biology", "biochemistry", "pharmacology",
-        "epidemiology", "public health", "clinical research",
-        "climate science", "environmental science", "ecology",
-        "materials science", "nanotechnology", "quantum computing",
-        "physics", "chemistry", "mathematics", "statistics",
-        "psychology", "cognitive science", "behavioral science",
-        "economics", "sociology", "political science",
+        "machine learning",
+        "artificial intelligence",
+        "deep learning",
+        "natural language processing",
+        "computer vision",
+        "data science",
+        "bioinformatics",
+        "genomics",
+        "proteomics",
+        "computational biology",
+        "cancer research",
+        "immunology",
+        "neuroscience",
+        "genetics",
+        "molecular biology",
+        "cell biology",
+        "biochemistry",
+        "pharmacology",
+        "epidemiology",
+        "public health",
+        "clinical research",
+        "climate science",
+        "environmental science",
+        "ecology",
+        "materials science",
+        "nanotechnology",
+        "quantum computing",
+        "physics",
+        "chemistry",
+        "mathematics",
+        "statistics",
+        "psychology",
+        "cognitive science",
+        "behavioral science",
+        "economics",
+        "sociology",
+        "political science",
     ]
 
     for field in common_fields:
@@ -171,20 +197,56 @@ def extract_methods(text: str) -> list[str]:
 
     # Common research methods and techniques
     method_keywords = [
-        "statistical analysis", "regression analysis", "machine learning",
-        "deep learning", "neural networks", "nlp", "computer vision",
-        "survey research", "interview methods", "ethnography", "case study",
-        "experimental design", "randomized controlled trial", "rct",
-        "meta-analysis", "systematic review", "literature review",
-        "simulation", "computational modeling", "mathematical modeling",
-        "quantitative methods", "qualitative methods", "mixed methods",
-        "dna sequencing", "rna sequencing", "mass spectrometry",
-        "microscopy", "spectroscopy", "chromatography", "hplc",
-        "pcr", "qpcr", "rt-pcr", "elisa", "western blot", "flow cytometry",
-        "crispr", "gene editing", "cell culture", "animal models",
-        "clinical trials", "cohort study", "cross-sectional study",
-        "longitudinal study", "time series analysis",
-        "python", "r programming", "matlab", "spss", "stata",
+        "statistical analysis",
+        "regression analysis",
+        "machine learning",
+        "deep learning",
+        "neural networks",
+        "nlp",
+        "computer vision",
+        "survey research",
+        "interview methods",
+        "ethnography",
+        "case study",
+        "experimental design",
+        "randomized controlled trial",
+        "rct",
+        "meta-analysis",
+        "systematic review",
+        "literature review",
+        "simulation",
+        "computational modeling",
+        "mathematical modeling",
+        "quantitative methods",
+        "qualitative methods",
+        "mixed methods",
+        "dna sequencing",
+        "rna sequencing",
+        "mass spectrometry",
+        "microscopy",
+        "spectroscopy",
+        "chromatography",
+        "hplc",
+        "pcr",
+        "qpcr",
+        "rt-pcr",
+        "elisa",
+        "western blot",
+        "flow cytometry",
+        "crispr",
+        "gene editing",
+        "cell culture",
+        "animal models",
+        "clinical trials",
+        "cohort study",
+        "cross-sectional study",
+        "longitudinal study",
+        "time series analysis",
+        "python",
+        "r programming",
+        "matlab",
+        "spss",
+        "stata",
     ]
 
     text_lower = text.lower()
@@ -225,15 +287,14 @@ def extract_publications(text: str) -> list[dict]:
         return publications
 
     # Extract text until next major section
-    pub_section = text[pub_start:pub_start + 5000]
+    pub_section = text[pub_start : pub_start + 5000]
 
     # Find next section header to limit extraction
     next_section = re.search(
-        r"\n\s*(?:grants?|funding|awards?|teaching|service|education|experience)\s*\n",
-        pub_section.lower()
+        r"\n\s*(?:grants?|funding|awards?|teaching|service|education|experience)\s*\n", pub_section.lower()
     )
     if next_section:
-        pub_section = pub_section[:next_section.start()]
+        pub_section = pub_section[: next_section.start()]
 
     # Extract individual publications
     # Look for patterns like:
@@ -266,11 +327,13 @@ def extract_publications(text: str) -> list[dict]:
         title = title.strip()[:200]
 
         if title:
-            publications.append({
-                "title": title,
-                "year": year,
-                "journal": journal,
-            })
+            publications.append(
+                {
+                    "title": title,
+                    "year": year,
+                    "journal": journal,
+                }
+            )
 
     return publications
 
@@ -301,23 +364,33 @@ def extract_grants(text: str) -> list[dict]:
         return grants
 
     # Extract section
-    grant_section = text[grant_start:grant_start + 4000]
+    grant_section = text[grant_start : grant_start + 4000]
 
     # Find next section
     next_section = re.search(
-        r"\n\s*(?:publications?|teaching|service|education|experience|awards?)\s*\n",
-        grant_section.lower()
+        r"\n\s*(?:publications?|teaching|service|education|experience|awards?)\s*\n", grant_section.lower()
     )
     if next_section:
-        grant_section = grant_section[:next_section.start()]
+        grant_section = grant_section[: next_section.start()]
 
     # Common funders to look for
     funders = [
-        "NIH", "NSF", "DOE", "DOD", "DARPA", "NASA", "USDA",
-        "National Institutes of Health", "National Science Foundation",
-        "Department of Energy", "Department of Defense",
-        "Howard Hughes", "Gates Foundation", "Wellcome Trust",
-        "American Heart Association", "American Cancer Society",
+        "NIH",
+        "NSF",
+        "DOE",
+        "DOD",
+        "DARPA",
+        "NASA",
+        "USDA",
+        "National Institutes of Health",
+        "National Science Foundation",
+        "Department of Energy",
+        "Department of Defense",
+        "Howard Hughes",
+        "Gates Foundation",
+        "Wellcome Trust",
+        "American Heart Association",
+        "American Cancer Society",
     ]
 
     # Extract entries
@@ -350,13 +423,15 @@ def extract_grants(text: str) -> list[dict]:
         title = title.strip()[:200]
 
         if title and len(title) > 10:
-            grants.append({
-                "title": title,
-                "funder": funder,
-                "amount": amount,
-                "start_year": start_year,
-                "end_year": end_year,
-            })
+            grants.append(
+                {
+                    "title": title,
+                    "funder": funder,
+                    "amount": amount,
+                    "start_year": start_year,
+                    "end_year": end_year,
+                }
+            )
 
     return grants
 
@@ -366,26 +441,38 @@ def extract_career_stage(text: str) -> Optional[str]:
     text_lower = text.lower()
 
     # Check for position titles
-    if any(title in text_lower for title in [
-        "full professor", "distinguished professor", "endowed chair",
-        "department chair", "dean", "director"
-    ]):
+    if any(
+        title in text_lower
+        for title in [
+            "full professor",
+            "distinguished professor",
+            "endowed chair",
+            "department chair",
+            "dean",
+            "director",
+        ]
+    ):
         return "senior"
 
-    if any(title in text_lower for title in [
-        "associate professor", "senior scientist", "senior researcher"
-    ]):
+    if any(title in text_lower for title in ["associate professor", "senior scientist", "senior researcher"]):
         return "established"
 
-    if any(title in text_lower for title in [
-        "assistant professor", "research scientist", "lecturer"
-    ]):
+    if any(title in text_lower for title in ["assistant professor", "research scientist", "lecturer"]):
         return "mid_career"
 
-    if any(title in text_lower for title in [
-        "postdoc", "post-doc", "postdoctoral", "research associate",
-        "research fellow", "graduate student", "phd student", "phd candidate"
-    ]):
+    if any(
+        title in text_lower
+        for title in [
+            "postdoc",
+            "post-doc",
+            "postdoctoral",
+            "research associate",
+            "research fellow",
+            "graduate student",
+            "phd student",
+            "phd candidate",
+        ]
+    ):
         return "early_career"
 
     return None

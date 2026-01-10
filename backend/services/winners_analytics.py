@@ -2,10 +2,11 @@
 Winners Analytics Service for AI-powered analysis of funded grants.
 Provides keyword extraction, abstract pattern analysis, and success prediction.
 """
+
 import logging
 import re
-from collections import Counter, defaultdict
-from typing import Any, Optional
+from collections import Counter
+from typing import Optional
 
 from anthropic import AsyncAnthropic
 
@@ -32,21 +33,127 @@ logger = logging.getLogger(__name__)
 
 # Common stop words to filter from keyword extraction
 STOP_WORDS = {
-    "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-    "of", "with", "by", "from", "as", "is", "was", "are", "were", "been",
-    "be", "have", "has", "had", "do", "does", "did", "will", "would",
-    "could", "should", "may", "might", "must", "shall", "this", "that",
-    "these", "those", "it", "its", "we", "our", "their", "they", "you",
-    "your", "he", "she", "him", "her", "his", "which", "who", "whom",
-    "what", "when", "where", "why", "how", "all", "each", "every",
-    "both", "few", "more", "most", "other", "some", "such", "no", "not",
-    "only", "own", "same", "so", "than", "too", "very", "can", "just",
-    "also", "using", "used", "study", "studies", "aim", "aims", "project",
-    "research", "proposed", "specific", "goal", "goals", "objective",
-    "data", "analysis", "method", "methods", "approach", "approaches",
-    "result", "results", "finding", "findings", "develop", "developed",
-    "new", "novel", "first", "one", "two", "three", "role", "mechanism",
-    "mechanisms", "understanding", "understand", "investigate", "examining",
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "as",
+    "is",
+    "was",
+    "are",
+    "were",
+    "been",
+    "be",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "must",
+    "shall",
+    "this",
+    "that",
+    "these",
+    "those",
+    "it",
+    "its",
+    "we",
+    "our",
+    "their",
+    "they",
+    "you",
+    "your",
+    "he",
+    "she",
+    "him",
+    "her",
+    "his",
+    "which",
+    "who",
+    "whom",
+    "what",
+    "when",
+    "where",
+    "why",
+    "how",
+    "all",
+    "each",
+    "every",
+    "both",
+    "few",
+    "more",
+    "most",
+    "other",
+    "some",
+    "such",
+    "no",
+    "not",
+    "only",
+    "own",
+    "same",
+    "so",
+    "than",
+    "too",
+    "very",
+    "can",
+    "just",
+    "also",
+    "using",
+    "used",
+    "study",
+    "studies",
+    "aim",
+    "aims",
+    "project",
+    "research",
+    "proposed",
+    "specific",
+    "goal",
+    "goals",
+    "objective",
+    "data",
+    "analysis",
+    "method",
+    "methods",
+    "approach",
+    "approaches",
+    "result",
+    "results",
+    "finding",
+    "findings",
+    "develop",
+    "developed",
+    "new",
+    "novel",
+    "first",
+    "one",
+    "two",
+    "three",
+    "role",
+    "mechanism",
+    "mechanisms",
+    "understanding",
+    "understand",
+    "investigate",
+    "examining",
 }
 
 
@@ -71,7 +178,7 @@ class WinnersAnalyticsService:
             return []
 
         # Lowercase and split
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
 
         # Filter stop words
         keywords = [w for w in words if w not in STOP_WORDS]
@@ -83,12 +190,12 @@ class WinnersAnalyticsService:
         if not text:
             return []
 
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
         words = [w for w in words if w not in STOP_WORDS]
 
         bigrams = []
         for i in range(len(words) - 1):
-            bigrams.append(f"{words[i]} {words[i+1]}")
+            bigrams.append(f"{words[i]} {words[i + 1]}")
 
         return bigrams
 
@@ -163,12 +270,14 @@ class WinnersAnalyticsService:
 
         for keyword, count in combined_counts.most_common(request.top_n):
             percentage = (count / total_projects) * 100 if total_projects > 0 else 0
-            top_keywords.append(KeywordItem(
-                keyword=keyword,
-                frequency=count,
-                percentage=round(percentage, 1),
-                trending=None,  # Would need historical data
-            ))
+            top_keywords.append(
+                KeywordItem(
+                    keyword=keyword,
+                    frequency=count,
+                    percentage=round(percentage, 1),
+                    trending=None,  # Would need historical data
+                )
+            )
 
         # Build clusters (simplified - group by common stems)
         clusters = self._cluster_keywords(list(combined_counts.keys())[:50])
@@ -178,7 +287,8 @@ class WinnersAnalyticsService:
         if request.compare_to_profile and user_profile_keywords:
             matching = [k for k in user_profile_keywords if k.lower() in combined_counts]
             top_missing = [
-                k for k, _ in combined_counts.most_common(20)
+                k
+                for k, _ in combined_counts.most_common(20)
                 if k.lower() not in [pk.lower() for pk in user_profile_keywords]
             ][:10]
 
@@ -229,11 +339,13 @@ class WinnersAnalyticsService:
                     used_keywords.add(kw)
 
             if matching:
-                clusters.append(KeywordCluster(
-                    theme=theme.title(),
-                    keywords=matching[:10],
-                    project_count=len(matching),
-                ))
+                clusters.append(
+                    KeywordCluster(
+                        theme=theme.title(),
+                        keywords=matching[:10],
+                        project_count=len(matching),
+                    )
+                )
 
         return clusters[:8]  # Limit to top 8 clusters
 
@@ -292,7 +404,7 @@ class WinnersAnalyticsService:
 
         for abstract in abstracts:
             words = len(abstract.split())
-            sentences = len(re.findall(r'[.!?]+', abstract))
+            sentences = len(re.findall(r"[.!?]+", abstract))
             total_words += words
             total_sentences += max(sentences, 1)
 
@@ -312,8 +424,16 @@ class WinnersAnalyticsService:
 
         # Common action verbs in grant abstracts
         action_verbs = [
-            "investigate", "examine", "determine", "develop", "establish",
-            "characterize", "identify", "evaluate", "analyze", "test",
+            "investigate",
+            "examine",
+            "determine",
+            "develop",
+            "establish",
+            "characterize",
+            "identify",
+            "evaluate",
+            "analyze",
+            "test",
         ]
 
         language_insights = LanguageInsights(
@@ -322,8 +442,12 @@ class WinnersAnalyticsService:
             key_phrases=key_phrases,
             action_verbs=action_verbs,
             avoided_phrases=[
-                "we believe", "hopefully", "attempt to", "try to",
-                "may possibly", "it is our intention",
+                "we believe",
+                "hopefully",
+                "attempt to",
+                "try to",
+                "may possibly",
+                "it is our intention",
             ],
         )
 
@@ -364,55 +488,65 @@ class WinnersAnalyticsService:
 
         # Check for common structural elements
         significance_count = sum(
-            1 for a in abstracts
+            1
+            for a in abstracts
             if any(term in a.lower() for term in ["significance", "important", "critical", "essential"])
         )
         if significance_count > len(abstracts) * 0.5:
-            patterns.append(AbstractPattern(
-                pattern_type="structure",
-                description="Significance statement near beginning",
-                examples=["This research is significant because...", "Understanding X is critical for..."],
-                frequency=round(significance_count / len(abstracts) * 100, 1),
-            ))
+            patterns.append(
+                AbstractPattern(
+                    pattern_type="structure",
+                    description="Significance statement near beginning",
+                    examples=["This research is significant because...", "Understanding X is critical for..."],
+                    frequency=round(significance_count / len(abstracts) * 100, 1),
+                )
+            )
 
         # Check for hypothesis/objective patterns
         hypothesis_count = sum(
-            1 for a in abstracts
+            1
+            for a in abstracts
             if any(term in a.lower() for term in ["hypothesis", "hypothesize", "we propose", "objective"])
         )
         if hypothesis_count > len(abstracts) * 0.3:
-            patterns.append(AbstractPattern(
-                pattern_type="structure",
-                description="Clear hypothesis or objective statement",
-                examples=["We hypothesize that...", "The central hypothesis is..."],
-                frequency=round(hypothesis_count / len(abstracts) * 100, 1),
-            ))
+            patterns.append(
+                AbstractPattern(
+                    pattern_type="structure",
+                    description="Clear hypothesis or objective statement",
+                    examples=["We hypothesize that...", "The central hypothesis is..."],
+                    frequency=round(hypothesis_count / len(abstracts) * 100, 1),
+                )
+            )
 
         # Check for approach/methods patterns
         approach_count = sum(
-            1 for a in abstracts
-            if any(term in a.lower() for term in ["approach", "methodology", "using", "employ"])
+            1 for a in abstracts if any(term in a.lower() for term in ["approach", "methodology", "using", "employ"])
         )
         if approach_count > len(abstracts) * 0.5:
-            patterns.append(AbstractPattern(
-                pattern_type="approach",
-                description="Methodology or approach description",
-                examples=["Using X approach, we will...", "Our innovative methodology..."],
-                frequency=round(approach_count / len(abstracts) * 100, 1),
-            ))
+            patterns.append(
+                AbstractPattern(
+                    pattern_type="approach",
+                    description="Methodology or approach description",
+                    examples=["Using X approach, we will...", "Our innovative methodology..."],
+                    frequency=round(approach_count / len(abstracts) * 100, 1),
+                )
+            )
 
         # Check for impact/outcome patterns
         impact_count = sum(
-            1 for a in abstracts
+            1
+            for a in abstracts
             if any(term in a.lower() for term in ["impact", "outcome", "result in", "lead to", "advance"])
         )
         if impact_count > len(abstracts) * 0.4:
-            patterns.append(AbstractPattern(
-                pattern_type="impact",
-                description="Expected outcomes and impact",
-                examples=["These studies will lead to...", "The expected impact includes..."],
-                frequency=round(impact_count / len(abstracts) * 100, 1),
-            ))
+            patterns.append(
+                AbstractPattern(
+                    pattern_type="impact",
+                    description="Expected outcomes and impact",
+                    examples=["These studies will lead to...", "The expected impact includes..."],
+                    frequency=round(impact_count / len(abstracts) * 100, 1),
+                )
+            )
 
         return patterns
 
@@ -461,7 +595,8 @@ Format your response as JSON:
 
             # Extract JSON from response
             import json
-            json_match = re.search(r'\{[^{}]+\}', response_text, re.DOTALL)
+
+            json_match = re.search(r"\{[^{}]+\}", response_text, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group())
                 return UserAbstractComparison(
@@ -526,54 +661,65 @@ Format your response as JSON:
         similar_count = len(result.results)
         if similar_count > 20:
             probability += 5
-            factors.append(PredictionFactor(
-                factor="Research Area Activity",
-                impact="positive",
-                weight=0.15,
-                explanation=f"Found {similar_count} similar funded projects, indicating active funding in this area",
-            ))
+            factors.append(
+                PredictionFactor(
+                    factor="Research Area Activity",
+                    impact="positive",
+                    weight=0.15,
+                    explanation=f"Found {similar_count} similar funded projects, indicating active funding in this area",
+                )
+            )
         elif similar_count < 5:
             probability -= 3
-            factors.append(PredictionFactor(
-                factor="Research Area Activity",
-                impact="negative",
-                weight=0.10,
-                explanation="Few similar funded projects found, may be a less active funding area",
-            ))
+            factors.append(
+                PredictionFactor(
+                    factor="Research Area Activity",
+                    impact="negative",
+                    weight=0.10,
+                    explanation="Few similar funded projects found, may be a less active funding area",
+                )
+            )
 
         # Factor 2: Previous awards
         if request.pi_previous_awards > 0:
             boost = min(request.pi_previous_awards * 5, 15)
             probability += boost
-            factors.append(PredictionFactor(
-                factor="Track Record",
-                impact="positive",
-                weight=0.25,
-                explanation=f"PI has {request.pi_previous_awards} previous award(s), demonstrating successful track record",
-            ))
+            factors.append(
+                PredictionFactor(
+                    factor="Track Record",
+                    impact="positive",
+                    weight=0.25,
+                    explanation=f"PI has {request.pi_previous_awards} previous award(s), demonstrating successful track record",
+                )
+            )
         else:
-            factors.append(PredictionFactor(
-                factor="Track Record",
-                impact="neutral",
-                weight=0.15,
-                explanation="No previous awards on record (new investigator)",
-            ))
+            factors.append(
+                PredictionFactor(
+                    factor="Track Record",
+                    impact="neutral",
+                    weight=0.15,
+                    explanation="No previous awards on record (new investigator)",
+                )
+            )
 
         # Factor 3: Institution
         if request.institution:
             # Check if institution appears in funded projects
             inst_matches = sum(
-                1 for p in result.results
+                1
+                for p in result.results
                 if p.organization and request.institution.lower() in (p.organization.name or "").lower()
             )
             if inst_matches > 5:
                 probability += 5
-                factors.append(PredictionFactor(
-                    factor="Institution",
-                    impact="positive",
-                    weight=0.15,
-                    explanation=f"Institution has strong funding history in this area ({inst_matches} similar awards)",
-                ))
+                factors.append(
+                    PredictionFactor(
+                        factor="Institution",
+                        impact="positive",
+                        weight=0.15,
+                        explanation=f"Institution has strong funding history in this area ({inst_matches} similar awards)",
+                    )
+                )
 
         # Factor 4: Keyword alignment
         if request.keywords and result.results:
@@ -588,12 +734,14 @@ Format your response as JSON:
 
             if overlap > len(request.keywords) * 0.5:
                 probability += 5
-                factors.append(PredictionFactor(
-                    factor="Keyword Alignment",
-                    impact="positive",
-                    weight=0.15,
-                    explanation=f"Good keyword overlap with funded projects ({overlap}/{len(request.keywords)} keywords match)",
-                ))
+                factors.append(
+                    PredictionFactor(
+                        factor="Keyword Alignment",
+                        impact="positive",
+                        weight=0.15,
+                        explanation=f"Good keyword overlap with funded projects ({overlap}/{len(request.keywords)} keywords match)",
+                    )
+                )
 
         # Clamp probability
         probability = max(5, min(95, probability))
@@ -618,10 +766,12 @@ Format your response as JSON:
         if not request.keywords:
             recommendations.append("Ensure your proposal uses terminology common in funded grants in this area")
 
-        recommendations.extend([
-            "Review abstracts of similar funded projects for structure and language patterns",
-            "Consider reaching out to program officers to discuss your research direction",
-        ])
+        recommendations.extend(
+            [
+                "Review abstracts of similar funded projects for structure and language patterns",
+                "Consider reaching out to program officers to discuss your research direction",
+            ]
+        )
 
         return SuccessPredictionResponse(
             probability=round(probability, 1),

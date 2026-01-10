@@ -2,6 +2,7 @@
 Statistics API Endpoints
 Dashboard statistics and analytics.
 """
+
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/stats", tags=["Statistics"])
     "",
     response_model=DashboardStats,
     summary="Get dashboard statistics",
-    description="Get aggregated statistics for the user dashboard."
+    description="Get aggregated statistics for the user dashboard.",
 )
 async def get_stats(
     db: AsyncSessionDep,
@@ -44,70 +45,50 @@ async def get_stats(
     user_matches = Match.user_id == current_user.id
 
     # Total matches count
-    total_result = await db.execute(
-        select(func.count(Match.id)).where(user_matches)
-    )
+    total_result = await db.execute(select(func.count(Match.id)).where(user_matches))
     total_matches = total_result.scalar() or 0
 
     # Saved grants count
     saved_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.user_action == "saved")
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.user_action == "saved"))
     )
     saved_grants = saved_result.scalar() or 0
 
     # Dismissed grants count
     dismissed_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.user_action == "dismissed")
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.user_action == "dismissed"))
     )
     dismissed_grants = dismissed_result.scalar() or 0
 
     # New matches today
     today_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.created_at >= one_day_ago)
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.created_at >= one_day_ago))
     )
     new_matches_today = today_result.scalar() or 0
 
     # New matches this week
     week_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.created_at >= one_week_ago)
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.created_at >= one_week_ago))
     )
     new_matches_week = week_result.scalar() or 0
 
     # Score distribution
     excellent_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.match_score >= 0.8)
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.match_score >= 0.8))
     )
     excellent = excellent_result.scalar() or 0
 
     good_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.match_score >= 0.6, Match.match_score < 0.8)
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.match_score >= 0.6, Match.match_score < 0.8))
     )
     good = good_result.scalar() or 0
 
     moderate_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.match_score >= 0.4, Match.match_score < 0.6)
-        )
+        select(func.count(Match.id)).where(and_(user_matches, Match.match_score >= 0.4, Match.match_score < 0.6))
     )
     moderate = moderate_result.scalar() or 0
 
-    low_result = await db.execute(
-        select(func.count(Match.id)).where(
-            and_(user_matches, Match.match_score < 0.4)
-        )
-    )
+    low_result = await db.execute(select(func.count(Match.id)).where(and_(user_matches, Match.match_score < 0.4)))
     low = low_result.scalar() or 0
 
     score_distribution = MatchScoreDistribution(
@@ -118,9 +99,7 @@ async def get_stats(
     )
 
     # Average match score
-    avg_result = await db.execute(
-        select(func.avg(Match.match_score)).where(user_matches)
-    )
+    avg_result = await db.execute(select(func.avg(Match.match_score)).where(user_matches))
     average_match_score = avg_result.scalar()
 
     # Upcoming deadlines (next 30 days, not dismissed)
@@ -131,10 +110,7 @@ async def get_stats(
         .where(
             and_(
                 user_matches,
-                or_(
-                    Match.user_action.is_(None),
-                    Match.user_action != "dismissed"
-                ),
+                or_(Match.user_action.is_(None), Match.user_action != "dismissed"),
             )
         )
         .join(Match.grant)
@@ -165,11 +141,7 @@ async def get_stats(
 
     # Recent matches (last 10)
     recent_result = await db.execute(
-        select(Match)
-        .options(joinedload(Match.grant))
-        .where(user_matches)
-        .order_by(Match.created_at.desc())
-        .limit(10)
+        select(Match).options(joinedload(Match.grant)).where(user_matches).order_by(Match.created_at.desc()).limit(10)
     )
     recent = recent_result.unique().scalars().all()
 
@@ -186,9 +158,7 @@ async def get_stats(
     ]
 
     # Profile status
-    profile_result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = profile_result.scalar_one_or_none()
 
     profile_complete = profile is not None

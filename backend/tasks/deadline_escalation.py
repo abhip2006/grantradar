@@ -2,6 +2,7 @@
 Deadline Escalation Tasks
 Celery tasks for checking and sending escalation alerts for stale deadlines.
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -56,7 +57,7 @@ def check_deadline_escalations() -> dict:
             .where(
                 and_(
                     Deadline.status == DeadlineStatus.NOT_STARTED.value,
-                    Deadline.escalation_sent == False,
+                    not Deadline.escalation_sent,
                     Deadline.sponsor_deadline <= threshold_date,
                     Deadline.sponsor_deadline > now,  # Not already past
                 )
@@ -78,8 +79,7 @@ def check_deadline_escalations() -> dict:
                 escalations_sent += 1
 
                 logger.info(
-                    f"Sent escalation for deadline {deadline.id} "
-                    f"('{deadline.title}') - {days_until} days remaining"
+                    f"Sent escalation for deadline {deadline.id} ('{deadline.title}') - {days_until} days remaining"
                 )
 
             except Exception as e:
@@ -146,11 +146,11 @@ def _send_escalation_alert(deadline: Deadline, user: User, days_until: int) -> N
 
                 <div style="background: white; padding: 12px 16px; border-radius: 6px; flex: 1; min-width: 120px;">
                     <div style="color: #6B7280; font-size: 12px; text-transform: uppercase;">Deadline</div>
-                    <div style="color: #111827; font-size: 14px; font-weight: 500;">{deadline.sponsor_deadline.strftime('%B %d, %Y')}</div>
+                    <div style="color: #111827; font-size: 14px; font-weight: 500;">{deadline.sponsor_deadline.strftime("%B %d, %Y")}</div>
                 </div>
             </div>
 
-            {f'<p style="color: #6B7280; margin: 16px 0 0 0;"><strong>Funder:</strong> {deadline.funder}</p>' if deadline.funder else ''}
+            {f'<p style="color: #6B7280; margin: 16px 0 0 0;"><strong>Funder:</strong> {deadline.funder}</p>' if deadline.funder else ""}
         </div>
 
         <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
@@ -161,7 +161,7 @@ def _send_escalation_alert(deadline: Deadline, user: User, days_until: int) -> N
         </div>
 
         <div style="text-align: center; margin-top: 24px;">
-            <a href="{settings.FRONTEND_URL or 'http://localhost:5173'}/deadlines"
+            <a href="{settings.FRONTEND_URL or "http://localhost:5173"}/deadlines"
                style="display: inline-block; background: #3B82F6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500;">
                 View Deadline Details
             </a>
@@ -171,7 +171,7 @@ def _send_escalation_alert(deadline: Deadline, user: User, days_until: int) -> N
 
         <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
             You're receiving this because you have a grant deadline that needs attention.<br>
-            <a href="{settings.FRONTEND_URL or 'http://localhost:5173'}/settings" style="color: #6B7280;">Manage notification preferences</a>
+            <a href="{settings.FRONTEND_URL or "http://localhost:5173"}/settings" style="color: #6B7280;">Manage notification preferences</a>
         </p>
     </body>
     </html>
@@ -209,7 +209,7 @@ def reset_escalation_flags() -> dict:
         result = session.execute(
             select(Deadline).where(
                 and_(
-                    Deadline.escalation_sent == True,
+                    Deadline.escalation_sent,
                     Deadline.status.in_(ACTIVE_STATUSES),
                 )
             )

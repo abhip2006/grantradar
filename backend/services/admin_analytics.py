@@ -2,12 +2,12 @@
 Admin Analytics Service
 Query logic for platform-wide admin analytics with caching support.
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from uuid import UUID
 
-from sqlalchemy import and_, case, distinct, func, select
+from sqlalchemy import and_, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
@@ -37,7 +37,7 @@ from backend.schemas.admin_analytics import (
     TopUserByActivity,
     UserAnalyticsResponse,
 )
-from backend.services.cache import cached, cache_key, get_cached, set_cached
+from backend.services.cache import cache_key, get_cached, set_cached
 
 logger = logging.getLogger(__name__)
 
@@ -81,16 +81,12 @@ async def get_platform_overview(
     total_users = total_users_result.scalar() or 0
 
     # Active users in last 24 hours (based on chat sessions or research sessions)
-    active_24h_query = select(func.count(distinct(ChatSession.user_id))).where(
-        ChatSession.updated_at >= yesterday
-    )
+    active_24h_query = select(func.count(distinct(ChatSession.user_id))).where(ChatSession.updated_at >= yesterday)
     active_24h_result = await db.execute(active_24h_query)
     active_users_24h = active_24h_result.scalar() or 0
 
     # Active users in last 7 days
-    active_7d_query = select(func.count(distinct(ChatSession.user_id))).where(
-        ChatSession.updated_at >= week_ago
-    )
+    active_7d_query = select(func.count(distinct(ChatSession.user_id))).where(ChatSession.updated_at >= week_ago)
     active_7d_result = await db.execute(active_7d_query)
     active_users_7d = active_7d_result.scalar() or 0
 
@@ -105,15 +101,11 @@ async def get_platform_overview(
     # AI requests today (chat messages + research sessions created today)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    chat_today_query = select(func.count(ChatMessage.id)).where(
-        ChatMessage.created_at >= today_start
-    )
+    chat_today_query = select(func.count(ChatMessage.id)).where(ChatMessage.created_at >= today_start)
     chat_today_result = await db.execute(chat_today_query)
     chat_today = chat_today_result.scalar() or 0
 
-    research_today_query = select(func.count(ResearchSession.id)).where(
-        ResearchSession.created_at >= today_start
-    )
+    research_today_query = select(func.count(ResearchSession.id)).where(ResearchSession.created_at >= today_start)
     research_today_result = await db.execute(research_today_query)
     research_today = research_today_result.scalar() or 0
 
@@ -176,10 +168,7 @@ async def get_user_analytics(
         .order_by(func.date(User.created_at))
     )
     signups_result = await db.execute(signups_query)
-    signups_by_day = [
-        DailySignup(date=str(row.date), count=row.count)
-        for row in signups_result.fetchall()
-    ]
+    signups_by_day = [DailySignup(date=str(row.date), count=row.count) for row in signups_result.fetchall()]
 
     # Daily active users (based on chat session activity)
     active_query = (
@@ -187,26 +176,19 @@ async def get_user_analytics(
             func.date(ChatSession.updated_at).label("date"),
             func.count(distinct(ChatSession.user_id)).label("count"),
         )
-        .where(
-            and_(ChatSession.updated_at >= cutoff_date, ChatSession.updated_at <= end)
-        )
+        .where(and_(ChatSession.updated_at >= cutoff_date, ChatSession.updated_at <= end))
         .group_by(func.date(ChatSession.updated_at))
         .order_by(func.date(ChatSession.updated_at))
     )
     active_result = await db.execute(active_query)
-    active_users_by_day = [
-        DailyActiveUsers(date=str(row.date), count=row.count)
-        for row in active_result.fetchall()
-    ]
+    active_users_by_day = [DailyActiveUsers(date=str(row.date), count=row.count) for row in active_result.fetchall()]
 
     # Retention rate (users who signed up 7+ days ago and were active in last 7 days)
     week_ago = now - timedelta(days=7)
-    two_weeks_ago = now - timedelta(days=14)
+    now - timedelta(days=14)
 
     # Users who signed up more than 7 days ago
-    eligible_users_query = select(func.count(User.id)).where(
-        User.created_at <= week_ago
-    )
+    eligible_users_query = select(func.count(User.id)).where(User.created_at <= week_ago)
     eligible_result = await db.execute(eligible_users_query)
     eligible_users = eligible_result.scalar() or 0
 
@@ -224,9 +206,7 @@ async def get_user_analytics(
     retained_result = await db.execute(retained_query)
     retained_users = retained_result.scalar() or 0
 
-    retention_rate = (
-        round((retained_users / eligible_users) * 100, 1) if eligible_users > 0 else 0.0
-    )
+    retention_rate = round((retained_users / eligible_users) * 100, 1) if eligible_users > 0 else 0.0
 
     # Top users by activity (chat messages + applications)
     activity_query = (
@@ -312,29 +292,22 @@ async def get_ai_usage(
             func.date(ChatSession.created_at).label("date"),
             func.count(ChatSession.id).label("count"),
         )
-        .where(
-            and_(ChatSession.created_at >= cutoff_date, ChatSession.created_at <= end)
-        )
+        .where(and_(ChatSession.created_at >= cutoff_date, ChatSession.created_at <= end))
         .group_by(func.date(ChatSession.created_at))
         .order_by(func.date(ChatSession.created_at))
     )
     chat_sessions_result = await db.execute(chat_sessions_query)
     chat_sessions_by_day = [
-        DailyChatSessions(date=str(row.date), count=row.count)
-        for row in chat_sessions_result.fetchall()
+        DailyChatSessions(date=str(row.date), count=row.count) for row in chat_sessions_result.fetchall()
     ]
 
     # Total insights generated (eligibility chat sessions)
-    insights_query = select(func.count(ChatSession.id)).where(
-        ChatSession.session_type == "eligibility"
-    )
+    insights_query = select(func.count(ChatSession.id)).where(ChatSession.session_type == "eligibility")
     insights_result = await db.execute(insights_query)
     insights_generated = insights_result.scalar() or 0
 
     # Writing analyses (chat sessions of type 'writing' if it exists, or estimate from sessions)
-    writing_query = select(func.count(ChatSession.id)).where(
-        ChatSession.session_type.in_(["writing", "analysis"])
-    )
+    writing_query = select(func.count(ChatSession.id)).where(ChatSession.session_type.in_(["writing", "analysis"]))
     writing_result = await db.execute(writing_query)
     writing_analyses = writing_result.scalar() or 0
 
@@ -395,8 +368,7 @@ async def get_grant_analytics(
     )
     source_result = await db.execute(source_query)
     grants_by_source = [
-        GrantsBySource(source=row.source or "unknown", count=row.count)
-        for row in source_result.fetchall()
+        GrantsBySource(source=row.source or "unknown", count=row.count) for row in source_result.fetchall()
     ]
 
     # Grants by agency (top 10)
@@ -408,10 +380,7 @@ async def get_grant_analytics(
         .limit(10)
     )
     agency_result = await db.execute(agency_query)
-    grants_by_agency = [
-        GrantsByAgency(agency=row.agency, count=row.count)
-        for row in agency_result.fetchall()
-    ]
+    grants_by_agency = [GrantsByAgency(agency=row.agency, count=row.count) for row in agency_result.fetchall()]
 
     # Applications by status
     status_query = (
@@ -421,7 +390,7 @@ async def get_grant_analytics(
     )
     status_result = await db.execute(status_query)
     applications_by_status = [
-        ApplicationsByStatus(status=row.stage.value if hasattr(row.stage, 'value') else str(row.stage), count=row.count)
+        ApplicationsByStatus(status=row.stage.value if hasattr(row.stage, "value") else str(row.stage), count=row.count)
         for row in status_result.fetchall()
     ]
 
@@ -503,9 +472,7 @@ async def get_team_analytics(
 
     # Average team size
     if total_teams > 0:
-        total_members_query = select(func.count(LabMember.id)).where(
-            LabMember.invitation_status == "accepted"
-        )
+        total_members_query = select(func.count(LabMember.id)).where(LabMember.invitation_status == "accepted")
         total_members_result = await db.execute(total_members_query)
         total_members = total_members_result.scalar() or 0
         avg_team_size = round(total_members / total_teams, 1) if total_teams > 0 else 0.0
@@ -513,9 +480,9 @@ async def get_team_analytics(
         avg_team_size = 0.0
 
     # Active collaborations (teams with activity in last 7 days)
-    active_collab_query = select(
-        func.count(distinct(TeamComment.lab_owner_id))
-    ).where(TeamComment.created_at >= week_ago)
+    active_collab_query = select(func.count(distinct(TeamComment.lab_owner_id))).where(
+        TeamComment.created_at >= week_ago
+    )
     active_collab_result = await db.execute(active_collab_query)
     active_collaborations = active_collab_result.scalar() or 0
 
@@ -525,19 +492,12 @@ async def get_team_analytics(
             func.date(TeamComment.created_at).label("date"),
             func.count(TeamComment.id).label("count"),
         )
-        .where(
-            and_(
-                TeamComment.created_at >= cutoff_date, TeamComment.created_at <= end
-            )
-        )
+        .where(and_(TeamComment.created_at >= cutoff_date, TeamComment.created_at <= end))
         .group_by(func.date(TeamComment.created_at))
         .order_by(func.date(TeamComment.created_at))
     )
     comments_result = await db.execute(comments_query)
-    comments_per_day = [
-        DailyComments(date=str(row.date), count=row.count)
-        for row in comments_result.fetchall()
-    ]
+    comments_per_day = [DailyComments(date=str(row.date), count=row.count) for row in comments_result.fetchall()]
 
     result = TeamAnalyticsResponse(
         total_teams=total_teams,

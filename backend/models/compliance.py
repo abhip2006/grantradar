@@ -6,6 +6,7 @@ JSONB Field Types:
 - rules: List[ComplianceRuleItemDict] - see backend.schemas.jsonb_types for structure
 - results: List[ComplianceScanResultDict] - see backend.schemas.jsonb_types for structure
 """
+
 import uuid
 from datetime import datetime
 from typing import Any, List, Optional

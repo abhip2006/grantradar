@@ -94,6 +94,7 @@ TASK_ROUTES = {
 # Celery Application
 # =============================================================================
 
+
 def create_celery_app() -> Celery:
     """
     Create and configure the Celery application.
@@ -131,7 +132,6 @@ def create_celery_app() -> Celery:
         task_serializer="json",
         accept_content=["json"],
         result_serializer="json",
-
         # =======
         # Queues
         # =======
@@ -140,50 +140,42 @@ def create_celery_app() -> Celery:
         task_default_queue="normal",
         task_default_exchange="default",
         task_default_routing_key="normal",
-
         # ===========
         # Time Limits
         # ===========
         task_soft_time_limit=300,  # 5 minutes soft limit
         task_time_limit=600,  # 10 minutes hard limit
-
         # =============
         # Retry Policy
         # =============
         task_default_retry_delay=10,  # 10 seconds initial delay
         task_max_retries=3,
-
         # ==========
         # Concurrency
         # ==========
         worker_concurrency=4,  # Number of concurrent worker processes
         worker_prefetch_multiplier=2,  # Prefetch 2 tasks per worker
-
         # ===========
         # Result Backend
         # ===========
         result_expires=86400,  # Results expire after 24 hours
         result_extended=True,  # Store additional metadata
-
         # ==========
         # Task Track
         # ==========
         task_track_started=True,
         task_acks_late=True,  # Acknowledge after task completes
         task_reject_on_worker_lost=True,
-
         # ========
         # Timezone
         # ========
         timezone="UTC",
         enable_utc=True,
-
         # ===========
         # Broker Settings
         # ===========
         broker_connection_retry_on_startup=True,
         broker_pool_limit=10,
-
         # ==========
         # Beat Schedule
         # ==========
@@ -257,6 +249,7 @@ celery_app = create_celery_app()
 # Circuit Breaker Pattern
 # =============================================================================
 
+
 class CircuitBreaker:
     """
     Circuit breaker pattern implementation for external API calls.
@@ -301,10 +294,7 @@ class CircuitBreaker:
     def state(self) -> str:
         """Get current circuit state, checking for recovery timeout."""
         if self._state == self.OPEN:
-            if (
-                self._last_failure_time
-                and time.time() - self._last_failure_time >= self.recovery_timeout
-            ):
+            if self._last_failure_time and time.time() - self._last_failure_time >= self.recovery_timeout:
                 self._state = self.HALF_OPEN
         return self._state
 
@@ -326,9 +316,7 @@ class CircuitBreaker:
 
         if self._failure_count >= self.failure_threshold:
             self._state = self.OPEN
-            logger.warning(
-                f"Circuit breaker opened after {self._failure_count} failures"
-            )
+            logger.warning(f"Circuit breaker opened after {self._failure_count} failures")
 
     def can_execute(self) -> bool:
         """Check if requests can be executed."""
@@ -336,12 +324,11 @@ class CircuitBreaker:
 
     def __call__(self, func: F) -> F:
         """Decorator to wrap functions with circuit breaker logic."""
+
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             if not self.can_execute():
-                raise CircuitBreakerOpenError(
-                    f"Circuit breaker is open for {func.__name__}"
-                )
+                raise CircuitBreakerOpenError(f"Circuit breaker is open for {func.__name__}")
 
             try:
                 result = func(*args, **kwargs)
@@ -356,6 +343,7 @@ class CircuitBreaker:
 
 class CircuitBreakerOpenError(Exception):
     """Exception raised when circuit breaker is open."""
+
     pass
 
 
@@ -382,6 +370,7 @@ nih_reporter_circuit = CircuitBreaker(
 # Priority Routing Helper
 # =============================================================================
 
+
 def route_by_priority(match_score: Optional[float] = None, is_new_grant: bool = False) -> str:
     """
     Determine the appropriate queue based on priority routing logic.
@@ -404,6 +393,7 @@ def route_by_priority(match_score: Optional[float] = None, is_new_grant: bool = 
 # =============================================================================
 # Custom Task Base Class with Retry Policy
 # =============================================================================
+
 
 class BaseTaskWithRetry(Task):
     """
@@ -495,9 +485,7 @@ def task_postrun_handler(
         task_name = sender.name if sender else "unknown"
 
         # Log latency for monitoring
-        logger.info(
-            f"Task {task_name}[{task_id}] completed in {latency:.3f}s with state={state}"
-        )
+        logger.info(f"Task {task_name}[{task_id}] completed in {latency:.3f}s with state={state}")
 
         # Here you could emit metrics to your monitoring system
         # e.g., prometheus_client, datadog, etc.
@@ -523,9 +511,7 @@ def task_failure_handler(
     **kwargs: Any,
 ) -> None:
     """Handle task failure."""
-    logger.error(
-        f"Task {sender.name if sender else 'unknown'}[{task_id}] failed: {exception}"
-    )
+    logger.error(f"Task {sender.name if sender else 'unknown'}[{task_id}] failed: {exception}")
     # Clean up start time if present
     if task_id:
         _task_start_times.pop(task_id, None)
@@ -568,6 +554,7 @@ def emit_task_metric(task_name: str, latency: float, state: str | None) -> None:
 # =============================================================================
 # Convenience Decorators
 # =============================================================================
+
 
 def critical_task(func: F) -> F:
     """Decorator to mark a task as critical priority."""

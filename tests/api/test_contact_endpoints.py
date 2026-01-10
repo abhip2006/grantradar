@@ -2,8 +2,6 @@
 Tests for Contact Form API endpoints.
 Tests contact form submission and email processing.
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 class TestContactFormRequest:
@@ -40,31 +38,31 @@ class TestSubjectLabels:
     def test_subject_labels(self):
         """Test subject labels are defined."""
         subject_labels = {
-            'general': 'General Inquiry',
-            'support': 'Technical Support',
-            'billing': 'Billing Question',
-            'enterprise': 'Enterprise Sales',
-            'partnership': 'Partnership Opportunity',
-            'feedback': 'Product Feedback',
+            "general": "General Inquiry",
+            "support": "Technical Support",
+            "billing": "Billing Question",
+            "enterprise": "Enterprise Sales",
+            "partnership": "Partnership Opportunity",
+            "feedback": "Product Feedback",
         }
 
-        assert subject_labels['general'] == 'General Inquiry'
-        assert subject_labels['support'] == 'Technical Support'
-        assert subject_labels['billing'] == 'Billing Question'
-        assert subject_labels['enterprise'] == 'Enterprise Sales'
+        assert subject_labels["general"] == "General Inquiry"
+        assert subject_labels["support"] == "Technical Support"
+        assert subject_labels["billing"] == "Billing Question"
+        assert subject_labels["enterprise"] == "Enterprise Sales"
 
     def test_subject_label_fallback(self):
         """Test fallback for unknown subject."""
         subject_labels = {
-            'general': 'General Inquiry',
-            'support': 'Technical Support',
+            "general": "General Inquiry",
+            "support": "Technical Support",
         }
 
         # Unknown subject should use 'General'
-        unknown = 'unknown_subject'
-        label = subject_labels.get(unknown, 'General')
+        unknown = "unknown_subject"
+        label = subject_labels.get(unknown, "General")
 
-        assert label == 'General'
+        assert label == "General"
 
 
 class TestEmailContentGeneration:
@@ -131,10 +129,7 @@ class TestResponseMessage:
 
     def test_response_structure(self):
         """Test response structure."""
-        response = {
-            "success": True,
-            "message": "Thank you for contacting us."
-        }
+        response = {"success": True, "message": "Thank you for contacting us."}
 
         assert response["success"] is True
         assert "message" in response
@@ -150,7 +145,7 @@ class TestBackgroundTaskProcessing:
         # Verify BackgroundTasks can be used
         tasks = BackgroundTasks()
 
-        assert hasattr(tasks, 'add_task')
+        assert hasattr(tasks, "add_task")
 
     def test_async_email_sending_pattern(self):
         """Test async email sending pattern."""

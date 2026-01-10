@@ -2,8 +2,9 @@
 Intelligence Graph Service
 Functions for querying funded projects, mechanisms, and competition data.
 """
+
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 
@@ -21,6 +22,7 @@ from backend.models import (
 @dataclass
 class MechanismStats:
     """Statistics for a grant mechanism."""
+
     code: str
     name: str
     funding_agency: Optional[str]
@@ -38,6 +40,7 @@ class MechanismStats:
 @dataclass
 class CompetitionMetrics:
     """Competition metrics for a grant."""
+
     grant_id: UUID
     mechanism_code: Optional[str]
     competition_score: Optional[float]
@@ -51,6 +54,7 @@ class CompetitionMetrics:
 @dataclass
 class FundedProjectSummary:
     """Summary of a funded project."""
+
     id: UUID
     external_id: str
     title: str
@@ -114,9 +118,7 @@ async def get_mechanism_by_code(
     Returns:
         GrantMechanism object or None
     """
-    result = await db.execute(
-        select(GrantMechanism).where(GrantMechanism.code == code.upper())
-    )
+    result = await db.execute(select(GrantMechanism).where(GrantMechanism.code == code.upper()))
     return result.scalar_one_or_none()
 
 
@@ -195,11 +197,7 @@ async def get_funded_projects_by_mechanism(
     if fiscal_year:
         query = query.where(FundedProject.fiscal_year == fiscal_year)
 
-    query = (
-        query.order_by(FundedProject.award_date.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    query = query.order_by(FundedProject.award_date.desc()).limit(limit).offset(offset)
 
     result = await db.execute(query)
     return list(result.scalars().all())
@@ -348,15 +346,11 @@ async def get_competition_data_for_grant(
     factors = []
     if mechanism:
         if mechanism.success_rate_overall:
-            factors.append(
-                f"Historical success rate: {mechanism.success_rate_overall:.1%}"
-            )
+            factors.append(f"Historical success rate: {mechanism.success_rate_overall:.1%}")
         if mechanism.competition_level:
             factors.append(f"Competition level: {mechanism.competition_level}")
         if mechanism.estimated_applicants_per_cycle:
-            factors.append(
-                f"Est. applicants/cycle: {mechanism.estimated_applicants_per_cycle}"
-            )
+            factors.append(f"Est. applicants/cycle: {mechanism.estimated_applicants_per_cycle}")
 
     if snapshot:
         if snapshot.similar_grants_count:
@@ -368,9 +362,9 @@ async def get_competition_data_for_grant(
         grant_id=grant_id,
         mechanism_code=mechanism_code,
         competition_score=snapshot.competition_score if snapshot else None,
-        estimated_applicants=snapshot.estimated_applicants if snapshot else (
-            mechanism.estimated_applicants_per_cycle if mechanism else None
-        ),
+        estimated_applicants=snapshot.estimated_applicants
+        if snapshot
+        else (mechanism.estimated_applicants_per_cycle if mechanism else None),
         similar_grants_count=snapshot.similar_grants_count if snapshot else None,
         success_rate=mechanism.success_rate_overall if mechanism else None,
         competition_level=mechanism.competition_level if mechanism else None,
@@ -516,9 +510,7 @@ async def create_competition_snapshot(
         grant_id=grant_id,
         mechanism_id=mechanism_id,
         snapshot_date=datetime.now(timezone.utc),
-        estimated_applicants=(
-            mechanism.estimated_applicants_per_cycle if mechanism else None
-        ),
+        estimated_applicants=(mechanism.estimated_applicants_per_cycle if mechanism else None),
         similar_grants_count=similar_count,
         competition_score=competition_score,
         factors=factors,
@@ -548,11 +540,28 @@ def extract_mechanism_from_grant(grant: Grant) -> Optional[str]:
     """
     # Common NIH mechanisms
     mechanisms = [
-        "R01", "R21", "R03", "R15", "R35", "U01", "U54",
-        "K01", "K08", "K23", "K99", "K22",
-        "F31", "F32", "T32",
-        "P01", "P30", "P50",
-        "R41", "R42", "R43", "R44",
+        "R01",
+        "R21",
+        "R03",
+        "R15",
+        "R35",
+        "U01",
+        "U54",
+        "K01",
+        "K08",
+        "K23",
+        "K99",
+        "K22",
+        "F31",
+        "F32",
+        "T32",
+        "P01",
+        "P30",
+        "P50",
+        "R41",
+        "R42",
+        "R43",
+        "R44",
     ]
 
     text = f"{grant.title or ''} {grant.description or ''}".upper()

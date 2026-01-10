@@ -11,13 +11,14 @@ Covers:
 - PATCH /api/checklists/{card_id}/checklist/items/{item_id} - Update checklist item
 - DELETE /api/checklists/{card_id}/checklist/{checklist_id} - Delete checklist
 """
+
 import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import select
 
-from backend.models import GrantApplication, User, Grant, ApplicationStage
+from backend.models import GrantApplication, User, ApplicationStage
 from backend.models.checklists import ChecklistTemplate, ApplicationChecklist
 from tests.fixtures.checklist_factories import (
     ChecklistTemplateFactory,
@@ -74,9 +75,7 @@ def sample_template_items():
 class TestListChecklistTemplates:
     """Tests for GET /api/checklists/templates."""
 
-    async def test_list_templates_returns_system_templates(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_list_templates_returns_system_templates(self, async_session, db_user, sample_template_items):
         """Test listing returns system templates."""
         # Create system templates
         template1 = ChecklistTemplateFactory.create(
@@ -101,7 +100,7 @@ class TestListChecklistTemplates:
         result = await async_session.execute(
             select(ChecklistTemplate).where(
                 or_(
-                    ChecklistTemplate.is_system == True,
+                    ChecklistTemplate.is_system,
                     ChecklistTemplate.created_by == db_user.id,
                 )
             )
@@ -112,9 +111,7 @@ class TestListChecklistTemplates:
         assert any(t.funder == "NIH" for t in templates)
         assert any(t.funder == "NSF" for t in templates)
 
-    async def test_list_templates_filter_by_funder(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_list_templates_filter_by_funder(self, async_session, db_user, sample_template_items):
         """Test filtering templates by funder."""
         # Create templates for different funders
         nih_template = ChecklistTemplateFactory.create(
@@ -137,7 +134,7 @@ class TestListChecklistTemplates:
         result = await async_session.execute(
             select(ChecklistTemplate).where(
                 ChecklistTemplate.funder.ilike("%NIH%"),
-                ChecklistTemplate.is_system == True,
+                ChecklistTemplate.is_system,
             )
         )
         templates = result.scalars().all()
@@ -145,9 +142,7 @@ class TestListChecklistTemplates:
         assert len(templates) >= 1
         assert all(t.funder == "NIH" for t in templates)
 
-    async def test_list_templates_filter_by_mechanism(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_list_templates_filter_by_mechanism(self, async_session, db_user, sample_template_items):
         """Test filtering templates by mechanism."""
         # Create templates with different mechanisms
         r01_template = ChecklistTemplateFactory.create(
@@ -168,18 +163,14 @@ class TestListChecklistTemplates:
 
         # Filter by R01
         result = await async_session.execute(
-            select(ChecklistTemplate).where(
-                ChecklistTemplate.mechanism.ilike("%R01%")
-            )
+            select(ChecklistTemplate).where(ChecklistTemplate.mechanism.ilike("%R01%"))
         )
         templates = result.scalars().all()
 
         assert len(templates) >= 1
         assert all(t.mechanism == "R01" for t in templates)
 
-    async def test_list_templates_includes_user_templates(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_list_templates_includes_user_templates(self, async_session, db_user, sample_template_items):
         """Test that user's own templates are included."""
         # Create user-defined template
         user_template = ChecklistTemplateFactory.create_user_template(
@@ -198,7 +189,7 @@ class TestListChecklistTemplates:
         result = await async_session.execute(
             select(ChecklistTemplate).where(
                 or_(
-                    ChecklistTemplate.is_system == True,
+                    ChecklistTemplate.is_system,
                     ChecklistTemplate.created_by == db_user.id,
                 )
             )
@@ -209,9 +200,7 @@ class TestListChecklistTemplates:
         assert len(user_templates) >= 1
         assert any(t.name == "My Custom Checklist" for t in user_templates)
 
-    async def test_list_templates_excludes_other_user_templates(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_list_templates_excludes_other_user_templates(self, async_session, db_user, sample_template_items):
         """Test that other users' private templates are not visible."""
         # Create another user
         other_user = User(
@@ -239,7 +228,7 @@ class TestListChecklistTemplates:
         result = await async_session.execute(
             select(ChecklistTemplate).where(
                 or_(
-                    ChecklistTemplate.is_system == True,
+                    ChecklistTemplate.is_system,
                     ChecklistTemplate.created_by == db_user.id,
                 )
             )
@@ -249,9 +238,7 @@ class TestListChecklistTemplates:
         # Should not see other user's template
         assert not any(t.name == "Other User's Template" for t in templates)
 
-    async def test_list_templates_system_only_filter(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_list_templates_system_only_filter(self, async_session, db_user, sample_template_items):
         """Test system_only filter excludes user templates."""
         # Create both system and user templates
         system_template = ChecklistTemplateFactory.create(
@@ -270,9 +257,7 @@ class TestListChecklistTemplates:
         await async_session.commit()
 
         # Query system only
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(ChecklistTemplate.is_system == True)
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.is_system))
         templates = result.scalars().all()
 
         assert all(t.is_system for t in templates)
@@ -286,9 +271,7 @@ class TestListChecklistTemplates:
 class TestGetTemplatesByFunder:
     """Tests for GET /api/checklists/templates/{funder}."""
 
-    async def test_get_templates_by_funder(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_get_templates_by_funder(self, async_session, db_user, sample_template_items):
         """Test getting templates for a specific funder."""
         # Create NIH templates
         nih_r01 = ChecklistTemplateFactory.create(
@@ -308,11 +291,7 @@ class TestGetTemplatesByFunder:
         await async_session.commit()
 
         # Query for NIH
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(
-                ChecklistTemplate.funder.ilike("NIH")
-            )
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.funder.ilike("NIH")))
         templates = result.scalars().all()
 
         assert len(templates) >= 2
@@ -320,9 +299,7 @@ class TestGetTemplatesByFunder:
         assert "R01" in mechanisms
         assert "R21" in mechanisms
 
-    async def test_get_templates_by_funder_case_insensitive(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_get_templates_by_funder_case_insensitive(self, async_session, db_user, sample_template_items):
         """Test funder filtering is case-insensitive."""
         template = ChecklistTemplateFactory.create(
             funder="NIH",
@@ -334,23 +311,15 @@ class TestGetTemplatesByFunder:
         await async_session.commit()
 
         # Query with lowercase
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(
-                ChecklistTemplate.funder.ilike("nih")
-            )
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.funder.ilike("nih")))
         templates = result.scalars().all()
 
         assert len(templates) >= 1
 
-    async def test_get_templates_empty_for_unknown_funder(
-        self, async_session, db_user
-    ):
+    async def test_get_templates_empty_for_unknown_funder(self, async_session, db_user):
         """Test empty result for unknown funder."""
         result = await async_session.execute(
-            select(ChecklistTemplate).where(
-                ChecklistTemplate.funder.ilike("UNKNOWN_FUNDER_XYZ")
-            )
+            select(ChecklistTemplate).where(ChecklistTemplate.funder.ilike("UNKNOWN_FUNDER_XYZ"))
         )
         templates = result.scalars().all()
 
@@ -365,9 +334,7 @@ class TestGetTemplatesByFunder:
 class TestGetTemplateDetails:
     """Tests for GET /api/checklists/templates/detail/{template_id}."""
 
-    async def test_get_template_by_id(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_get_template_by_id(self, async_session, db_user, sample_template_items):
         """Test getting a specific template by ID."""
         template = ChecklistTemplateFactory.create(
             funder="NIH",
@@ -380,9 +347,7 @@ class TestGetTemplateDetails:
         await async_session.commit()
 
         # Query by ID
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(ChecklistTemplate.id == template.id)
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.id == template.id))
         found = result.scalar_one_or_none()
 
         assert found is not None
@@ -394,16 +359,12 @@ class TestGetTemplateDetails:
     async def test_get_template_not_found(self, async_session, db_user):
         """Test 404 when template doesn't exist."""
         fake_id = uuid4()
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(ChecklistTemplate.id == fake_id)
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.id == fake_id))
         found = result.scalar_one_or_none()
 
         assert found is None
 
-    async def test_get_user_template_by_owner(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_get_user_template_by_owner(self, async_session, db_user, sample_template_items):
         """Test that owner can access their own template."""
         user_template = ChecklistTemplateFactory.create_user_template(
             user_id=db_user.id,
@@ -424,9 +385,7 @@ class TestGetTemplateDetails:
         assert found is not None
         assert found.created_by == db_user.id
 
-    async def test_get_user_template_denied_for_other_user(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_get_user_template_denied_for_other_user(self, async_session, db_user, sample_template_items):
         """Test that other users cannot access private templates."""
         # Create another user and their template
         other_user = User(
@@ -446,11 +405,7 @@ class TestGetTemplateDetails:
         await async_session.commit()
 
         # Check access (simulating authorization check)
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(
-                ChecklistTemplate.id == other_template.id
-            )
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.id == other_template.id))
         template = result.scalar_one_or_none()
 
         # Template exists but is not system and not owned by db_user
@@ -468,9 +423,7 @@ class TestGetTemplateDetails:
 class TestCreateTemplate:
     """Tests for POST /api/checklists/templates."""
 
-    async def test_create_user_template(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_create_user_template(self, async_session, db_user, sample_template_items):
         """Test creating a new user-defined template."""
         template = ChecklistTemplate(
             funder="Custom",
@@ -491,9 +444,7 @@ class TestCreateTemplate:
         assert template.created_by == db_user.id
         assert len(template.items) == 3
 
-    async def test_create_template_with_all_fields(
-        self, async_session, db_user
-    ):
+    async def test_create_template_with_all_fields(self, async_session, db_user):
         """Test creating template with all fields populated."""
         items = [
             {
@@ -534,9 +485,7 @@ class TestCreateTemplate:
         assert template.description is not None
         assert len(template.items) == 2
 
-    async def test_create_template_without_mechanism(
-        self, async_session, db_user
-    ):
+    async def test_create_template_without_mechanism(self, async_session, db_user):
         """Test creating template without optional mechanism."""
         template = ChecklistTemplate(
             funder="Private Foundation",
@@ -561,9 +510,7 @@ class TestCreateTemplate:
 
         assert template.mechanism is None
 
-    async def test_create_template_items_get_ids(
-        self, async_session, db_user
-    ):
+    async def test_create_template_items_get_ids(self, async_session, db_user):
         """Test that items are properly stored with IDs."""
         item_id = str(uuid4())
         items = [
@@ -600,9 +547,7 @@ class TestCreateTemplate:
 class TestCreateApplicationChecklist:
     """Tests for POST /api/checklists/{card_id}/checklist."""
 
-    async def test_create_checklist_from_template(
-        self, async_session, db_user, db_grant, sample_template_items
-    ):
+    async def test_create_checklist_from_template(self, async_session, db_user, db_grant, sample_template_items):
         """Test creating a checklist from a template."""
         # Create template
         template = ChecklistTemplateFactory.create(
@@ -640,9 +585,7 @@ class TestCreateApplicationChecklist:
         assert len(checklist.items) == 3
         assert checklist.progress_percent == 0.0
 
-    async def test_create_custom_checklist(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_create_custom_checklist(self, async_session, db_user, db_grant):
         """Test creating a custom checklist without template."""
         # Create application
         application = GrantApplication(
@@ -698,23 +641,17 @@ class TestCreateApplicationChecklist:
         assert checklist.name == "My Custom Checklist"
         assert len(checklist.items) == 2
 
-    async def test_create_checklist_not_found_application(
-        self, async_session, db_user, sample_template_items
-    ):
+    async def test_create_checklist_not_found_application(self, async_session, db_user, sample_template_items):
         """Test error when application doesn't exist."""
         fake_card_id = uuid4()
 
         # Query to verify application doesn't exist
-        result = await async_session.execute(
-            select(GrantApplication).where(GrantApplication.id == fake_card_id)
-        )
+        result = await async_session.execute(select(GrantApplication).where(GrantApplication.id == fake_card_id))
         application = result.scalar_one_or_none()
 
         assert application is None
 
-    async def test_create_checklist_not_found_template(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_create_checklist_not_found_template(self, async_session, db_user, db_grant):
         """Test error when template doesn't exist."""
         # Create application
         application = GrantApplication(
@@ -727,16 +664,12 @@ class TestCreateApplicationChecklist:
         await async_session.commit()
 
         fake_template_id = uuid4()
-        result = await async_session.execute(
-            select(ChecklistTemplate).where(ChecklistTemplate.id == fake_template_id)
-        )
+        result = await async_session.execute(select(ChecklistTemplate).where(ChecklistTemplate.id == fake_template_id))
         template = result.scalar_one_or_none()
 
         assert template is None
 
-    async def test_create_checklist_duplicate_template(
-        self, async_session, db_user, db_grant, sample_template_items
-    ):
+    async def test_create_checklist_duplicate_template(self, async_session, db_user, db_grant, sample_template_items):
         """Test error when checklist from same template already exists."""
         # Create template
         template = ChecklistTemplateFactory.create(
@@ -776,9 +709,7 @@ class TestCreateApplicationChecklist:
 
         assert existing is not None  # Already exists - API would return conflict
 
-    async def test_create_checklist_access_denied(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_create_checklist_access_denied(self, async_session, db_user, db_grant):
         """Test error when user doesn't own the application."""
         # Create another user
         other_user = User(
@@ -819,9 +750,7 @@ class TestCreateApplicationChecklist:
 class TestGetApplicationChecklists:
     """Tests for GET /api/checklists/{card_id}/checklist."""
 
-    async def test_get_checklists_for_application(
-        self, async_session, db_user, db_grant, sample_template_items
-    ):
+    async def test_get_checklists_for_application(self, async_session, db_user, db_grant, sample_template_items):
         """Test getting all checklists for an application."""
         # Create application
         application = GrantApplication(
@@ -848,9 +777,7 @@ class TestGetApplicationChecklists:
 
         # Query checklists
         result = await async_session.execute(
-            select(ApplicationChecklist).where(
-                ApplicationChecklist.kanban_card_id == application.id
-            )
+            select(ApplicationChecklist).where(ApplicationChecklist.kanban_card_id == application.id)
         )
         checklists = result.scalars().all()
 
@@ -869,17 +796,13 @@ class TestGetApplicationChecklists:
         await async_session.commit()
 
         result = await async_session.execute(
-            select(ApplicationChecklist).where(
-                ApplicationChecklist.kanban_card_id == application.id
-            )
+            select(ApplicationChecklist).where(ApplicationChecklist.kanban_card_id == application.id)
         )
         checklists = result.scalars().all()
 
         assert len(checklists) == 0
 
-    async def test_get_checklists_progress_summary(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_get_checklists_progress_summary(self, async_session, db_user, db_grant):
         """Test progress summary calculation."""
         # Create application
         application = GrantApplication(
@@ -1099,9 +1022,7 @@ class TestUpdateChecklistItem:
 
         assert found_item is None
 
-    async def test_update_item_recalculates_progress(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_update_item_recalculates_progress(self, async_session, db_user, db_grant):
         """Test that progress is recalculated when item is updated."""
         # Create application
         application = GrantApplication(
@@ -1181,9 +1102,7 @@ class TestDeleteChecklist:
 
         assert deleted is None
 
-    async def test_delete_checklist_not_found(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_delete_checklist_not_found(self, async_session, db_user, db_grant):
         """Test error when checklist doesn't exist."""
         # Create application
         application = GrantApplication(
@@ -1215,9 +1134,7 @@ class TestDeleteChecklist:
 class TestProgressCalculation:
     """Tests for progress calculation logic."""
 
-    async def test_progress_with_equal_weights(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_progress_with_equal_weights(self, async_session, db_user, db_grant):
         """Test progress calculation with equal item weights."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1239,9 +1156,7 @@ class TestProgressCalculation:
 
         assert checklist.progress_percent == 50.0  # 3/6 = 50%
 
-    async def test_progress_with_different_weights(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_progress_with_different_weights(self, async_session, db_user, db_grant):
         """Test progress calculation with different item weights."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1296,9 +1211,7 @@ class TestProgressCalculation:
 
         assert checklist.progress_percent == 75.0
 
-    async def test_progress_empty_checklist(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_progress_empty_checklist(self, async_session, db_user, db_grant):
         """Test progress calculation for empty checklist."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1322,9 +1235,7 @@ class TestProgressCalculation:
         assert checklist.progress_percent == 0.0
         assert len(checklist.items) == 0
 
-    async def test_progress_all_complete(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_progress_all_complete(self, async_session, db_user, db_grant):
         """Test progress is 100% when all items complete."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1355,9 +1266,7 @@ class TestProgressCalculation:
 class TestChecklistAuthorization:
     """Tests for authorization and access control."""
 
-    async def test_user_can_only_access_own_application_checklist(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_user_can_only_access_own_application_checklist(self, async_session, db_user, db_grant):
         """Test that users can only access checklists on their own applications."""
         # Create another user with their own application
         other_user = User(
@@ -1395,9 +1304,7 @@ class TestChecklistAuthorization:
 
         assert app is None  # db_user doesn't own this application
 
-    async def test_checklist_deleted_with_application(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_checklist_deleted_with_application(self, async_session, db_user, db_grant):
         """Test that checklists can be deleted with application or exist after app delete."""
         # Create application
         application = GrantApplication(

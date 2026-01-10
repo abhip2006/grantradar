@@ -2,12 +2,13 @@
 Compliance Scanner API Endpoints
 Endpoints for running compliance scans and managing compliance rules.
 """
+
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.api.utils.auth import verify_card_ownership
@@ -43,9 +44,7 @@ router = APIRouter(prefix="/api", tags=["Compliance"])
 scan_timestamps: Dict[str, List[datetime]] = {}
 
 
-def check_rate_limit(
-    user_id: str, max_requests: int = 10, window_minutes: int = 5
-) -> bool:
+def check_rate_limit(user_id: str, max_requests: int = 10, window_minutes: int = 5) -> bool:
     """
     Check if user has exceeded rate limit.
 
@@ -64,9 +63,7 @@ def check_rate_limit(
         scan_timestamps[user_id] = []
 
     # Clean old timestamps
-    scan_timestamps[user_id] = [
-        t for t in scan_timestamps[user_id] if t > window_start
-    ]
+    scan_timestamps[user_id] = [t for t in scan_timestamps[user_id] if t > window_start]
 
     if len(scan_timestamps[user_id]) >= max_requests:
         return False
@@ -133,7 +130,7 @@ async def run_compliance_scan(
             select(ComplianceRule).where(
                 and_(
                     ComplianceRule.id == request.rule_set_id,
-                    ComplianceRule.is_active == True,
+                    ComplianceRule.is_active,
                 )
             )
         )
@@ -159,7 +156,7 @@ async def run_compliance_scan(
                         and_(
                             ComplianceRule.funder.ilike(f"%{funder}%"),
                             ComplianceRule.mechanism == mechanism,
-                            ComplianceRule.is_active == True,
+                            ComplianceRule.is_active,
                         )
                     )
                 )
@@ -172,14 +169,16 @@ async def run_compliance_scan(
                         and_(
                             ComplianceRule.funder.ilike(f"%{funder}%"),
                             ComplianceRule.mechanism.is_(None),
-                            ComplianceRule.is_active == True,
+                            ComplianceRule.is_active,
                         )
                     )
                 )
                 rule_set = result.scalar_one_or_none()
 
     if not rule_set:
-        raise ValidationError("No compliance rules found for the specified funder/mechanism. Please specify a rule_set_id or create rules for this funder.")
+        raise ValidationError(
+            "No compliance rules found for the specified funder/mechanism. Please specify a rule_set_id or create rules for this funder."
+        )
 
     # Validate document content before scanning
     scanner.validate_document_content(
@@ -288,7 +287,7 @@ async def run_compliance_scan_async_endpoint(
             select(ComplianceRule).where(
                 and_(
                     ComplianceRule.id == request.rule_set_id,
-                    ComplianceRule.is_active == True,
+                    ComplianceRule.is_active,
                 )
             )
         )
@@ -313,7 +312,7 @@ async def run_compliance_scan_async_endpoint(
                         and_(
                             ComplianceRule.funder.ilike(f"%{funder}%"),
                             ComplianceRule.mechanism == mechanism,
-                            ComplianceRule.is_active == True,
+                            ComplianceRule.is_active,
                         )
                     )
                 )
@@ -327,7 +326,7 @@ async def run_compliance_scan_async_endpoint(
                         and_(
                             ComplianceRule.funder.ilike(f"%{funder}%"),
                             ComplianceRule.mechanism.is_(None),
-                            ComplianceRule.is_active == True,
+                            ComplianceRule.is_active,
                         )
                     )
                 )
@@ -336,9 +335,7 @@ async def run_compliance_scan_async_endpoint(
                     rule_set_id = str(rule_set.id)
 
     if not rule_set_id:
-        raise ValidationError(
-            "No compliance rules found for the specified funder/mechanism."
-        )
+        raise ValidationError("No compliance rules found for the specified funder/mechanism.")
 
     # Create a pending scan record
     scan = ComplianceScan(
@@ -400,9 +397,7 @@ async def get_scan_status(
     This is particularly useful for checking the progress of async scans.
     """
     # Get the scan record
-    result = await db.execute(
-        select(ComplianceScan).where(ComplianceScan.id == scan_id)
-    )
+    result = await db.execute(select(ComplianceScan).where(ComplianceScan.id == scan_id))
     scan = result.scalar_one_or_none()
 
     if not scan:
@@ -578,7 +573,7 @@ async def get_funder_rules(
         select(ComplianceRule).where(
             and_(
                 ComplianceRule.funder.ilike(f"%{funder}%"),
-                ComplianceRule.is_active == True,
+                ComplianceRule.is_active,
             )
         )
     )
@@ -631,7 +626,7 @@ async def list_compliance_rules(
     query = select(ComplianceRule)
 
     if not include_inactive:
-        query = query.where(ComplianceRule.is_active == True)
+        query = query.where(ComplianceRule.is_active)
 
     if funder:
         query = query.where(ComplianceRule.funder.ilike(f"%{funder}%"))
@@ -721,9 +716,7 @@ async def get_compliance_rule(
     rule_id: UUID,
 ) -> ComplianceRuleResponse:
     """Get a specific compliance rule set by ID."""
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.id == rule_id))
     rule_set = result.scalar_one_or_none()
     if not rule_set:
         raise NotFoundError("Compliance rule set")
@@ -747,9 +740,7 @@ async def update_compliance_rule(
 
     System rule sets cannot be modified.
     """
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.id == rule_id))
     rule_set = result.scalar_one_or_none()
     if not rule_set:
         raise NotFoundError("Compliance rule set")
@@ -761,7 +752,7 @@ async def update_compliance_rule(
     for field, value in update_data.items():
         if value is not None:
             if field == "rules":
-                value = [rule.model_dump() if hasattr(rule, 'model_dump') else rule for rule in value]
+                value = [rule.model_dump() if hasattr(rule, "model_dump") else rule for rule in value]
             setattr(rule_set, field, value)
 
     rule_set.updated_at = datetime.now(timezone.utc)
@@ -787,9 +778,7 @@ async def delete_compliance_rule(
 
     System rule sets cannot be deleted.
     """
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.id == rule_id))
     rule_set = result.scalar_one_or_none()
     if not rule_set:
         raise NotFoundError("Compliance rule set")
@@ -818,10 +807,7 @@ async def list_funders(
 ) -> List[str]:
     """Get list of all funders that have compliance rules defined."""
     result = await db.execute(
-        select(ComplianceRule.funder)
-        .where(ComplianceRule.is_active == True)
-        .distinct()
-        .order_by(ComplianceRule.funder)
+        select(ComplianceRule.funder).where(ComplianceRule.is_active).distinct().order_by(ComplianceRule.funder)
     )
     funders = result.scalars().all()
     return list(funders)
@@ -835,7 +821,4 @@ async def list_funders(
 )
 async def list_document_types() -> List[dict]:
     """Get list of supported document types for compliance scanning."""
-    return [
-        {"value": dt.value, "label": dt.value.replace("_", " ").title()}
-        for dt in DocumentType
-    ]
+    return [{"value": dt.value, "label": dt.value.replace("_", " ").title()} for dt in DocumentType]

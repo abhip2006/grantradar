@@ -4,13 +4,13 @@ Compliance Engine Service
 Service for managing compliance requirements, tasks, and templates.
 Helps researchers stay compliant with funder requirements after grants are awarded.
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
 import structlog
-from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.notification_service import InAppNotificationService
@@ -179,15 +179,12 @@ class ComplianceEngineService:
                 "is_active": data.get("is_active", True),
                 "created_at": now,
                 "updated_at": now,
-            }
+            },
         )
         await self.db.commit()
 
         # Fetch and return the created requirement
-        result = await self.db.execute(
-            text("SELECT * FROM funder_requirements WHERE id = :id"),
-            {"id": requirement_id}
-        )
+        result = await self.db.execute(text("SELECT * FROM funder_requirements WHERE id = :id"), {"id": requirement_id})
         return dict(result.fetchone()._mapping)
 
     # =========================================================================
@@ -289,11 +286,14 @@ class ComplianceEngineService:
             LIMIT :limit
         """)
 
-        result = await self.db.execute(query, {
-            "user_id": user_id,
-            "cutoff_date": cutoff_date,
-            "limit": limit,
-        })
+        result = await self.db.execute(
+            query,
+            {
+                "user_id": user_id,
+                "cutoff_date": cutoff_date,
+                "limit": limit,
+            },
+        )
 
         return [dict(row._mapping) for row in result.fetchall()]
 
@@ -340,7 +340,7 @@ class ComplianceEngineService:
                 "award_date": data.get("award_date"),
                 "created_at": now,
                 "updated_at": now,
-            }
+            },
         )
         await self.db.commit()
 
@@ -353,7 +353,7 @@ class ComplianceEngineService:
                     EXTRACT(DAY FROM due_date - NOW())::integer as days_until_due
                 FROM compliance_tasks WHERE id = :id
             """),
-            {"id": task_id}
+            {"id": task_id},
         )
         return dict(result.fetchone()._mapping)
 
@@ -395,7 +395,7 @@ class ComplianceEngineService:
                 "completed_by": user_id,
                 "notes": notes,
                 "updated_at": now,
-            }
+            },
         )
         await self.db.commit()
 
@@ -408,7 +408,7 @@ class ComplianceEngineService:
                     EXTRACT(DAY FROM due_date - NOW())::integer as days_until_due
                 FROM compliance_tasks WHERE id = :id
             """),
-            {"id": task_id}
+            {"id": task_id},
         )
         row = result.fetchone()
         if row:
@@ -453,7 +453,7 @@ class ComplianceEngineService:
                         updated_at = :updated_at
                     WHERE id = :id AND user_id = :user_id
                 """),
-                update_params
+                update_params,
             )
         else:
             await self.db.execute(
@@ -462,7 +462,7 @@ class ComplianceEngineService:
                     SET status = :status, updated_at = :updated_at
                     WHERE id = :id AND user_id = :user_id
                 """),
-                update_params
+                update_params,
             )
         await self.db.commit()
 
@@ -475,7 +475,7 @@ class ComplianceEngineService:
                     EXTRACT(DAY FROM due_date - NOW())::integer as days_until_due
                 FROM compliance_tasks WHERE id = :id
             """),
-            {"id": task_id}
+            {"id": task_id},
         )
         row = result.fetchone()
         if row:
@@ -518,7 +518,7 @@ class ComplianceEngineService:
                     JOIN grants g ON ga.grant_id = g.id
                     WHERE ga.id = :application_id
                 """),
-                {"application_id": application_id}
+                {"application_id": application_id},
             )
             row = result.fetchone()
             if row:
@@ -530,8 +530,7 @@ class ComplianceEngineService:
         else:
             # Get grant_id from application
             result = await self.db.execute(
-                text("SELECT grant_id FROM grant_applications WHERE id = :id"),
-                {"id": application_id}
+                text("SELECT grant_id FROM grant_applications WHERE id = :id"), {"id": application_id}
             )
             row = result.fetchone()
             grant_id = row[0] if row else None
@@ -548,11 +547,7 @@ class ComplianceEngineService:
 
         for req in requirements:
             # Calculate due date based on frequency and offset
-            due_date = self._calculate_due_date(
-                award_date,
-                req["frequency"],
-                req.get("deadline_offset_days", 0)
-            )
+            due_date = self._calculate_due_date(award_date, req["frequency"], req.get("deadline_offset_days", 0))
 
             task_id = uuid.uuid4()
 
@@ -581,16 +576,18 @@ class ComplianceEngineService:
                     "award_date": award_date,
                     "created_at": now,
                     "updated_at": now,
-                }
+                },
             )
 
-            created_tasks.append({
-                "id": task_id,
-                "title": f"{req['requirement_type'].title()}: {req['requirement_text'][:100]}",
-                "due_date": due_date,
-                "status": "pending",
-                "requirement_type": req["requirement_type"],
-            })
+            created_tasks.append(
+                {
+                    "id": task_id,
+                    "title": f"{req['requirement_type'].title()}: {req['requirement_text'][:100]}",
+                    "due_date": due_date,
+                    "status": "pending",
+                    "requirement_type": req["requirement_type"],
+                }
+            )
 
         await self.db.commit()
 
@@ -633,7 +630,7 @@ class ComplianceEngineService:
         elif frequency == "final":
             # Final reports typically due 90 days after project end
             # Assuming 5-year project for now, can be adjusted
-            return award_date + timedelta(days=365*5 + 90) + offset
+            return award_date + timedelta(days=365 * 5 + 90) + offset
         else:
             return award_date + offset
 
@@ -659,10 +656,7 @@ class ComplianceEngineService:
         from sqlalchemy import text
 
         # Get grant info
-        result = await self.db.execute(
-            text("SELECT id, title, agency FROM grants WHERE id = :id"),
-            {"id": grant_id}
-        )
+        result = await self.db.execute(text("SELECT id, title, agency FROM grants WHERE id = :id"), {"id": grant_id})
         grant_row = result.fetchone()
 
         if not grant_row:
@@ -676,7 +670,7 @@ class ComplianceEngineService:
                 SELECT id, created_at FROM grant_applications
                 WHERE grant_id = :grant_id AND user_id = :user_id
             """),
-            {"grant_id": grant_id, "user_id": user_id}
+            {"grant_id": grant_id, "user_id": user_id},
         )
         app_row = result.fetchone()
         award_date = app_row[1] if app_row else None
@@ -690,7 +684,7 @@ class ComplianceEngineService:
                 SELECT * FROM compliance_tasks
                 WHERE grant_id = :grant_id AND user_id = :user_id
             """),
-            {"grant_id": grant_id, "user_id": user_id}
+            {"grant_id": grant_id, "user_id": user_id},
         )
         existing_tasks = {
             row._mapping.get("requirement_id"): dict(row._mapping)
@@ -722,17 +716,19 @@ class ComplianceEngineService:
             else:
                 pending += 1
 
-            items.append({
-                "requirement_id": req["id"],
-                "task_id": task["id"] if task else None,
-                "title": req["requirement_text"],
-                "description": req.get("notes"),
-                "requirement_type": req["requirement_type"],
-                "frequency": req["frequency"],
-                "due_date": due_date,
-                "status": task_status,
-                "is_completed": is_completed,
-            })
+            items.append(
+                {
+                    "requirement_id": req["id"],
+                    "task_id": task["id"] if task else None,
+                    "title": req["requirement_text"],
+                    "description": req.get("notes"),
+                    "requirement_type": req["requirement_type"],
+                    "frequency": req["frequency"],
+                    "due_date": due_date,
+                    "status": task_status,
+                    "is_completed": is_completed,
+                }
+            )
 
         return {
             "grant_id": grant_id,
@@ -827,7 +823,7 @@ class ComplianceEngineService:
                     AND (ct.reminder_sent_at IS NULL
                          OR DATE(ct.reminder_sent_at) < DATE(:now) - INTERVAL '1 day')
                 """),
-                {"target_date": target_date, "now": now}
+                {"target_date": target_date, "now": now},
             )
 
             tasks = result.fetchall()
@@ -854,7 +850,7 @@ class ComplianceEngineService:
                         SET reminder_sent_at = :now
                         WHERE id = :id
                     """),
-                    {"id": task[0], "now": now}
+                    {"id": task[0], "now": now},
                 )
 
                 reminders_sent += 1
@@ -885,7 +881,7 @@ class ComplianceEngineService:
                 AND due_date < :now
                 RETURNING id
             """),
-            {"now": now}
+            {"now": now},
         )
 
         updated = result.fetchall()

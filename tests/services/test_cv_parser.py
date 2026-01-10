@@ -2,7 +2,6 @@
 Tests for CV Parser Service.
 Tests extracting profile information from CV/resume text.
 """
-import pytest
 
 
 class TestExtractEmail:
@@ -322,7 +321,6 @@ class TestExtractFundingHistory:
 
     def test_grant_agency_pattern(self):
         """Test extracting grant agencies."""
-        import re
 
         text = "Funded by NSF, NIH, and DOE grants"
         agencies = ["NSF", "NIH", "DOE", "DOD", "NASA"]

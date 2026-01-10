@@ -2,10 +2,11 @@
 API Key Management Endpoints
 REST API for creating, listing, revoking, and rotating API keys.
 """
+
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.schemas.api_key import (

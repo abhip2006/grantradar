@@ -2,9 +2,9 @@
 Tests for funding alerts Celery tasks.
 Tests scheduled alert delivery and user-specific alerts.
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -116,7 +116,6 @@ class TestAlertFrequencyLogic:
         """Test daily frequency when due."""
         last_sent = datetime.now(timezone.utc) - timedelta(days=2)
         now = datetime.now(timezone.utc)
-        frequency = "daily"
 
         delta = now - last_sent
         should_send = delta.days >= 1
@@ -127,7 +126,6 @@ class TestAlertFrequencyLogic:
         """Test daily frequency when not due."""
         last_sent = datetime.now(timezone.utc) - timedelta(hours=12)
         now = datetime.now(timezone.utc)
-        frequency = "daily"
 
         delta = now - last_sent
         should_send = delta.days >= 1
@@ -138,7 +136,6 @@ class TestAlertFrequencyLogic:
         """Test weekly frequency when due."""
         last_sent = datetime.now(timezone.utc) - timedelta(days=8)
         now = datetime.now(timezone.utc)
-        frequency = "weekly"
 
         delta = now - last_sent
         should_send = delta.days >= 7
@@ -149,7 +146,6 @@ class TestAlertFrequencyLogic:
         """Test weekly frequency when not due."""
         last_sent = datetime.now(timezone.utc) - timedelta(days=3)
         now = datetime.now(timezone.utc)
-        frequency = "weekly"
 
         delta = now - last_sent
         should_send = delta.days >= 7
@@ -160,7 +156,6 @@ class TestAlertFrequencyLogic:
         """Test monthly frequency when due."""
         last_sent = datetime.now(timezone.utc) - timedelta(days=35)
         now = datetime.now(timezone.utc)
-        frequency = "monthly"
 
         delta = now - last_sent
         should_send = delta.days >= 30
@@ -171,7 +166,6 @@ class TestAlertFrequencyLogic:
         """Test monthly frequency when not due."""
         last_sent = datetime.now(timezone.utc) - timedelta(days=15)
         now = datetime.now(timezone.utc)
-        frequency = "monthly"
 
         delta = now - last_sent
         should_send = delta.days >= 30
@@ -207,7 +201,7 @@ class TestAlertContentGeneration:
         # Simple HTML generation
         html = "<h2>New Grants</h2><ul>"
         for g in grants:
-            html += f"<li>{g['title']} - {g['agency']} ({g['match_score']*100:.0f}%)</li>"
+            html += f"<li>{g['title']} - {g['agency']} ({g['match_score'] * 100:.0f}%)</li>"
         html += "</ul>"
 
         assert "New Grants" in html
@@ -290,9 +284,7 @@ class TestAlertDisabling:
 
         # No preferences created for this user
         result = await async_session.execute(
-            select(FundingAlertPreference).where(
-                FundingAlertPreference.user_id == alert_user.id
-            )
+            select(FundingAlertPreference).where(FundingAlertPreference.user_id == alert_user.id)
         )
         prefs = result.scalar_one_or_none()
 

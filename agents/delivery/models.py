@@ -2,6 +2,7 @@
 GrantRadar Alert Delivery Models
 Pydantic models for alert payloads and delivery tracking.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Optional

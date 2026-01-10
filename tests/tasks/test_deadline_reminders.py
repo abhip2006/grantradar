@@ -2,9 +2,9 @@
 Tests for deadline reminder tasks.
 Tests the Celery tasks for sending deadline reminders.
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -50,9 +50,7 @@ async def upcoming_deadline(async_session: AsyncSession, reminder_user: User):
 
 
 @pytest_asyncio.fixture
-async def reminder_schedule(
-    async_session: AsyncSession, upcoming_deadline: Deadline
-):
+async def reminder_schedule(async_session: AsyncSession, upcoming_deadline: Deadline):
     """Create a reminder schedule for testing."""
     schedule = ReminderSchedule(
         id=uuid.uuid4(),
@@ -90,9 +88,7 @@ class TestReminderModel:
         assert deadline.status == "active"
 
     @pytest.mark.asyncio
-    async def test_create_reminder_schedule(
-        self, async_session, upcoming_deadline
-    ):
+    async def test_create_reminder_schedule(self, async_session, upcoming_deadline):
         """Test creating a reminder schedule."""
         schedule = ReminderSchedule(
             id=uuid.uuid4(),
@@ -109,9 +105,7 @@ class TestReminderModel:
         assert schedule.is_sent is False
 
     @pytest.mark.asyncio
-    async def test_multiple_reminders_per_deadline(
-        self, async_session, upcoming_deadline
-    ):
+    async def test_multiple_reminders_per_deadline(self, async_session, upcoming_deadline):
         """Test creating multiple reminders for one deadline."""
         schedules = []
         for minutes in [30, 60, 120, 1440]:  # 30min, 1hr, 2hr, 1 day
@@ -235,14 +229,14 @@ class TestEmailReminderContent:
     def test_build_funder_line_with_funder(self):
         """Test building funder line when funder exists."""
         funder = "NSF"
-        funder_line = f'<p><strong>Funder:</strong> {funder}</p>' if funder else ""
+        funder_line = f"<p><strong>Funder:</strong> {funder}</p>" if funder else ""
 
         assert "NSF" in funder_line
 
     def test_build_funder_line_without_funder(self):
         """Test building funder line when funder is None."""
         funder = None
-        funder_line = f'<p><strong>Funder:</strong> {funder}</p>' if funder else ""
+        funder_line = f"<p><strong>Funder:</strong> {funder}</p>" if funder else ""
 
         assert funder_line == ""
 
@@ -300,9 +294,7 @@ class TestReminderScheduleStatus:
     """Tests for reminder schedule status management."""
 
     @pytest.mark.asyncio
-    async def test_mark_reminder_as_sent(
-        self, async_session, reminder_schedule
-    ):
+    async def test_mark_reminder_as_sent(self, async_session, reminder_schedule):
         """Test marking a reminder as sent."""
         reminder_schedule.is_sent = True
         reminder_schedule.sent_at = datetime.now(timezone.utc)
@@ -313,9 +305,7 @@ class TestReminderScheduleStatus:
         assert reminder_schedule.sent_at is not None
 
     @pytest.mark.asyncio
-    async def test_filter_unsent_reminders(
-        self, async_session, upcoming_deadline
-    ):
+    async def test_filter_unsent_reminders(self, async_session, upcoming_deadline):
         """Test filtering for unsent reminders."""
         # Create sent reminder
         sent_schedule = ReminderSchedule(
@@ -344,7 +334,7 @@ class TestReminderScheduleStatus:
         result = await async_session.execute(
             select(ReminderSchedule).where(
                 ReminderSchedule.deadline_id == upcoming_deadline.id,
-                ReminderSchedule.is_sent == False,
+                not ReminderSchedule.is_sent,
             )
         )
         unsent = result.scalars().all()

@@ -2,6 +2,7 @@
 Curation Agent Module
 Handles validation, enrichment, and deduplication of discovered grants.
 """
+
 from agents.curation.validator import (
     CurationValidator,
     EnrichedGrant,

@@ -1,7 +1,8 @@
 """Factory classes for Checklist and Review test data."""
+
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional
+from datetime import datetime, timezone
+from typing import List, Optional
 
 from backend.models.checklists import ChecklistTemplate, ApplicationChecklist
 from backend.models.reviews import (

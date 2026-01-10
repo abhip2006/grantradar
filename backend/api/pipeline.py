@@ -2,6 +2,7 @@
 Pipeline API Endpoints
 Track grant applications through stages: Researching -> Writing -> Submitted -> Awarded/Rejected
 """
+
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -92,9 +93,7 @@ async def get_pipeline(
     applications = result.unique().scalars().all()
 
     # Group by stage
-    stage_groups: dict[ApplicationStageEnum, list[PipelineItemResponse]] = {
-        stage: [] for stage in ApplicationStageEnum
-    }
+    stage_groups: dict[ApplicationStageEnum, list[PipelineItemResponse]] = {stage: [] for stage in ApplicationStageEnum}
 
     for app in applications:
         response = application_to_response(app)
@@ -184,9 +183,7 @@ async def add_to_pipeline(
     Starts in the specified stage (default: researching).
     """
     # Check if grant exists
-    grant_result = await db.execute(
-        select(Grant).where(Grant.id == item.grant_id)
-    )
+    grant_result = await db.execute(select(Grant).where(Grant.id == item.grant_id))
     grant = grant_result.scalar_one_or_none()
 
     if not grant:

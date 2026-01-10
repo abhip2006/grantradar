@@ -2,13 +2,14 @@
 Embedding Generation Tasks
 Celery tasks for computing and updating profile and grant embeddings.
 """
+
 import logging
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy import create_engine
 
-from backend.celery_app import celery_app, normal_task
+from backend.celery_app import celery_app
 from backend.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -61,10 +62,7 @@ def compute_grant_embedding(self, grant_id: str) -> dict[str, Any]:
         result = embedder.build_embedding(UUID(grant_id), force=True)
 
         if result:
-            logger.info(
-                f"Successfully generated embedding for grant_id={grant_id}, "
-                f"dims={result['dimensions']}"
-            )
+            logger.info(f"Successfully generated embedding for grant_id={grant_id}, dims={result['dimensions']}")
             return {
                 "status": "success",
                 "grant_id": grant_id,
@@ -141,9 +139,7 @@ def rebuild_missing_grant_embeddings(self) -> dict[str, Any]:
     soft_time_limit=180,
     time_limit=240,
 )
-def compute_grant_embeddings_batch(
-    self, grant_ids: list[str]
-) -> dict[str, Any]:
+def compute_grant_embeddings_batch(self, grant_ids: list[str]) -> dict[str, Any]:
     """
     Compute embeddings for multiple grants in batch.
 
@@ -279,10 +275,7 @@ def compute_profile_embedding(self, profile_id: str) -> dict[str, Any]:
                 "created_at": embedding_result.created_at.isoformat(),
             }
         else:
-            logger.warning(
-                f"Embedding generation returned None for profile_id={profile_id}, "
-                f"user_id={user_id}"
-            )
+            logger.warning(f"Embedding generation returned None for profile_id={profile_id}, user_id={user_id}")
             return {
                 "status": "skipped",
                 "profile_id": profile_id,
@@ -355,9 +348,7 @@ def rebuild_all_profile_embeddings(self) -> dict[str, Any]:
     soft_time_limit=180,
     time_limit=240,
 )
-def compute_profile_embeddings_batch(
-    self, profile_ids: list[str]
-) -> dict[str, Any]:
+def compute_profile_embeddings_batch(self, profile_ids: list[str]) -> dict[str, Any]:
     """
     Compute embeddings for multiple profiles in batch.
 
@@ -393,9 +384,7 @@ def compute_profile_embeddings_batch(
                 FROM lab_profiles
                 WHERE id = ANY(:profile_ids)
             """)
-            results = session.execute(
-                query, {"profile_ids": profile_ids}
-            ).fetchall()
+            results = session.execute(query, {"profile_ids": profile_ids}).fetchall()
             user_ids = [row.user_id if isinstance(row.user_id, UUID) else UUID(row.user_id) for row in results]
 
         # Generate embeddings in batch

@@ -2,12 +2,11 @@
 Tests for WebSocket server.
 Tests the Socket.io server and connection management.
 """
+
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 
 
 class TestPubSubChannels:
@@ -184,6 +183,7 @@ class TestConnectionStateManager:
 
         # Simulate time passing
         import time
+
         time.sleep(0.01)
 
         state_manager.update_activity(sid)

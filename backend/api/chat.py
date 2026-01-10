@@ -1,4 +1,5 @@
 """Chat API endpoints for RAG-powered Q&A."""
+
 from uuid import UUID
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -103,10 +104,7 @@ async def send_chat_message(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chat error: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Chat error: {str(e)}")
 
 
 @router.post("/sessions/{session_id}/messages/stream")

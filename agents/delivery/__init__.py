@@ -2,6 +2,7 @@
 GrantRadar Alert Delivery Agent
 Handles multi-channel alert delivery for grant matches.
 """
+
 from agents.delivery.alerter import (
     AlertDeliveryAgent,
     celery_app,

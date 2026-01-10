@@ -2,10 +2,11 @@
 Tests for Eligibility Check API endpoints.
 Tests eligibility checking, follow-up conversations, and session management.
 """
+
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from backend.models import User, Grant, LabProfile, ChatSession, ChatMessage
 from backend.schemas.eligibility import EligibilityStatus, EligibilityCriterion
@@ -16,7 +17,9 @@ from backend.services.eligibility_checker import EligibilityChecker
 def mock_anthropic_response():
     """Mock response from Anthropic API for eligibility check."""
     return MagicMock(
-        content=[MagicMock(text='''{
+        content=[
+            MagicMock(
+                text="""{
             "overall_status": "eligible",
             "overall_confidence": 0.85,
             "criteria": [
@@ -47,7 +50,9 @@ def mock_anthropic_response():
             "missing_info": [
                 "Publication history in the specific research area"
             ]
-        }''')]
+        }"""
+            )
+        ]
     )
 
 
@@ -55,7 +60,9 @@ def mock_anthropic_response():
 def mock_anthropic_partial_response():
     """Mock response for partial eligibility."""
     return MagicMock(
-        content=[MagicMock(text='''{
+        content=[
+            MagicMock(
+                text="""{
             "overall_status": "partial",
             "overall_confidence": 0.6,
             "criteria": [
@@ -75,26 +82,23 @@ def mock_anthropic_partial_response():
             "summary": "Partial eligibility - some requirements not met.",
             "recommendations": ["Consider R21 mechanism instead"],
             "missing_info": []
-        }''')]
+        }"""
+            )
+        ]
     )
 
 
 @pytest.fixture
 def sample_eligibility_request():
     """Sample eligibility check request data."""
-    return {
-        "grant_id": str(uuid4()),
-        "additional_context": "I have 5 years of postdoc experience and 15 publications"
-    }
+    return {"grant_id": str(uuid4()), "additional_context": "I have 5 years of postdoc experience and 15 publications"}
 
 
 class TestEligibilityService:
     """Tests for EligibilityChecker service."""
 
     @pytest.mark.asyncio
-    async def test_check_eligibility_returns_eligible(
-        self, async_session, db_user, db_grant, mock_anthropic_response
-    ):
+    async def test_check_eligibility_returns_eligible(self, async_session, db_user, db_grant, mock_anthropic_response):
         """Test eligibility check returns eligible status."""
         # Create lab profile for user
         profile = LabProfile(
@@ -107,7 +111,7 @@ class TestEligibilityService:
         async_session.add(profile)
         await async_session.commit()
 
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_response
 
             checker = EligibilityChecker()
@@ -131,7 +135,7 @@ class TestEligibilityService:
         self, async_session, db_user, db_grant, mock_anthropic_response
     ):
         """Test that eligibility check creates a chat session for follow-up."""
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_response
 
             checker = EligibilityChecker()
@@ -148,9 +152,8 @@ class TestEligibilityService:
 
             # Verify session exists in database
             from sqlalchemy import select
-            session_result = await async_session.execute(
-                select(ChatSession).where(ChatSession.id == result.session_id)
-            )
+
+            session_result = await async_session.execute(select(ChatSession).where(ChatSession.id == result.session_id))
             session = session_result.scalar_one_or_none()
 
             assert session is not None
@@ -162,13 +165,13 @@ class TestEligibilityService:
         self, async_session, db_user, db_grant, mock_anthropic_response
     ):
         """Test eligibility check includes additional context."""
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
 
-            result = await checker.check_eligibility(
+            await checker.check_eligibility(
                 db=async_session,
                 user=db_user,
                 grant_id=db_grant.id,
@@ -196,7 +199,7 @@ class TestEligibilityService:
         self, async_session, db_user, db_grant, mock_anthropic_partial_response
     ):
         """Test eligibility check returns partial status correctly."""
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_partial_response
 
             checker = EligibilityChecker()
@@ -218,9 +221,7 @@ class TestEligibilityFollowUp:
     """Tests for eligibility follow-up conversations."""
 
     @pytest.mark.asyncio
-    async def test_follow_up_continues_conversation(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_follow_up_continues_conversation(self, async_session, db_user, db_grant):
         """Test follow-up adds to conversation history."""
         # Create existing session
         session = ChatSession(
@@ -239,11 +240,9 @@ class TestEligibilityFollowUp:
         async_session.add_all([user_msg, asst_msg])
         await async_session.commit()
 
-        mock_response = MagicMock(
-            content=[MagicMock(text="Based on your K99 award, you're in a strong position.")]
-        )
+        mock_response = MagicMock(content=[MagicMock(text="Based on your K99 award, you're in a strong position.")])
 
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_response
 
             checker = EligibilityChecker()
@@ -382,7 +381,7 @@ class TestEligibilityResponseParsing:
 
     def test_parse_valid_eligibility_response(self):
         """Test parsing a valid JSON response."""
-        response_text = '''{
+        response_text = """{
             "overall_status": "eligible",
             "overall_confidence": 0.9,
             "criteria": [
@@ -391,7 +390,7 @@ class TestEligibilityResponseParsing:
             "summary": "Test summary",
             "recommendations": ["Do this"],
             "missing_info": ["Need that"]
-        }'''
+        }"""
 
         grant = MagicMock(spec=Grant)
         grant.id = uuid4()
@@ -423,10 +422,10 @@ class TestEligibilityResponseParsing:
 
     def test_parse_partial_json_response(self):
         """Test parsing JSON with missing fields uses defaults."""
-        response_text = '''{
+        response_text = """{
             "overall_status": "partial",
             "overall_confidence": 0.7
-        }'''
+        }"""
 
         grant = MagicMock(spec=Grant)
         grant.id = uuid4()
@@ -443,7 +442,7 @@ class TestEligibilityResponseParsing:
 
     def test_parse_response_with_json_in_text(self):
         """Test parsing response with JSON embedded in text."""
-        response_text = '''Here is my analysis:
+        response_text = """Here is my analysis:
 
         {
             "overall_status": "eligible",
@@ -454,7 +453,7 @@ class TestEligibilityResponseParsing:
             "missing_info": []
         }
 
-        Let me know if you have questions.'''
+        Let me know if you have questions."""
 
         grant = MagicMock(spec=Grant)
         grant.id = uuid4()
@@ -502,11 +501,9 @@ class TestEligibilityEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_check_eligibility_no_profile(
-        self, async_session, db_user, db_grant, mock_anthropic_response
-    ):
+    async def test_check_eligibility_no_profile(self, async_session, db_user, db_grant, mock_anthropic_response):
         """Test eligibility check works without lab profile."""
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_response
 
             checker = EligibilityChecker()
@@ -540,10 +537,7 @@ class TestEligibilityEdgeCases:
         """Test EligibilityCriterion model validation."""
         # Valid criterion
         criterion = EligibilityCriterion(
-            criterion="Test criterion",
-            met=True,
-            explanation="Test explanation",
-            confidence=0.9
+            criterion="Test criterion", met=True, explanation="Test explanation", confidence=0.9
         )
         assert criterion.criterion == "Test criterion"
         assert criterion.met is True
@@ -555,32 +549,20 @@ class TestEligibilityEdgeCases:
 
         # Confidence too high
         with pytest.raises(ValidationError):
-            EligibilityCriterion(
-                criterion="Test",
-                met=True,
-                explanation="Test",
-                confidence=1.5
-            )
+            EligibilityCriterion(criterion="Test", met=True, explanation="Test", confidence=1.5)
 
         # Confidence too low
         with pytest.raises(ValidationError):
-            EligibilityCriterion(
-                criterion="Test",
-                met=True,
-                explanation="Test",
-                confidence=-0.1
-            )
+            EligibilityCriterion(criterion="Test", met=True, explanation="Test", confidence=-0.1)
 
 
 class TestChatSessionMessages:
     """Tests for chat session and message handling."""
 
     @pytest.mark.asyncio
-    async def test_eligibility_check_saves_messages(
-        self, async_session, db_user, db_grant, mock_anthropic_response
-    ):
+    async def test_eligibility_check_saves_messages(self, async_session, db_user, db_grant, mock_anthropic_response):
         """Test that eligibility check saves initial messages."""
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_response
 
             checker = EligibilityChecker()
@@ -594,6 +576,7 @@ class TestChatSessionMessages:
 
             # Verify messages were saved
             from sqlalchemy import select
+
             messages_result = await async_session.execute(
                 select(ChatMessage).where(ChatMessage.session_id == result.session_id)
             )
@@ -606,9 +589,7 @@ class TestChatSessionMessages:
             assert "assistant" in roles
 
     @pytest.mark.asyncio
-    async def test_follow_up_saves_new_messages(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_follow_up_saves_new_messages(self, async_session, db_user, db_grant):
         """Test that follow-up saves new messages to session."""
         # Create session with initial messages
         session = ChatSession(
@@ -621,19 +602,13 @@ class TestChatSessionMessages:
         await async_session.commit()
         await async_session.refresh(session)
 
-        initial_msg = ChatMessage(
-            session_id=session.id,
-            role="user",
-            content="Initial question"
-        )
+        initial_msg = ChatMessage(session_id=session.id, role="user", content="Initial question")
         async_session.add(initial_msg)
         await async_session.commit()
 
-        mock_response = MagicMock(
-            content=[MagicMock(text="Here is the follow-up response.")]
-        )
+        mock_response = MagicMock(content=[MagicMock(text="Here is the follow-up response.")])
 
-        with patch('backend.services.eligibility_checker.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_response
 
             checker = EligibilityChecker()
@@ -648,10 +623,9 @@ class TestChatSessionMessages:
 
             # Check messages were added
             from sqlalchemy import select
+
             messages_result = await async_session.execute(
-                select(ChatMessage)
-                .where(ChatMessage.session_id == session.id)
-                .order_by(ChatMessage.created_at)
+                select(ChatMessage).where(ChatMessage.session_id == session.id).order_by(ChatMessage.created_at)
             )
             messages = messages_result.scalars().all()
 

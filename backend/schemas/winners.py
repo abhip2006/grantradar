@@ -2,7 +2,7 @@
 Schemas for the Grant Winners Intelligence API.
 Provides access to 2.6M+ funded NIH/NSF projects for pattern analysis.
 """
-from datetime import datetime
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -54,12 +54,8 @@ class FundedProject(BaseModel):
     award_date: Optional[str] = Field(None, description="Award notice date (ISO format)")
 
     # People and organizations
-    principal_investigator: Optional[FundedProjectPI] = Field(
-        None, description="Primary PI information"
-    )
-    organization: Optional[FundedProjectOrg] = Field(
-        None, description="Awardee organization"
-    )
+    principal_investigator: Optional[FundedProjectPI] = Field(None, description="Primary PI information")
+    organization: Optional[FundedProjectOrg] = Field(None, description="Awardee organization")
     program_officer: Optional[str] = Field(None, description="NIH Program Officer name")
 
     # Keywords
@@ -79,9 +75,7 @@ class WinnersSearchRequest(BaseModel):
 
     query: Optional[str] = Field(None, description="Keyword search in abstracts and titles")
     research_area: Optional[str] = Field(None, description="Research area for semantic search")
-    activity_codes: Optional[list[str]] = Field(
-        None, description="Activity codes to filter (R01, R21, K08, etc.)"
-    )
+    activity_codes: Optional[list[str]] = Field(None, description="Activity codes to filter (R01, R21, K08, etc.)")
     agency: Optional[str] = Field(None, description="Filter by agency (NIH, NSF)")
     institute: Optional[str] = Field(None, description="NIH institute abbreviation (NCI, NIMH)")
     fiscal_years: Optional[list[int]] = Field(None, description="Fiscal years to include")
@@ -121,29 +115,19 @@ class InstituteAggregation(BaseModel):
 class SearchAggregations(BaseModel):
     """Aggregations for search results."""
 
-    by_year: list[YearAggregation] = Field(
-        default_factory=list, description="Projects by fiscal year"
-    )
-    by_mechanism: list[MechanismAggregation] = Field(
-        default_factory=list, description="Projects by activity code"
-    )
-    by_institute: list[InstituteAggregation] = Field(
-        default_factory=list, description="Projects by NIH institute"
-    )
+    by_year: list[YearAggregation] = Field(default_factory=list, description="Projects by fiscal year")
+    by_mechanism: list[MechanismAggregation] = Field(default_factory=list, description="Projects by activity code")
+    by_institute: list[InstituteAggregation] = Field(default_factory=list, description="Projects by NIH institute")
 
 
 class WinnersSearchResponse(BaseModel):
     """Response from funded projects search."""
 
-    results: list[FundedProject] = Field(
-        default_factory=list, description="Matching funded projects"
-    )
+    results: list[FundedProject] = Field(default_factory=list, description="Matching funded projects")
     total: int = Field(..., description="Total matching projects")
     page: int = Field(..., description="Current page number")
     pages: int = Field(..., description="Total number of pages")
-    aggregations: SearchAggregations = Field(
-        default_factory=SearchAggregations, description="Result aggregations"
-    )
+    aggregations: SearchAggregations = Field(default_factory=SearchAggregations, description="Result aggregations")
 
 
 # =============================================================================
@@ -175,25 +159,17 @@ class ProgramOfficer(BaseModel):
     avg_award_size: Optional[int] = Field(None, description="Average award size")
 
     # Patterns
-    top_mechanisms: list[str] = Field(
-        default_factory=list, description="Most common activity codes"
-    )
-    research_themes: list[str] = Field(
-        default_factory=list, description="Inferred research themes from abstracts"
-    )
+    top_mechanisms: list[str] = Field(default_factory=list, description="Most common activity codes")
+    research_themes: list[str] = Field(default_factory=list, description="Inferred research themes from abstracts")
 
     # Recent activity
-    recent_projects: list[ProgramOfficerProject] = Field(
-        default_factory=list, description="Recent funded projects"
-    )
+    recent_projects: list[ProgramOfficerProject] = Field(default_factory=list, description="Recent funded projects")
 
 
 class ProgramOfficersResponse(BaseModel):
     """Response with program officer directory."""
 
-    officers: list[ProgramOfficer] = Field(
-        default_factory=list, description="Program officers matching criteria"
-    )
+    officers: list[ProgramOfficer] = Field(default_factory=list, description="Program officers matching criteria")
     total: int = Field(..., description="Total matching officers")
 
 
@@ -215,12 +191,8 @@ class InstitutionStats(BaseModel):
     avg_award_size: Optional[int] = Field(None, description="Average award size")
 
     # Breakdown
-    top_mechanisms: list[str] = Field(
-        default_factory=list, description="Most successful activity codes"
-    )
-    top_pis: list[str] = Field(
-        default_factory=list, description="Top principal investigators"
-    )
+    top_mechanisms: list[str] = Field(default_factory=list, description="Most successful activity codes")
+    top_pis: list[str] = Field(default_factory=list, description="Top principal investigators")
 
     # Success metrics
     rank: Optional[int] = Field(None, description="Ranking within results")
@@ -229,9 +201,7 @@ class InstitutionStats(BaseModel):
 class InstitutionsResponse(BaseModel):
     """Response with institution analytics."""
 
-    institutions: list[InstitutionStats] = Field(
-        default_factory=list, description="Institution statistics"
-    )
+    institutions: list[InstitutionStats] = Field(default_factory=list, description="Institution statistics")
     total: int = Field(..., description="Total institutions in dataset")
 
 
@@ -245,12 +215,8 @@ class KeywordItem(BaseModel):
 
     keyword: str = Field(..., description="The keyword or phrase")
     frequency: int = Field(..., description="Number of occurrences")
-    percentage: float = Field(
-        ..., ge=0, le=100, description="Percentage of projects containing this keyword"
-    )
-    trending: Optional[str] = Field(
-        None, description="Trend direction: 'up', 'down', 'stable'"
-    )
+    percentage: float = Field(..., ge=0, le=100, description="Percentage of projects containing this keyword")
+    trending: Optional[str] = Field(None, description="Trend direction: 'up', 'down', 'stable'")
 
 
 class KeywordCluster(BaseModel):
@@ -270,9 +236,7 @@ class ProfileKeywordComparison(BaseModel):
     missing_keywords: list[str] = Field(
         default_factory=list, description="High-frequency keywords missing from profile"
     )
-    match_score: float = Field(
-        ..., ge=0, le=100, description="Overall keyword alignment score"
-    )
+    match_score: float = Field(..., ge=0, le=100, description="Overall keyword alignment score")
 
 
 class KeywordAnalysisRequest(BaseModel):
@@ -281,21 +245,15 @@ class KeywordAnalysisRequest(BaseModel):
     mechanism: Optional[str] = Field(None, description="Activity code to analyze (R01, R21)")
     institute: Optional[str] = Field(None, description="NIH institute to focus on")
     fiscal_years: Optional[list[int]] = Field(None, description="Years to analyze")
-    compare_to_profile: bool = Field(
-        default=False, description="Compare against user's research profile"
-    )
+    compare_to_profile: bool = Field(default=False, description="Compare against user's research profile")
     top_n: int = Field(default=50, ge=10, le=200, description="Number of keywords to return")
 
 
 class KeywordAnalysisResponse(BaseModel):
     """Response with keyword analysis."""
 
-    top_keywords: list[KeywordItem] = Field(
-        default_factory=list, description="Most frequent keywords"
-    )
-    keyword_clusters: list[KeywordCluster] = Field(
-        default_factory=list, description="Grouped keyword themes"
-    )
+    top_keywords: list[KeywordItem] = Field(default_factory=list, description="Most frequent keywords")
+    keyword_clusters: list[KeywordCluster] = Field(default_factory=list, description="Grouped keyword themes")
     profile_comparison: Optional[ProfileKeywordComparison] = Field(
         None, description="Comparison with user profile (if requested)"
     )
@@ -310,16 +268,10 @@ class KeywordAnalysisResponse(BaseModel):
 class AbstractPattern(BaseModel):
     """Pattern found in successful abstracts."""
 
-    pattern_type: str = Field(
-        ..., description="Type of pattern (structure, language, approach)"
-    )
+    pattern_type: str = Field(..., description="Type of pattern (structure, language, approach)")
     description: str = Field(..., description="Description of the pattern")
-    examples: list[str] = Field(
-        default_factory=list, description="Example phrases or structures"
-    )
-    frequency: float = Field(
-        ..., ge=0, le=100, description="Percentage of abstracts using this pattern"
-    )
+    examples: list[str] = Field(default_factory=list, description="Example phrases or structures")
+    frequency: float = Field(..., ge=0, le=100, description="Percentage of abstracts using this pattern")
 
 
 class LanguageInsights(BaseModel):
@@ -327,32 +279,18 @@ class LanguageInsights(BaseModel):
 
     avg_length: int = Field(..., description="Average abstract length in words")
     avg_sentences: int = Field(..., description="Average number of sentences")
-    key_phrases: list[str] = Field(
-        default_factory=list, description="Common impactful phrases"
-    )
-    action_verbs: list[str] = Field(
-        default_factory=list, description="Frequently used action verbs"
-    )
-    avoided_phrases: list[str] = Field(
-        default_factory=list, description="Phrases rarely seen in successful abstracts"
-    )
+    key_phrases: list[str] = Field(default_factory=list, description="Common impactful phrases")
+    action_verbs: list[str] = Field(default_factory=list, description="Frequently used action verbs")
+    avoided_phrases: list[str] = Field(default_factory=list, description="Phrases rarely seen in successful abstracts")
 
 
 class UserAbstractComparison(BaseModel):
     """Comparison of user's abstract against patterns."""
 
-    strengths: list[str] = Field(
-        default_factory=list, description="Strong aspects of the abstract"
-    )
-    gaps: list[str] = Field(
-        default_factory=list, description="Missing elements or weaknesses"
-    )
-    similarity_score: float = Field(
-        ..., ge=0, le=100, description="Similarity to successful abstracts"
-    )
-    suggestions: list[str] = Field(
-        default_factory=list, description="Specific improvement suggestions"
-    )
+    strengths: list[str] = Field(default_factory=list, description="Strong aspects of the abstract")
+    gaps: list[str] = Field(default_factory=list, description="Missing elements or weaknesses")
+    similarity_score: float = Field(..., ge=0, le=100, description="Similarity to successful abstracts")
+    suggestions: list[str] = Field(default_factory=list, description="Specific improvement suggestions")
 
 
 class AbstractAnalysisRequest(BaseModel):
@@ -361,9 +299,7 @@ class AbstractAnalysisRequest(BaseModel):
     mechanism: str = Field(..., description="Activity code to analyze (R01, R21)")
     institute: Optional[str] = Field(None, description="NIH institute to focus on")
     fiscal_years: Optional[list[int]] = Field(None, description="Years to analyze")
-    user_abstract: Optional[str] = Field(
-        None, description="User's draft abstract for comparison"
-    )
+    user_abstract: Optional[str] = Field(None, description="User's draft abstract for comparison")
 
 
 class AbstractAnalysisResponse(BaseModel):
@@ -372,12 +308,8 @@ class AbstractAnalysisResponse(BaseModel):
     common_patterns: list[AbstractPattern] = Field(
         default_factory=list, description="Common patterns in successful abstracts"
     )
-    language_insights: LanguageInsights = Field(
-        ..., description="Language usage insights"
-    )
-    recommendations: list[str] = Field(
-        default_factory=list, description="General recommendations"
-    )
+    language_insights: LanguageInsights = Field(..., description="Language usage insights")
+    recommendations: list[str] = Field(default_factory=list, description="General recommendations")
     user_comparison: Optional[UserAbstractComparison] = Field(
         None, description="Comparison with user's abstract (if provided)"
     )
@@ -404,34 +336,18 @@ class SuccessPredictionRequest(BaseModel):
     mechanism: str = Field(..., description="Target activity code (R01, R21)")
     institute: str = Field(..., description="Target NIH institute")
     research_area: str = Field(..., description="Research area description")
-    keywords: list[str] = Field(
-        default_factory=list, description="Key terms from proposal"
-    )
+    keywords: list[str] = Field(default_factory=list, description="Key terms from proposal")
     institution: Optional[str] = Field(None, description="Applicant institution name")
     draft_abstract: Optional[str] = Field(None, description="Draft abstract for analysis")
-    pi_previous_awards: int = Field(
-        default=0, ge=0, description="Number of previous awards held by PI"
-    )
+    pi_previous_awards: int = Field(default=0, ge=0, description="Number of previous awards held by PI")
 
 
 class SuccessPredictionResponse(BaseModel):
     """Response with success probability prediction."""
 
-    probability: float = Field(
-        ..., ge=0, le=100, description="Predicted success probability (0-100%)"
-    )
-    confidence: str = Field(
-        ..., description="Confidence level: low, medium, high"
-    )
-    factors: list[PredictionFactor] = Field(
-        default_factory=list, description="Factors contributing to prediction"
-    )
-    similar_funded: list[FundedProject] = Field(
-        default_factory=list, description="Similar projects that were funded"
-    )
-    recommendations: list[str] = Field(
-        default_factory=list, description="Recommendations to improve chances"
-    )
-    historical_rate: Optional[float] = Field(
-        None, description="Historical success rate for this mechanism/institute"
-    )
+    probability: float = Field(..., ge=0, le=100, description="Predicted success probability (0-100%)")
+    confidence: str = Field(..., description="Confidence level: low, medium, high")
+    factors: list[PredictionFactor] = Field(default_factory=list, description="Factors contributing to prediction")
+    similar_funded: list[FundedProject] = Field(default_factory=list, description="Similar projects that were funded")
+    recommendations: list[str] = Field(default_factory=list, description="Recommendations to improve chances")
+    historical_rate: Optional[float] = Field(None, description="Historical success rate for this mechanism/institute")

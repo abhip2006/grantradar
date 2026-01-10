@@ -1,10 +1,11 @@
 """Permission Templates API endpoints for managing reusable permission configurations."""
+
 import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
-from sqlalchemy import select, func
+from fastapi import APIRouter, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -274,7 +275,7 @@ async def create_permission_template(
         result = await db.execute(
             select(PermissionTemplate).where(
                 PermissionTemplate.owner_id == current_user.id,
-                PermissionTemplate.is_default == True,
+                PermissionTemplate.is_default,
             )
         )
         existing_defaults = result.scalars().all()
@@ -293,10 +294,7 @@ async def create_permission_template(
     await db.commit()
     await db.refresh(template)
 
-    logger.info(
-        f"Permission template created: id={template.id}, name={template.name}, "
-        f"owner={current_user.id}"
-    )
+    logger.info(f"Permission template created: id={template.id}, name={template.name}, owner={current_user.id}")
 
     return _build_template_response(template)
 
@@ -357,7 +355,7 @@ async def update_permission_template(
             result = await db.execute(
                 select(PermissionTemplate).where(
                     PermissionTemplate.owner_id == current_user.id,
-                    PermissionTemplate.is_default == True,
+                    PermissionTemplate.is_default,
                     PermissionTemplate.id != template_id,
                 )
             )
@@ -434,9 +432,7 @@ async def apply_template_to_member(
 
     # Validate member status
     if member.invitation_status != "accepted":
-        raise ValidationError(
-            "Cannot apply permissions to a member who has not accepted the invitation"
-        )
+        raise ValidationError("Cannot apply permissions to a member who has not accepted the invitation")
 
     # Apply the template permissions
     member.permissions = template.permissions
@@ -445,9 +441,7 @@ async def apply_template_to_member(
     await db.commit()
     await db.refresh(member)
 
-    logger.info(
-        f"Permission template applied: template={template_id}, member={member_id}"
-    )
+    logger.info(f"Permission template applied: template={template_id}, member={member_id}")
 
     return ApplyTemplateResponse(
         success=True,

@@ -2,16 +2,18 @@
 Common schemas for standardized API responses.
 Provides base classes for consistent pagination across all list endpoints.
 """
+
 from typing import Generic, List, TypeVar
 
 from pydantic import BaseModel, Field
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class PaginationInfo(BaseModel):
     """Pagination metadata for list responses."""
+
     total: int = Field(..., description="Total number of items")
     offset: int = Field(..., description="Number of items skipped")
     limit: int = Field(..., description="Maximum items per page")
@@ -33,6 +35,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
         }
     }
     """
+
     data: List[T] = Field(..., description="List of items")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -62,7 +65,7 @@ def create_paginated_response(
             "offset": offset,
             "limit": limit,
             "has_more": (offset + len(items)) < total,
-        }
+        },
     }
 
 

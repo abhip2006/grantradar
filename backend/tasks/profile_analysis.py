@@ -2,6 +2,7 @@
 GrantRadar Profile Analysis Tasks
 Celery tasks for analyzing researcher profiles using web scraping and AI.
 """
+
 import time
 from datetime import datetime
 from typing import Any, Optional
@@ -55,7 +56,7 @@ def search_pubmed(name: str, institution: Optional[str] = None) -> dict[str, Any
                     "term": query,
                     "retmax": 50,
                     "retmode": "json",
-                }
+                },
             )
             search_data = search_response.json()
 
@@ -73,20 +74,22 @@ def search_pubmed(name: str, institution: Optional[str] = None) -> dict[str, Any
                         "db": "pubmed",
                         "id": ids_str,
                         "retmode": "json",
-                    }
+                    },
                 )
                 details_data = details_response.json()
 
                 for pmid in id_list[:20]:
                     pub_info = details_data.get("result", {}).get(pmid, {})
                     if pub_info and pub_info != "uids":
-                        publications.append({
-                            "pmid": pmid,
-                            "title": pub_info.get("title", ""),
-                            "source": pub_info.get("source", ""),
-                            "pubdate": pub_info.get("pubdate", ""),
-                            "authors": [a.get("name", "") for a in pub_info.get("authors", [])[:5]],
-                        })
+                        publications.append(
+                            {
+                                "pmid": pmid,
+                                "title": pub_info.get("title", ""),
+                                "source": pub_info.get("source", ""),
+                                "pubdate": pub_info.get("pubdate", ""),
+                                "authors": [a.get("name", "") for a in pub_info.get("authors", [])[:5]],
+                            }
+                        )
 
             return {
                 "total_publications": total_count,
@@ -138,16 +141,18 @@ def search_nih_reporter(name: str, institution: Optional[str] = None) -> dict[st
                 award_amount = project.get("award_amount", 0) or 0
                 total_funding += award_amount
 
-                grants.append({
-                    "project_num": project.get("project_num"),
-                    "title": project.get("project_title"),
-                    "award_amount": award_amount,
-                    "fiscal_year": project.get("fiscal_year"),
-                    "organization": project.get("organization", {}).get("org_name"),
-                    "activity_code": project.get("activity_code"),
-                    "project_start": project.get("project_start_date"),
-                    "project_end": project.get("project_end_date"),
-                })
+                grants.append(
+                    {
+                        "project_num": project.get("project_num"),
+                        "title": project.get("project_title"),
+                        "award_amount": award_amount,
+                        "fiscal_year": project.get("fiscal_year"),
+                        "organization": project.get("organization", {}).get("org_name"),
+                        "activity_code": project.get("activity_code"),
+                        "project_start": project.get("project_start_date"),
+                        "project_end": project.get("project_end_date"),
+                    }
+                )
 
             # Separate current vs past funding
             current_year = datetime.now().year
@@ -198,15 +203,17 @@ def search_nsf_awards(name: str, institution: Optional[str] = None) -> dict[str,
                 amount = int(award.get("estimatedTotalAmt", 0) or 0)
                 total_funding += amount
 
-                awards.append({
-                    "award_id": award.get("id"),
-                    "title": award.get("title"),
-                    "amount": amount,
-                    "program": award.get("fundProgramName"),
-                    "organization": award.get("awardeeName"),
-                    "start_date": award.get("startDate"),
-                    "end_date": award.get("expDate"),
-                })
+                awards.append(
+                    {
+                        "award_id": award.get("id"),
+                        "title": award.get("title"),
+                        "amount": amount,
+                        "program": award.get("fundProgramName"),
+                        "organization": award.get("awardeeName"),
+                        "start_date": award.get("startDate"),
+                        "end_date": award.get("expDate"),
+                    }
+                )
 
             return {
                 "total_awards": len(awards),
@@ -352,18 +359,14 @@ def analyze_user_profile(self, user_id: str) -> dict[str, Any]:
 
     with Session(sync_engine) as session:
         # Fetch user
-        user = session.execute(
-            select(User).where(User.id == user_uuid)
-        ).scalar_one_or_none()
+        user = session.execute(select(User).where(User.id == user_uuid)).scalar_one_or_none()
 
         if not user:
             logger.error("user_not_found", user_id=user_id)
             raise ValueError(f"User not found: {user_id}")
 
         # Fetch or create lab profile
-        profile = session.execute(
-            select(LabProfile).where(LabProfile.user_id == user_uuid)
-        ).scalar_one_or_none()
+        profile = session.execute(select(LabProfile).where(LabProfile.user_id == user_uuid)).scalar_one_or_none()
 
         if not profile:
             profile = LabProfile(
@@ -506,9 +509,7 @@ def analyze_cv_content(self, user_id: str) -> dict[str, Any]:
         return {"error": f"Invalid user_id: {user_id}"}
 
     with Session(sync_engine) as session:
-        user = session.execute(
-            select(User).where(User.id == user_uuid)
-        ).scalar_one_or_none()
+        user = session.execute(select(User).where(User.id == user_uuid)).scalar_one_or_none()
 
         if not user or not user.cv_path:
             return {"error": "No CV found for user"}
@@ -530,9 +531,7 @@ def analyze_cv_content(self, user_id: str) -> dict[str, Any]:
             return {"error": "Could not parse CV"}
 
         # Update profile with CV analysis
-        profile = session.execute(
-            select(LabProfile).where(LabProfile.user_id == user_uuid)
-        ).scalar_one_or_none()
+        profile = session.execute(select(LabProfile).where(LabProfile.user_id == user_uuid)).scalar_one_or_none()
 
         if profile:
             profile.cv_analysis = {

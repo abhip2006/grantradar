@@ -2,6 +2,7 @@
 Profile Builder
 Generates and manages user profile embeddings for grant matching.
 """
+
 import hashlib
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -142,13 +143,11 @@ class ProfileBuilder:
             methods=result.methods or [],
             past_grants=[g.get("title", str(g)) if isinstance(g, dict) else str(g) for g in (result.past_grants or [])],
             institution=None,  # Not in current schema
-            department=None,   # Not in current schema
+            department=None,  # Not in current schema
             keywords=keywords,
         )
 
-    def get_current_embedding_hash(
-        self, user_id: UUID, session: Session
-    ) -> Optional[str]:
+    def get_current_embedding_hash(self, user_id: UUID, session: Session) -> Optional[str]:
         """
         Get the current embedding source text hash.
 
@@ -166,9 +165,7 @@ class ProfileBuilder:
         # This means needs_update() always returns True, forcing regeneration
         return None
 
-    def needs_update(
-        self, profile: UserProfile, session: Session
-    ) -> bool:
+    def needs_update(self, profile: UserProfile, session: Session) -> bool:
         """
         Check if profile embedding needs regeneration.
 
@@ -185,9 +182,7 @@ class ProfileBuilder:
 
         return new_hash != current_hash
 
-    def build_embedding(
-        self, user_id: UUID, force: bool = False
-    ) -> Optional[ProfileEmbedding]:
+    def build_embedding(self, user_id: UUID, force: bool = False) -> Optional[ProfileEmbedding]:
         """
         Build embedding for a user profile.
 
@@ -254,9 +249,7 @@ class ProfileBuilder:
 
             return profile_embedding
 
-    def build_embeddings_batch(
-        self, user_ids: list[UUID], force: bool = False
-    ) -> list[ProfileEmbedding]:
+    def build_embeddings_batch(self, user_ids: list[UUID], force: bool = False) -> list[ProfileEmbedding]:
         """
         Build embeddings for multiple users in batch.
 
@@ -303,9 +296,7 @@ class ProfileBuilder:
                 raise
 
             # Process results
-            for (profile, profile_text), embedding in zip(
-                profiles_to_process, embeddings
-            ):
+            for (profile, profile_text), embedding in zip(profiles_to_process, embeddings):
                 text_hash = self._compute_text_hash(profile_text)
                 profile_embedding = ProfileEmbedding(
                     user_id=profile.user_id,
@@ -326,9 +317,7 @@ class ProfileBuilder:
 
         return results
 
-    def _store_embedding(
-        self, profile_embedding: ProfileEmbedding, session: Session
-    ) -> None:
+    def _store_embedding(self, profile_embedding: ProfileEmbedding, session: Session) -> None:
         """
         Store embedding in database.
 

@@ -2,6 +2,7 @@
 Sharing and Resource Permission Schemas
 Pydantic models for resource-level access control and sharing.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, List, Optional
@@ -35,25 +36,15 @@ class PermissionLevel(str, Enum):
 class ShareResourceRequest(BaseModel):
     """Request to share a resource with a user."""
 
-    user_id: Optional[UUID] = Field(
-        None, description="ID of the user to share with (required if email not provided)"
-    )
-    email: Optional[str] = Field(
-        None, description="Email of the user to share with (required if user_id not provided)"
-    )
+    user_id: Optional[UUID] = Field(None, description="ID of the user to share with (required if email not provided)")
+    email: Optional[str] = Field(None, description="Email of the user to share with (required if user_id not provided)")
     permission_level: PermissionLevel = Field(
         default=PermissionLevel.VIEW,
         description="Permission level to grant: view, comment, edit, admin",
     )
-    expires_at: Optional[datetime] = Field(
-        None, description="When the permission expires (null = never)"
-    )
-    notify: bool = Field(
-        default=True, description="Whether to send notification to the user"
-    )
-    message: Optional[str] = Field(
-        None, max_length=1000, description="Optional message to include in notification"
-    )
+    expires_at: Optional[datetime] = Field(None, description="When the permission expires (null = never)")
+    notify: bool = Field(default=True, description="Whether to send notification to the user")
+    message: Optional[str] = Field(None, max_length=1000, description="Optional message to include in notification")
 
     @field_validator("email", "user_id")
     @classmethod
@@ -108,18 +99,10 @@ class CreateShareLinkRequest(BaseModel):
         default=PermissionLevel.VIEW,
         description="Permission level: view, comment, edit",
     )
-    expires_at: Optional[datetime] = Field(
-        None, description="When the link expires (null = never)"
-    )
-    max_uses: Optional[int] = Field(
-        None, ge=1, description="Maximum number of uses (null = unlimited)"
-    )
-    password: Optional[str] = Field(
-        None, min_length=4, max_length=100, description="Optional password protection"
-    )
-    name: Optional[str] = Field(
-        None, max_length=255, description="Optional name for the share link"
-    )
+    expires_at: Optional[datetime] = Field(None, description="When the link expires (null = never)")
+    max_uses: Optional[int] = Field(None, ge=1, description="Maximum number of uses (null = unlimited)")
+    password: Optional[str] = Field(None, min_length=4, max_length=100, description="Optional password protection")
+    name: Optional[str] = Field(None, max_length=255, description="Optional name for the share link")
 
 
 class ShareLinkResponse(BaseModel):
@@ -160,9 +143,7 @@ class ShareLinkListResponse(BaseModel):
 class AccessShareLinkRequest(BaseModel):
     """Request to access a resource via share link."""
 
-    password: Optional[str] = Field(
-        None, description="Password if the link is protected"
-    )
+    password: Optional[str] = Field(None, description="Password if the link is protected")
 
 
 class AccessShareLinkResponse(BaseModel):
@@ -172,9 +153,7 @@ class AccessShareLinkResponse(BaseModel):
     resource_type: str = Field(..., description="Type of resource")
     resource_id: UUID = Field(..., description="ID of the resource")
     permission_level: str = Field(..., description="Permission level granted")
-    resource_data: Optional[dict[str, Any]] = Field(
-        None, description="Resource data if access granted"
-    )
+    resource_data: Optional[dict[str, Any]] = Field(None, description="Resource data if access granted")
     message: Optional[str] = Field(None, description="Additional message")
 
 
@@ -237,9 +216,7 @@ class CheckPermissionResponse(BaseModel):
 
     has_permission: bool = Field(..., description="Whether user has required permission")
     actual_level: Optional[str] = Field(None, description="User's actual permission level")
-    source: Optional[str] = Field(
-        None, description="Source of permission: 'owner', 'direct', 'team', 'link'"
-    )
+    source: Optional[str] = Field(None, description="Source of permission: 'owner', 'direct', 'team', 'link'")
 
 
 # =============================================================================
@@ -250,32 +227,18 @@ class CheckPermissionResponse(BaseModel):
 class UpdatePermissionRequest(BaseModel):
     """Request to update a resource permission."""
 
-    permission_level: Optional[PermissionLevel] = Field(
-        None, description="New permission level"
-    )
-    expires_at: Optional[datetime] = Field(
-        None, description="New expiration date"
-    )
+    permission_level: Optional[PermissionLevel] = Field(None, description="New permission level")
+    expires_at: Optional[datetime] = Field(None, description="New expiration date")
 
 
 class UpdateShareLinkRequest(BaseModel):
     """Request to update a share link."""
 
-    permission_level: Optional[PermissionLevel] = Field(
-        None, description="New permission level"
-    )
-    expires_at: Optional[datetime] = Field(
-        None, description="New expiration date"
-    )
-    max_uses: Optional[int] = Field(
-        None, ge=1, description="New maximum uses"
-    )
-    is_active: Optional[bool] = Field(
-        None, description="Whether the link is active"
-    )
-    name: Optional[str] = Field(
-        None, max_length=255, description="New name for the share link"
-    )
+    permission_level: Optional[PermissionLevel] = Field(None, description="New permission level")
+    expires_at: Optional[datetime] = Field(None, description="New expiration date")
+    max_uses: Optional[int] = Field(None, ge=1, description="New maximum uses")
+    is_active: Optional[bool] = Field(None, description="Whether the link is active")
+    name: Optional[str] = Field(None, max_length=255, description="New name for the share link")
 
 
 class RevokePermissionResponse(BaseModel):
@@ -305,9 +268,7 @@ class BatchShareResultItem(BaseModel):
     email: Optional[str] = Field(None, description="Email if provided")
     success: bool = Field(..., description="Whether sharing was successful")
     message: str = Field(..., description="Status message")
-    permission: Optional[ResourcePermissionResponse] = Field(
-        None, description="Created permission if successful"
-    )
+    permission: Optional[ResourcePermissionResponse] = Field(None, description="Created permission if successful")
 
 
 class BatchShareResponse(BaseModel):

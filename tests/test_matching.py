@@ -2,17 +2,16 @@
 Matching Engine Tests
 Tests for vector similarity matching, LLM re-ranking, and score calculations.
 """
+
 import json
 import math
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from agents.matching.models import (
     MatchResult,
-    ProfileEmbedding,
     UserProfile,
     GrantData,
     ProfileMatch,
@@ -34,6 +33,7 @@ class TestVectorSimilarity:
     @pytest.fixture
     def similarity_calculator(self):
         """Create a similarity calculator."""
+
         class SimilarityCalculator:
             @staticmethod
             def cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
@@ -280,6 +280,7 @@ class TestLLMReRanking:
     @pytest.fixture
     def mock_llm_ranker(self, mock_anthropic):
         """Create a mock LLM ranker."""
+
         class LLMRanker:
             def __init__(self, client):
                 self.client = client
@@ -312,6 +313,7 @@ class TestLLMReRanking:
             async def batch_evaluate(self, request: BatchMatchRequest) -> BatchMatchResponse:
                 """Evaluate multiple profiles against one grant."""
                 import time
+
                 start = time.time()
 
                 results = []
@@ -332,13 +334,15 @@ class TestLLMReRanking:
     @pytest.mark.asyncio
     async def test_evaluate_single_match(self, mock_llm_ranker, mock_anthropic):
         """Test evaluating a single match."""
-        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps({
-            "match_score": 85,
-            "reasoning": "Strong research alignment",
-            "key_strengths": ["Similar focus area"],
-            "concerns": [],
-            "predicted_success": 72,
-        })
+        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps(
+            {
+                "match_score": 85,
+                "reasoning": "Strong research alignment",
+                "key_strengths": ["Similar focus area"],
+                "concerns": [],
+                "predicted_success": 72,
+            }
+        )
 
         grant = GrantData(
             grant_id=uuid.uuid4(),
@@ -359,13 +363,15 @@ class TestLLMReRanking:
     @pytest.mark.asyncio
     async def test_batch_evaluate(self, mock_llm_ranker, mock_anthropic):
         """Test batch evaluation of multiple profiles."""
-        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps({
-            "match_score": 80,
-            "reasoning": "Good match",
-            "key_strengths": [],
-            "concerns": [],
-            "predicted_success": 70,
-        })
+        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps(
+            {
+                "match_score": 80,
+                "reasoning": "Good match",
+                "key_strengths": [],
+                "concerns": [],
+                "predicted_success": 70,
+            }
+        )
 
         grant = GrantData(
             grant_id=uuid.uuid4(),
@@ -401,6 +407,7 @@ class TestBatchProcessing:
     @pytest.fixture
     def batch_matcher(self):
         """Create a mock batch matcher."""
+
         class BatchMatcher:
             def __init__(self, batch_size: int = 5):
                 self.batch_size = batch_size
@@ -409,17 +416,17 @@ class TestBatchProcessing:
                 """Split profiles into batches."""
                 batches = []
                 for i in range(0, len(profiles), self.batch_size):
-                    batch_profiles = profiles[i:i + self.batch_size]
-                    batches.append(BatchMatchRequest(
-                        grant=grant,
-                        profiles=batch_profiles,
-                    ))
+                    batch_profiles = profiles[i : i + self.batch_size]
+                    batches.append(
+                        BatchMatchRequest(
+                            grant=grant,
+                            profiles=batch_profiles,
+                        )
+                    )
                 return batches
 
             async def process_all_batches(
-                self,
-                batches: list[BatchMatchRequest],
-                llm_ranker
+                self, batches: list[BatchMatchRequest], llm_ranker
             ) -> list[tuple[uuid.UUID, MatchResult]]:
                 """Process all batches and aggregate results."""
                 all_results = []
@@ -510,6 +517,7 @@ class TestScoreCalculation:
     @pytest.fixture
     def score_calculator(self):
         """Create a score calculator."""
+
         class ScoreCalculator:
             @staticmethod
             def normalize_score(score: float, min_val: float, max_val: float) -> float:

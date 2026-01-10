@@ -2,6 +2,7 @@
 Grant Mechanisms and Intelligence Graph Database Models
 SQLAlchemy ORM models for grant mechanism information and competition data.
 """
+
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
@@ -359,4 +360,6 @@ class CompetitionSnapshot(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<CompetitionSnapshot(id={self.id}, grant_id={self.grant_id}, competition_score={self.competition_score})>"
+        return (
+            f"<CompetitionSnapshot(id={self.id}, grant_id={self.grant_id}, competition_score={self.competition_score})>"
+        )

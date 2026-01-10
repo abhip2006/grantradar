@@ -1,6 +1,7 @@
 """
 Tests for NIH Reporter API Discovery Agent.
 """
+
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 
@@ -9,7 +10,6 @@ from agents.discovery.nih_reporter import (
     NIHReporterProject,
     NIHSearchRequest,
     NIHSearchCriteria,
-    DiscoveredGrant,
 )
 
 
@@ -73,6 +73,7 @@ class TestNIHReporterDiscoveryAgent:
         # Create async mock that returns the response directly
         async def mock_post(*args, **kwargs):
             return mock_response
+
         mock_nih_reporter_agent.http_client = AsyncMock()
         mock_nih_reporter_agent.http_client.post = mock_post
 
@@ -92,6 +93,7 @@ class TestNIHReporterDiscoveryAgent:
         # Create proper async mock
         async def mock_post(*args, **kwargs):
             return mock_response
+
         mock_nih_reporter_agent.http_client = AsyncMock()
         mock_nih_reporter_agent.http_client.post = mock_post
         mock_nih_reporter_agent.http_client.aclose = AsyncMock()

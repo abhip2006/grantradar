@@ -2,10 +2,9 @@
 Deadline Reminder Tasks
 Celery tasks for sending reminders for user-created deadlines.
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-from uuid import UUID
 
 from sqlalchemy import and_, select
 
@@ -49,7 +48,7 @@ def check_and_send_deadline_reminders() -> dict:
             .join(User, Deadline.user_id == User.id)
             .where(
                 and_(
-                    ReminderSchedule.is_sent == False,
+                    not ReminderSchedule.is_sent,
                     Deadline.status.in_(REMINDER_ELIGIBLE_STATUSES),
                 )
             )
@@ -59,9 +58,7 @@ def check_and_send_deadline_reminders() -> dict:
 
         for schedule, deadline, user in pending:
             # Calculate when reminder should be sent
-            reminder_time = deadline.sponsor_deadline - timedelta(
-                minutes=schedule.remind_before_minutes
-            )
+            reminder_time = deadline.sponsor_deadline - timedelta(minutes=schedule.remind_before_minutes)
 
             if now >= reminder_time:
                 try:
@@ -172,9 +169,7 @@ def check_reminder_config_reminders() -> dict:
     return {"reminders_created": reminders_created, "errors": errors}
 
 
-def _send_reminder(
-    schedule: ReminderSchedule, deadline: Deadline, user: User
-) -> None:
+def _send_reminder(schedule: ReminderSchedule, deadline: Deadline, user: User) -> None:
     """Send a single reminder notification."""
     # Calculate time remaining
     now = datetime.now(timezone.utc)
@@ -238,7 +233,7 @@ def _send_email_reminder(user: User, deadline: Deadline, time_str: str) -> None:
                 <strong style="font-size: 18px;">Due in {time_str}</strong>
             </div>
             <h2 style="color: #333; margin-top: 0;">Deadline Reminder</h2>
-            <p>Hi {user.name or 'Researcher'},</p>
+            <p>Hi {user.name or "Researcher"},</p>
             <p>This is a reminder for your upcoming deadline:</p>
             <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #333;">{deadline.title}</h3>
@@ -267,7 +262,7 @@ def _send_email_reminder(user: User, deadline: Deadline, time_str: str) -> None:
     body_text = f"""
     Deadline Reminder - Due in {time_str}
 
-    Hi {user.name or 'Researcher'},
+    Hi {user.name or "Researcher"},
 
     This is a reminder for your upcoming deadline:
 

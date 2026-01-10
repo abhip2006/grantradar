@@ -2,6 +2,7 @@
 GrandRadar Email Service
 Jinja2-based email template rendering and sending via SendGrid.
 """
+
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -416,7 +417,7 @@ class EmailTemplateService:
         context = {
             "user_name": user_name,
             "notification_title": f"Excellent Match ({match_pct}%): {grant_title}",
-            "notification_message": f"We've found a grant opportunity that's an excellent match for your research profile.",
+            "notification_message": "We've found a grant opportunity that's an excellent match for your research profile.",
             "notification_type": "success",
             "notification_category": "Grant Match",
             "action_url": view_url or grant_url,

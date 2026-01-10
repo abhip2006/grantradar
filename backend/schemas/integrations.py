@@ -2,6 +2,7 @@
 Calendar Integration Schemas
 Pydantic models for calendar integration API.
 """
+
 from datetime import datetime
 from typing import Optional
 from uuid import UUID

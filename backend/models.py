@@ -2,6 +2,7 @@
 GrantRadar Database Models
 SQLAlchemy ORM models for the grant intelligence platform.
 """
+
 import enum
 import uuid
 from datetime import datetime

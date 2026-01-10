@@ -2,6 +2,7 @@
 Template Schemas
 Pydantic models for template API.
 """
+
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -11,6 +12,7 @@ from pydantic import BaseModel, Field
 
 class TemplateVariable(BaseModel):
     """Variable definition for a template."""
+
     name: str
     type: str = "text"  # text, number, date, select
     description: Optional[str] = None
@@ -21,6 +23,7 @@ class TemplateVariable(BaseModel):
 
 class TemplateCategoryResponse(BaseModel):
     """Template category with count."""
+
     id: UUID
     name: str
     description: Optional[str] = None
@@ -30,6 +33,7 @@ class TemplateCategoryResponse(BaseModel):
 
 class TemplateCreate(BaseModel):
     """Create a new template."""
+
     category_id: Optional[UUID] = None
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
@@ -40,6 +44,7 @@ class TemplateCreate(BaseModel):
 
 class TemplateUpdate(BaseModel):
     """Update a template."""
+
     category_id: Optional[UUID] = None
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
@@ -50,6 +55,7 @@ class TemplateUpdate(BaseModel):
 
 class TemplateResponse(BaseModel):
     """Template response."""
+
     id: UUID
     user_id: Optional[UUID] = None
     category_id: Optional[UUID] = None
@@ -69,15 +75,18 @@ class TemplateResponse(BaseModel):
 
 class TemplateListResponse(BaseModel):
     """Paginated template list."""
+
     items: List[TemplateResponse]
     total: int
 
 
 class TemplateRenderRequest(BaseModel):
     """Request to render a template."""
+
     variables: Dict[str, Any]
 
 
 class TemplateRenderResponse(BaseModel):
     """Rendered template content."""
+
     rendered_content: str

@@ -1,6 +1,7 @@
 """
 Backend services for external integrations and business logic.
 """
+
 from backend.services.deadline_history import (
     add_deadline_record,
     bulk_add_deadline_records,
@@ -75,6 +76,7 @@ try:
         MLPredictionResult,
         get_predictor,
     )
+
     _ML_AVAILABLE = True
 except ImportError:
     GrantDeadlinePredictor = None

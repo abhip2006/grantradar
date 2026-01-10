@@ -1,9 +1,10 @@
 """Specific Aims Analysis Service using Claude."""
+
 import anthropic
 import json
 import re
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from uuid import UUID
 import structlog
 
@@ -414,9 +415,21 @@ TEMPLATE_DATA = {
         "Having established X in Aim 1, Aim 2 will determine...",
     ],
     "strong_action_verbs": [
-        "determine", "establish", "identify", "characterize", "elucidate",
-        "define", "demonstrate", "investigate", "test", "evaluate",
-        "validate", "quantify", "assess", "analyze", "develop",
+        "determine",
+        "establish",
+        "identify",
+        "characterize",
+        "elucidate",
+        "define",
+        "demonstrate",
+        "investigate",
+        "test",
+        "evaluate",
+        "validate",
+        "quantify",
+        "assess",
+        "analyze",
+        "develop",
     ],
 }
 
@@ -555,7 +568,7 @@ class SpecificAimsAnalyzer:
                 "mechanism": mechanism.value,
                 "overall_score": result.overall_score,
                 "aims_count": result.detected_aims_count,
-            }
+            },
         )
         db.add(session)
         await db.flush()
@@ -564,13 +577,9 @@ class SpecificAimsAnalyzer:
         user_msg = ChatMessage(
             session_id=session.id,
             role="user",
-            content=f"Analyze my Specific Aims for {mechanism.value}:\n\n{text[:500]}..."
+            content=f"Analyze my Specific Aims for {mechanism.value}:\n\n{text[:500]}...",
         )
-        assistant_msg = ChatMessage(
-            session_id=session.id,
-            role="assistant",
-            content=result.overall_assessment
-        )
+        assistant_msg = ChatMessage(session_id=session.id, role="assistant", content=result.overall_assessment)
         db.add_all([user_msg, assistant_msg])
         await db.commit()
         await db.refresh(session)
@@ -616,74 +625,82 @@ class SpecificAimsAnalyzer:
 
         # Check for vague language patterns
         vague_patterns = [
-            (r'\bwill try to\b', "Vague language: 'will try to' suggests uncertainty"),
-            (r'\bmay\b.*\bmay\b', "Multiple 'may' statements suggest lack of commitment"),
-            (r'\bhopefully\b', "Vague language: 'hopefully' undermines confidence"),
-            (r'\bpossibly\b', "Vague language: 'possibly' suggests uncertainty"),
-            (r'\bwe believe\b', "Replace 'we believe' with hypothesis or data-driven statement"),
-            (r'\bit is thought that\b', "Passive and vague - state the hypothesis directly"),
+            (r"\bwill try to\b", "Vague language: 'will try to' suggests uncertainty"),
+            (r"\bmay\b.*\bmay\b", "Multiple 'may' statements suggest lack of commitment"),
+            (r"\bhopefully\b", "Vague language: 'hopefully' undermines confidence"),
+            (r"\bpossibly\b", "Vague language: 'possibly' suggests uncertainty"),
+            (r"\bwe believe\b", "Replace 'we believe' with hypothesis or data-driven statement"),
+            (r"\bit is thought that\b", "Passive and vague - state the hypothesis directly"),
         ]
 
         for pattern, description in vague_patterns:
             if re.search(pattern, aims_text, re.IGNORECASE):
-                issues.append(DetectedIssue(
-                    issue_type=IssueType.VAGUE_LANGUAGE,
-                    severity=IssueSeverity.MINOR,
-                    description=description,
-                    location=None,
-                    suggestion="Use confident, direct language with active voice",
-                ))
+                issues.append(
+                    DetectedIssue(
+                        issue_type=IssueType.VAGUE_LANGUAGE,
+                        severity=IssueSeverity.MINOR,
+                        description=description,
+                        location=None,
+                        suggestion="Use confident, direct language with active voice",
+                    )
+                )
 
         # Check for missing hypothesis
         hypothesis_patterns = [
-            r'hypothes[ie]s?\b',
-            r'we propose that\b',
-            r'we predict that\b',
-            r'our central\b.*\bhypothes',
+            r"hypothes[ie]s?\b",
+            r"we propose that\b",
+            r"we predict that\b",
+            r"our central\b.*\bhypothes",
         ]
         has_hypothesis = any(re.search(p, aims_text, re.IGNORECASE) for p in hypothesis_patterns)
         if not has_hypothesis:
-            issues.append(DetectedIssue(
-                issue_type=IssueType.MISSING_HYPOTHESIS,
-                severity=IssueSeverity.MAJOR,
-                description="No clear hypothesis statement detected",
-                location=None,
-                suggestion="Include a clear, testable central hypothesis before listing the aims",
-            ))
+            issues.append(
+                DetectedIssue(
+                    issue_type=IssueType.MISSING_HYPOTHESIS,
+                    severity=IssueSeverity.MAJOR,
+                    description="No clear hypothesis statement detected",
+                    location=None,
+                    suggestion="Include a clear, testable central hypothesis before listing the aims",
+                )
+            )
 
         # Check for interdependency language
         dependency_patterns = [
-            r'aim \d.*will be used in aim \d',
-            r'results from aim \d.*necessary for aim \d',
-            r'depends on.*aim \d',
-            r'before we can.*aim \d',
-            r'if aim \d fails',
+            r"aim \d.*will be used in aim \d",
+            r"results from aim \d.*necessary for aim \d",
+            r"depends on.*aim \d",
+            r"before we can.*aim \d",
+            r"if aim \d fails",
         ]
         for pattern in dependency_patterns:
             if re.search(pattern, aims_text, re.IGNORECASE):
-                issues.append(DetectedIssue(
-                    issue_type=IssueType.INTERDEPENDENCY,
-                    severity=IssueSeverity.MAJOR,
-                    description="Aims appear to be interdependent - if one fails, others cannot proceed",
-                    location=None,
-                    suggestion="Restructure aims to be independent. Each aim should produce meaningful results even if other aims have unexpected outcomes.",
-                ))
+                issues.append(
+                    DetectedIssue(
+                        issue_type=IssueType.INTERDEPENDENCY,
+                        severity=IssueSeverity.MAJOR,
+                        description="Aims appear to be interdependent - if one fails, others cannot proceed",
+                        location=None,
+                        suggestion="Restructure aims to be independent. Each aim should produce meaningful results even if other aims have unexpected outcomes.",
+                    )
+                )
                 break
 
         # Check for overlap patterns
         overlap_indicators = [
-            r'(aim \d).*\bsimilar\b.*(aim \d)',
-            r'(aim \d).*\boverlap\b.*(aim \d)',
+            r"(aim \d).*\bsimilar\b.*(aim \d)",
+            r"(aim \d).*\boverlap\b.*(aim \d)",
         ]
         for pattern in overlap_indicators:
             if re.search(pattern, aims_text, re.IGNORECASE):
-                issues.append(DetectedIssue(
-                    issue_type=IssueType.OVERLAPPING_AIMS,
-                    severity=IssueSeverity.MINOR,
-                    description="Potential overlap between aims detected",
-                    location=None,
-                    suggestion="Ensure each aim addresses a distinct aspect of the research question",
-                ))
+                issues.append(
+                    DetectedIssue(
+                        issue_type=IssueType.OVERLAPPING_AIMS,
+                        severity=IssueSeverity.MINOR,
+                        description="Potential overlap between aims detected",
+                        location=None,
+                        suggestion="Ensure each aim addresses a distinct aspect of the research question",
+                    )
+                )
                 break
 
         return issues
@@ -696,66 +713,78 @@ class SpecificAimsAnalyzer:
     ) -> List[ImprovementSuggestion]:
         """Generate actionable recommendations based on analysis."""
         suggestions = []
-        guidelines = MECHANISM_GUIDELINES.get(mechanism, MECHANISM_GUIDELINES[GrantMechanism.OTHER])
+        MECHANISM_GUIDELINES.get(mechanism, MECHANISM_GUIDELINES[GrantMechanism.OTHER])
 
         # Word count analysis
         word_count = len(aims_text.split())
         if word_count < 350:
-            suggestions.append(ImprovementSuggestion(
-                category="length",
-                current_issue=f"Current word count ({word_count}) is below recommended minimum",
-                suggested_change="Expand the specific aims to include more detail on approach and expected outcomes",
-                priority=2,
-                example_text=None,
-            ))
+            suggestions.append(
+                ImprovementSuggestion(
+                    category="length",
+                    current_issue=f"Current word count ({word_count}) is below recommended minimum",
+                    suggested_change="Expand the specific aims to include more detail on approach and expected outcomes",
+                    priority=2,
+                    example_text=None,
+                )
+            )
         elif word_count > 550:
-            suggestions.append(ImprovementSuggestion(
-                category="length",
-                current_issue=f"Current word count ({word_count}) exceeds recommended maximum",
-                suggested_change="Trim redundant language and focus on essential elements",
-                priority=1,
-                example_text=None,
-            ))
+            suggestions.append(
+                ImprovementSuggestion(
+                    category="length",
+                    current_issue=f"Current word count ({word_count}) exceeds recommended maximum",
+                    suggested_change="Trim redundant language and focus on essential elements",
+                    priority=1,
+                    example_text=None,
+                )
+            )
 
         # Issue-based suggestions
         for issue in detected_issues:
             if issue.issue_type == IssueType.MISSING_HYPOTHESIS:
-                suggestions.append(ImprovementSuggestion(
-                    category="structure",
-                    current_issue="Missing clear hypothesis",
-                    suggested_change="Add a central hypothesis statement after the rationale",
-                    priority=1,
-                    example_text="Our central hypothesis is that [mechanism] leads to [outcome], supported by [evidence].",
-                ))
+                suggestions.append(
+                    ImprovementSuggestion(
+                        category="structure",
+                        current_issue="Missing clear hypothesis",
+                        suggested_change="Add a central hypothesis statement after the rationale",
+                        priority=1,
+                        example_text="Our central hypothesis is that [mechanism] leads to [outcome], supported by [evidence].",
+                    )
+                )
             elif issue.issue_type == IssueType.INTERDEPENDENCY:
-                suggestions.append(ImprovementSuggestion(
-                    category="structure",
-                    current_issue="Aims are interdependent",
-                    suggested_change="Restructure aims so each can succeed independently",
-                    priority=1,
-                    example_text=None,
-                ))
+                suggestions.append(
+                    ImprovementSuggestion(
+                        category="structure",
+                        current_issue="Aims are interdependent",
+                        suggested_change="Restructure aims so each can succeed independently",
+                        priority=1,
+                        example_text=None,
+                    )
+                )
 
         # Mechanism-specific suggestions
         if mechanism == GrantMechanism.CAREER:
-            if 'education' not in aims_text.lower() and 'broader impact' not in aims_text.lower():
-                suggestions.append(ImprovementSuggestion(
-                    category="mechanism-specific",
-                    current_issue="Missing education/broader impacts integration",
-                    suggested_change="Add explicit education component integrated with research aims",
-                    priority=1,
-                    example_text="Aim 3 will integrate research with education by...",
-                ))
+            if "education" not in aims_text.lower() and "broader impact" not in aims_text.lower():
+                suggestions.append(
+                    ImprovementSuggestion(
+                        category="mechanism-specific",
+                        current_issue="Missing education/broader impacts integration",
+                        suggested_change="Add explicit education component integrated with research aims",
+                        priority=1,
+                        example_text="Aim 3 will integrate research with education by...",
+                    )
+                )
 
         if mechanism in [GrantMechanism.K01, GrantMechanism.K08, GrantMechanism.K23]:
-            if 'training' not in aims_text.lower() and 'career' not in aims_text.lower():
-                suggestions.append(ImprovementSuggestion(
-                    category="mechanism-specific",
-                    current_issue="Missing career development context",
-                    suggested_change="Integrate training and career development language",
-                    priority=2,
-                    example_text=None,
-                ))
+            if "training" not in aims_text.lower() and "career" not in aims_text.lower():
+                suggestions.append(
+                    ImprovementSuggestion(
+                        category="mechanism-specific",
+                        current_issue="Missing career development context",
+                        suggested_change="Integrate training and career development language",
+                        priority=2,
+                        example_text=None,
+                    )
+                )
 
         return sorted(suggestions, key=lambda x: x.priority)
 
@@ -814,19 +843,14 @@ class SpecificAimsAnalyzer:
 
         # Get conversation history
         messages_result = await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.created_at)
+            select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at)
         )
         history = messages_result.scalars().all()
 
         # Build conversation for Claude
         claude_messages = []
         for msg in history:
-            claude_messages.append({
-                "role": msg.role if msg.role != "system" else "user",
-                "content": msg.content
-            })
+            claude_messages.append({"role": msg.role if msg.role != "system" else "user", "content": msg.content})
         claude_messages.append({"role": "user", "content": message})
 
         mechanism = session.metadata_.get("mechanism", "R01") if session.metadata_ else "R01"
@@ -883,12 +907,12 @@ SPECIFIC AIMS TEXT:
 
 MECHANISM REQUIREMENTS ({mechanism.value}):
 - Recommended aims: {guidelines.min_aims}-{guidelines.max_aims} (ideal: {guidelines.recommended_aims_count})
-- Focus areas: {', '.join(guidelines.focus_areas)}
-- Key requirements: {', '.join(guidelines.key_requirements)}
+- Focus areas: {", ".join(guidelines.focus_areas)}
+- Key requirements: {", ".join(guidelines.key_requirements)}
 - Word count guidance: {guidelines.word_count_guidance}
 
-{f'RESEARCH AREA: {research_area}' if research_area else ''}
-{f'ADDITIONAL CONTEXT: {additional_context}' if additional_context else ''}
+{f"RESEARCH AREA: {research_area}" if research_area else ""}
+{f"ADDITIONAL CONTEXT: {additional_context}" if additional_context else ""}
 
 Provide your analysis in the following JSON format:
 {{
@@ -955,9 +979,9 @@ AIM TEXT:
 {aim_text}
 
 MECHANISM: {mechanism.value}
-{f'AIM NUMBER: {aim_number}' if aim_number else ''}
+{f"AIM NUMBER: {aim_number}" if aim_number else ""}
 TYPICAL SCOPE GUIDANCE: {guidelines.word_count_guidance}
-KEY REQUIREMENTS: {', '.join(guidelines.key_requirements[:3])}
+KEY REQUIREMENTS: {", ".join(guidelines.key_requirements[:3])}
 
 Provide your assessment in JSON format:
 {{
@@ -977,10 +1001,11 @@ Provide your assessment in JSON format:
         research_area: Optional[str],
     ) -> str:
         """Build prompt for comparing to funded applications."""
-        examples_text = "\n".join([
-            f"- {ex.research_area}: {ex.aims_count} aims, {ex.structure_summary}"
-            for ex in examples
-        ]) if examples else "No specific examples available for this mechanism."
+        examples_text = (
+            "\n".join([f"- {ex.research_area}: {ex.aims_count} aims, {ex.structure_summary}" for ex in examples])
+            if examples
+            else "No specific examples available for this mechanism."
+        )
 
         return f"""Compare this Specific Aims page to successful funded {mechanism.value} applications.
 
@@ -988,12 +1013,12 @@ AIMS TEXT:
 {aims_text}
 
 MECHANISM: {mechanism.value}
-{f'RESEARCH AREA: {research_area}' if research_area else ''}
+{f"RESEARCH AREA: {research_area}" if research_area else ""}
 
 PATTERNS FROM FUNDED APPLICATIONS:
 {examples_text}
 
-TYPICAL STRUCTURE: {', '.join(guidelines.typical_structure)}
+TYPICAL STRUCTURE: {", ".join(guidelines.typical_structure)}
 
 Provide your comparison in JSON format:
 {{
@@ -1107,9 +1132,7 @@ Aim 2: [Specific objective]
             data = json.loads(json_str)
 
             # Parse aims structure
-            aims_structure = [
-                AimStructure(**aim) for aim in data.get("aims_structure", [])
-            ]
+            aims_structure = [AimStructure(**aim) for aim in data.get("aims_structure", [])]
 
             # Parse scope assessments
             scope_assessments = [
@@ -1136,10 +1159,7 @@ Aim 2: [Specific objective]
             ]
 
             # Parse suggestions
-            suggestions = [
-                ImprovementSuggestion(**sugg)
-                for sugg in data.get("suggestions", [])
-            ]
+            suggestions = [ImprovementSuggestion(**sugg) for sugg in data.get("suggestions", [])]
 
             # Word count analysis
             word_count = len(original_text.split())
@@ -1170,8 +1190,7 @@ Aim 2: [Specific objective]
                 word_count_status=word_count_status,
                 strengths=data.get("strengths", []),
                 mechanism_specific_feedback=data.get(
-                    "mechanism_specific_feedback",
-                    f"Review alignment with {mechanism.value} requirements."
+                    "mechanism_specific_feedback", f"Review alignment with {mechanism.value} requirements."
                 ),
                 analyzed_at=datetime.now(timezone.utc),
             )
@@ -1193,7 +1212,11 @@ Aim 2: [Specific objective]
                 major_issues_count=0,
                 suggestions=[],
                 total_word_count=word_count,
-                word_count_status="within_range" if 400 <= word_count <= 550 else "too_short" if word_count < 400 else "too_long",
+                word_count_status="within_range"
+                if 400 <= word_count <= 550
+                else "too_short"
+                if word_count < 400
+                else "too_long",
                 strengths=[],
                 mechanism_specific_feedback="Analysis incomplete - please retry.",
                 analyzed_at=datetime.now(timezone.utc),
@@ -1224,8 +1247,7 @@ Aim 2: [Specific objective]
                 suggestions=data.get("suggestions", []),
                 word_count=len(aim_text.split()),
                 recommended_scope_for_mechanism=data.get(
-                    "recommended_scope",
-                    f"Appropriate scope for {mechanism.value}"
+                    "recommended_scope", f"Appropriate scope for {mechanism.value}"
                 ),
             )
         except (json.JSONDecodeError, KeyError, ValueError) as e:
@@ -1301,9 +1323,7 @@ async def analyze_aims_structure(
     additional_context: Optional[str] = None,
 ) -> AimsAnalysisResponse:
     """Convenience function for aims analysis."""
-    return await get_analyzer().analyze_aims_structure(
-        db, user, text, mechanism, research_area, additional_context
-    )
+    return await get_analyzer().analyze_aims_structure(db, user, text, mechanism, research_area, additional_context)
 
 
 async def check_aim_scope(

@@ -2,14 +2,13 @@
 API Test Fixtures
 Fixtures for testing FastAPI endpoints with authentication and database setup.
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import AsyncGenerator, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import (
@@ -152,7 +151,7 @@ async def db_pipeline_full(
 
     stages = list(ApplicationStage)
 
-    for i, grant in enumerate(db_grants_varied[:len(stages) * 2]):
+    for i, grant in enumerate(db_grants_varied[: len(stages) * 2]):
         stage = stages[i % len(stages)]
         app = GrantApplicationFactory.create(
             user_id=db_user.id,
@@ -408,10 +407,11 @@ async def db_calendar_data(
 @pytest.fixture
 def mock_external_apis():
     """Mock all external API dependencies."""
-    with patch("httpx.AsyncClient") as mock_httpx, \
-         patch("openai.OpenAI") as mock_openai, \
-         patch("anthropic.Anthropic") as mock_anthropic:
-
+    with (
+        patch("httpx.AsyncClient") as mock_httpx,
+        patch("openai.OpenAI") as mock_openai,
+        patch("anthropic.Anthropic") as mock_anthropic,
+    ):
         # Setup httpx mock
         httpx_instance = AsyncMock()
         httpx_instance.get = AsyncMock(return_value=MagicMock(status_code=200, json=lambda: {}))
@@ -420,9 +420,7 @@ def mock_external_apis():
 
         # Setup OpenAI mock
         openai_instance = MagicMock()
-        openai_instance.embeddings.create = MagicMock(
-            return_value=MagicMock(data=[MagicMock(embedding=[0.1] * 1536)])
-        )
+        openai_instance.embeddings.create = MagicMock(return_value=MagicMock(data=[MagicMock(embedding=[0.1] * 1536)]))
         mock_openai.return_value = openai_instance
 
         # Setup Anthropic mock

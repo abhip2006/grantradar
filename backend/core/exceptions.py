@@ -4,6 +4,7 @@ Custom Exception Classes for the GrantRadar API.
 Provides standardized HTTP exceptions with consistent error messages
 across all API endpoints.
 """
+
 from fastapi import HTTPException, status
 
 

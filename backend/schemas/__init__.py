@@ -2,12 +2,14 @@
 GrantRadar Pydantic Schemas
 Request/Response models for API endpoints.
 """
+
 # Common response schemas
 from backend.schemas.common import (
     PaginatedResponse,
     PaginationInfo,
     create_paginated_response,
 )
+
 # TypedDict definitions for JSONB fields
 from backend.schemas.jsonb_types import (
     ChecklistItemDict,

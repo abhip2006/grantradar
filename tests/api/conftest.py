@@ -2,6 +2,7 @@
 API test fixtures.
 Fixtures for testing deadline API endpoints and other API tests.
 """
+
 import pytest
 import pytest_asyncio
 from datetime import datetime, timedelta, timezone
@@ -9,12 +10,7 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 from backend.models import (
-    Base,
-    Grant,
-    User,
     LabProfile,
-    Match,
-    AlertSent,
     Deadline,
     ChatSession,
     ChatMessage,
@@ -167,6 +163,7 @@ async def db_urgent_deadline(async_session, db_user):
 
 # ===== AI Tools Fixtures =====
 
+
 @pytest_asyncio.fixture
 async def db_chat_session(async_session, db_user):
     """Create a test chat session in the database."""
@@ -194,7 +191,11 @@ async def db_chat_session_with_messages(async_session, db_user):
 
     messages = [
         ChatMessage(session_id=session.id, role="user", content="What grants are available for AI research?"),
-        ChatMessage(session_id=session.id, role="assistant", content="There are several NIH and NSF grants available for AI research."),
+        ChatMessage(
+            session_id=session.id,
+            role="assistant",
+            content="There are several NIH and NSF grants available for AI research.",
+        ),
         ChatMessage(session_id=session.id, role="user", content="Which one has the highest funding?"),
     ]
     for msg in messages:
@@ -281,7 +282,11 @@ async def db_eligibility_session(async_session, db_user, db_grant):
 
     messages = [
         ChatMessage(session_id=session.id, role="user", content=f"Check my eligibility for: {db_grant.title}"),
-        ChatMessage(session_id=session.id, role="assistant", content="Based on your profile, you appear eligible for this grant."),
+        ChatMessage(
+            session_id=session.id,
+            role="assistant",
+            content="Based on your profile, you appear eligible for this grant.",
+        ),
     ]
     for msg in messages:
         async_session.add(msg)
@@ -311,13 +316,12 @@ async def db_lab_profile(async_session, db_user):
 
 # ===== Mock Fixtures for External APIs =====
 
+
 @pytest.fixture
 def mock_anthropic_client():
     """Create a mock Anthropic client for testing."""
     mock = MagicMock()
-    mock.messages.create.return_value = MagicMock(
-        content=[MagicMock(text='{"status": "success"}')]
-    )
+    mock.messages.create.return_value = MagicMock(content=[MagicMock(text='{"status": "success"}')])
     return mock
 
 
@@ -325,9 +329,7 @@ def mock_anthropic_client():
 def mock_openai_client():
     """Create a mock OpenAI client for testing."""
     mock = MagicMock()
-    mock.embeddings.create.return_value = MagicMock(
-        data=[MagicMock(embedding=[0.1] * 1536)]
-    )
+    mock.embeddings.create.return_value = MagicMock(data=[MagicMock(embedding=[0.1] * 1536)])
     return mock
 
 
@@ -340,6 +342,7 @@ def mock_sendgrid_client():
 
 
 # ===== Kanban Board Fixtures =====
+
 
 @pytest_asyncio.fixture
 async def db_pipeline_item(async_session, db_user, db_grant):
@@ -466,11 +469,17 @@ async def db_application_assignee(async_session, db_pipeline_item, db_user):
 @pytest_asyncio.fixture
 async def db_pipeline_items_varied(async_session, db_user, db_grant):
     """Create a varied set of pipeline items for testing filters and sorting."""
-    now = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
     items = []
 
     # Create items in different stages
-    for stage in [ApplicationStage.RESEARCHING, ApplicationStage.WRITING, ApplicationStage.SUBMITTED, ApplicationStage.AWARDED, ApplicationStage.REJECTED]:
+    for stage in [
+        ApplicationStage.RESEARCHING,
+        ApplicationStage.WRITING,
+        ApplicationStage.SUBMITTED,
+        ApplicationStage.AWARDED,
+        ApplicationStage.REJECTED,
+    ]:
         item = GrantApplication(
             user_id=db_user.id,
             grant_id=db_grant.id,

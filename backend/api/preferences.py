@@ -2,7 +2,8 @@
 Notification Preferences API Endpoints
 Manage user notification settings.
 """
-from fastapi import APIRouter, status
+
+from fastapi import APIRouter
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.schemas.preferences import (

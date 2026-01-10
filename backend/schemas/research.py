@@ -1,4 +1,5 @@
 """Deep research schemas."""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
@@ -15,6 +16,7 @@ class ResearchStatus(str, Enum):
 
 class ResearchGrantResult(BaseModel):
     """A grant discovered through research."""
+
     id: UUID
     title: str
     funder: str
@@ -29,11 +31,13 @@ class ResearchGrantResult(BaseModel):
 
 class ResearchSessionCreate(BaseModel):
     """Create a new research session."""
+
     query: str = Field(..., min_length=10, max_length=2000)
 
 
 class ResearchSessionResponse(BaseModel):
     """Research session response."""
+
     id: UUID
     user_id: UUID
     query: str
@@ -51,6 +55,7 @@ class ResearchSessionResponse(BaseModel):
 
 class ResearchSessionListItem(BaseModel):
     """Summary item for research session listing."""
+
     id: UUID
     query: str
     status: ResearchStatus
@@ -61,6 +66,7 @@ class ResearchSessionListItem(BaseModel):
 
 class ResearchQuickSearch(BaseModel):
     """Quick synchronous research search."""
+
     query: str = Field(..., min_length=5, max_length=500)
     max_results: int = Field(default=10, ge=1, le=50)
 
@@ -68,6 +74,7 @@ class ResearchQuickSearch(BaseModel):
 # SSE Event Types for streaming progress
 class ResearchPhase(str, Enum):
     """Research phases for progress tracking."""
+
     PENDING = "pending"
     EXPANDING_QUERY = "expanding_query"
     GENERATING_EMBEDDING = "generating_embedding"
@@ -81,33 +88,39 @@ class ResearchPhase(str, Enum):
 
 class SSEStatusEvent(BaseModel):
     """SSE status event for research phase updates."""
+
     phase: ResearchPhase
     message: str
 
 
 class SSEGrantFoundEvent(BaseModel):
     """SSE event when a grant is discovered."""
+
     grant: ResearchGrantResult
 
 
 class SSEProgressEvent(BaseModel):
     """SSE progress event with percentage."""
+
     percent: int = Field(..., ge=0, le=100)
     message: str
 
 
 class SSEInsightsEvent(BaseModel):
     """SSE event with generated insights."""
+
     insights: str
 
 
 class SSECompleteEvent(BaseModel):
     """SSE event when research is complete."""
+
     grants_found: int
     processing_time_ms: int
 
 
 class SSEErrorEvent(BaseModel):
     """SSE event for errors."""
+
     error: str
     phase: Optional[ResearchPhase] = None

@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import redis
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from backend.celery_app import celery_app, normal_task
@@ -106,42 +106,28 @@ def compute_daily_analytics(self) -> dict[str, Any]:
         now = datetime.utcnow()
         last_24h = now - timedelta(hours=24)
         last_7d = now - timedelta(days=7)
-        last_30d = now - timedelta(days=30)
+        now - timedelta(days=30)
 
         # ===== Grant Discovery Metrics =====
         # Total grants by source
-        grants_by_source = (
-            db.query(Grant.source, func.count(Grant.id))
-            .group_by(Grant.source)
-            .all()
-        )
+        grants_by_source = db.query(Grant.source, func.count(Grant.id)).group_by(Grant.source).all()
         total_grants = sum(count for _, count in grants_by_source)
 
         # Recent grant discovery
-        grants_last_24h = db.query(func.count(Grant.id)).filter(
-            Grant.created_at >= last_24h
-        ).scalar() or 0
+        grants_last_24h = db.query(func.count(Grant.id)).filter(Grant.created_at >= last_24h).scalar() or 0
 
-        grants_last_7d = db.query(func.count(Grant.id)).filter(
-            Grant.created_at >= last_7d
-        ).scalar() or 0
+        grants_last_7d = db.query(func.count(Grant.id)).filter(Grant.created_at >= last_7d).scalar() or 0
 
         # Active grants (deadline not passed)
-        active_grants = db.query(func.count(Grant.id)).filter(
-            Grant.deadline >= now
-        ).scalar() or 0
+        active_grants = db.query(func.count(Grant.id)).filter(Grant.deadline >= now).scalar() or 0
 
         # ===== Match Computation Metrics =====
         # Total matches computed
         total_matches = db.query(func.count(Match.id)).scalar() or 0
 
-        matches_last_24h = db.query(func.count(Match.id)).filter(
-            Match.created_at >= last_24h
-        ).scalar() or 0
+        matches_last_24h = db.query(func.count(Match.id)).filter(Match.created_at >= last_24h).scalar() or 0
 
-        matches_last_7d = db.query(func.count(Match.id)).filter(
-            Match.created_at >= last_7d
-        ).scalar() or 0
+        matches_last_7d = db.query(func.count(Match.id)).filter(Match.created_at >= last_7d).scalar() or 0
 
         # ===== Match Score Distribution =====
         # Calculate score buckets
@@ -178,29 +164,19 @@ def compute_daily_analytics(self) -> dict[str, Any]:
         # Total alerts sent
         total_alerts_sent = db.query(func.count(AlertSent.id)).scalar() or 0
 
-        alerts_by_channel = (
-            db.query(AlertSent.channel, func.count(AlertSent.id))
-            .group_by(AlertSent.channel)
-            .all()
-        )
+        alerts_by_channel = db.query(AlertSent.channel, func.count(AlertSent.id)).group_by(AlertSent.channel).all()
 
         # Alert engagement rates
-        total_opened = db.query(func.count(AlertSent.id)).filter(
-            AlertSent.opened_at.isnot(None)
-        ).scalar() or 0
+        total_opened = db.query(func.count(AlertSent.id)).filter(AlertSent.opened_at.isnot(None)).scalar() or 0
 
-        total_clicked = db.query(func.count(AlertSent.id)).filter(
-            AlertSent.clicked_at.isnot(None)
-        ).scalar() or 0
+        total_clicked = db.query(func.count(AlertSent.id)).filter(AlertSent.clicked_at.isnot(None)).scalar() or 0
 
         open_rate = _calculate_percentage(total_opened, total_alerts_sent)
         click_rate = _calculate_percentage(total_clicked, total_alerts_sent)
         click_through_rate = _calculate_percentage(total_clicked, total_opened)
 
         # Recent alert activity
-        alerts_last_24h = db.query(func.count(AlertSent.id)).filter(
-            AlertSent.sent_at >= last_24h
-        ).scalar() or 0
+        alerts_last_24h = db.query(func.count(AlertSent.id)).filter(AlertSent.sent_at >= last_24h).scalar() or 0
 
         # ===== User Engagement Metrics =====
         # Total active users (users with matches)
@@ -210,9 +186,9 @@ def compute_daily_analytics(self) -> dict[str, Any]:
         total_users = db.query(func.count(User.id)).scalar() or 0
 
         # Users who took action on matches
-        users_with_actions = db.query(func.count(func.distinct(Match.user_id))).filter(
-            Match.user_action.isnot(None)
-        ).scalar() or 0
+        users_with_actions = (
+            db.query(func.count(func.distinct(Match.user_id))).filter(Match.user_action.isnot(None)).scalar() or 0
+        )
 
         user_engagement_rate = _calculate_percentage(users_with_actions, active_users)
 
@@ -318,9 +294,7 @@ def compute_user_analytics(self, user_id: str) -> dict[str, Any]:
 
         # ===== User Match Statistics =====
         # Total matches for user
-        total_matches = db.query(func.count(Match.id)).filter(
-            Match.user_id == user_id
-        ).scalar() or 0
+        total_matches = db.query(func.count(Match.id)).filter(Match.user_id == user_id).scalar() or 0
 
         if total_matches == 0:
             # Return empty metrics if no matches
@@ -334,17 +308,24 @@ def compute_user_analytics(self, user_id: str) -> dict[str, Any]:
             return empty_metrics
 
         # Match actions breakdown
-        saved_count = db.query(func.count(Match.id)).filter(
-            and_(Match.user_id == user_id, Match.user_action == "saved")
-        ).scalar() or 0
+        saved_count = (
+            db.query(func.count(Match.id)).filter(and_(Match.user_id == user_id, Match.user_action == "saved")).scalar()
+            or 0
+        )
 
-        dismissed_count = db.query(func.count(Match.id)).filter(
-            and_(Match.user_id == user_id, Match.user_action == "dismissed")
-        ).scalar() or 0
+        dismissed_count = (
+            db.query(func.count(Match.id))
+            .filter(and_(Match.user_id == user_id, Match.user_action == "dismissed"))
+            .scalar()
+            or 0
+        )
 
-        applied_count = db.query(func.count(Match.id)).filter(
-            and_(Match.user_id == user_id, Match.user_action == "applied")
-        ).scalar() or 0
+        applied_count = (
+            db.query(func.count(Match.id))
+            .filter(and_(Match.user_id == user_id, Match.user_action == "applied"))
+            .scalar()
+            or 0
+        )
 
         # Calculate rates
         acceptance_rate = _calculate_percentage(saved_count, total_matches)
@@ -356,32 +337,33 @@ def compute_user_analytics(self, user_id: str) -> dict[str, Any]:
 
         # ===== Match Quality Metrics =====
         # Average match score
-        avg_score = db.query(func.avg(Match.match_score)).filter(
-            Match.user_id == user_id
-        ).scalar() or 0.0
+        avg_score = db.query(func.avg(Match.match_score)).filter(Match.user_id == user_id).scalar() or 0.0
 
         # Average score for saved matches
-        avg_saved_score = db.query(func.avg(Match.match_score)).filter(
-            and_(Match.user_id == user_id, Match.user_action == "saved")
-        ).scalar() or 0.0
+        avg_saved_score = (
+            db.query(func.avg(Match.match_score))
+            .filter(and_(Match.user_id == user_id, Match.user_action == "saved"))
+            .scalar()
+            or 0.0
+        )
 
         # Average score for dismissed matches
-        avg_dismissed_score = db.query(func.avg(Match.match_score)).filter(
-            and_(Match.user_id == user_id, Match.user_action == "dismissed")
-        ).scalar() or 0.0
+        avg_dismissed_score = (
+            db.query(func.avg(Match.match_score))
+            .filter(and_(Match.user_id == user_id, Match.user_action == "dismissed"))
+            .scalar()
+            or 0.0
+        )
 
         # High-quality matches (score > 0.8)
-        high_quality_matches = db.query(func.count(Match.id)).filter(
-            and_(Match.user_id == user_id, Match.match_score > 0.8)
-        ).scalar() or 0
+        high_quality_matches = (
+            db.query(func.count(Match.id)).filter(and_(Match.user_id == user_id, Match.match_score > 0.8)).scalar() or 0
+        )
 
         # ===== Alert Engagement =====
         # Get alerts for this user's matches
         user_alerts = (
-            db.query(AlertSent)
-            .join(Match, AlertSent.match_id == Match.id)
-            .filter(Match.user_id == user_id)
-            .all()
+            db.query(AlertSent).join(Match, AlertSent.match_id == Match.id).filter(Match.user_id == user_id).all()
         )
 
         total_alerts = len(user_alerts)
@@ -399,27 +381,39 @@ def compute_user_analytics(self, user_id: str) -> dict[str, Any]:
             start_date = now - timedelta(weeks=weeks_ago + 1)
             end_date = now - timedelta(weeks=weeks_ago)
 
-            avg_weekly_score = db.query(func.avg(Match.match_score)).filter(
-                and_(
-                    Match.user_id == user_id,
-                    Match.created_at >= start_date,
-                    Match.created_at < end_date,
+            avg_weekly_score = (
+                db.query(func.avg(Match.match_score))
+                .filter(
+                    and_(
+                        Match.user_id == user_id,
+                        Match.created_at >= start_date,
+                        Match.created_at < end_date,
+                    )
                 )
-            ).scalar() or 0.0
+                .scalar()
+                or 0.0
+            )
 
-            matches_count = db.query(func.count(Match.id)).filter(
-                and_(
-                    Match.user_id == user_id,
-                    Match.created_at >= start_date,
-                    Match.created_at < end_date,
+            matches_count = (
+                db.query(func.count(Match.id))
+                .filter(
+                    and_(
+                        Match.user_id == user_id,
+                        Match.created_at >= start_date,
+                        Match.created_at < end_date,
+                    )
                 )
-            ).scalar() or 0
+                .scalar()
+                or 0
+            )
 
-            score_timeline.append({
-                "week_start": start_date.strftime("%Y-%m-%d"),
-                "avg_score": round(float(avg_weekly_score), 4),
-                "match_count": matches_count,
-            })
+            score_timeline.append(
+                {
+                    "week_start": start_date.strftime("%Y-%m-%d"),
+                    "avg_score": round(float(avg_weekly_score), 4),
+                    "match_count": matches_count,
+                }
+            )
 
         # ===== Compile User Analytics =====
         user_analytics = {
@@ -440,9 +434,7 @@ def compute_user_analytics(self, user_id: str) -> dict[str, Any]:
                 "avg_saved_score": round(float(avg_saved_score), 4),
                 "avg_dismissed_score": round(float(avg_dismissed_score), 4),
                 "high_quality_matches": high_quality_matches,
-                "high_quality_percentage": _calculate_percentage(
-                    high_quality_matches, total_matches
-                ),
+                "high_quality_percentage": _calculate_percentage(high_quality_matches, total_matches),
             },
             "alert_engagement": {
                 "total_alerts": total_alerts,
@@ -457,10 +449,7 @@ def compute_user_analytics(self, user_id: str) -> dict[str, Any]:
         # Cache the results
         _store_in_cache(cache_key, user_analytics, CACHE_TTL_USER_ANALYTICS)
 
-        logger.info(
-            f"User analytics computed for {user_id}. "
-            f"Matches: {total_matches}, Acceptance: {acceptance_rate}%"
-        )
+        logger.info(f"User analytics computed for {user_id}. Matches: {total_matches}, Acceptance: {acceptance_rate}%")
 
         return user_analytics
 
@@ -513,52 +502,46 @@ def generate_match_quality_report(self) -> dict[str, Any]:
             return empty_report
 
         # Matches with user actions (labeled data)
-        labeled_matches = db.query(func.count(Match.id)).filter(
-            Match.user_action.isnot(None)
-        ).scalar() or 0
+        labeled_matches = db.query(func.count(Match.id)).filter(Match.user_action.isnot(None)).scalar() or 0
 
         labeling_rate = _calculate_percentage(labeled_matches, total_matches)
 
         # ===== Precision/Recall Estimation =====
         # True Positives: High score (>0.7) AND saved/applied
-        true_positives = db.query(func.count(Match.id)).filter(
-            and_(
-                Match.match_score > 0.7,
-                Match.user_action.in_(["saved", "applied"])
-            )
-        ).scalar() or 0
+        true_positives = (
+            db.query(func.count(Match.id))
+            .filter(and_(Match.match_score > 0.7, Match.user_action.in_(["saved", "applied"])))
+            .scalar()
+            or 0
+        )
 
         # False Positives: High score (>0.7) AND dismissed
-        false_positives = db.query(func.count(Match.id)).filter(
-            and_(
-                Match.match_score > 0.7,
-                Match.user_action == "dismissed"
-            )
-        ).scalar() or 0
+        false_positives = (
+            db.query(func.count(Match.id))
+            .filter(and_(Match.match_score > 0.7, Match.user_action == "dismissed"))
+            .scalar()
+            or 0
+        )
 
         # False Negatives: Low score (<=0.7) AND saved/applied
-        false_negatives = db.query(func.count(Match.id)).filter(
-            and_(
-                Match.match_score <= 0.7,
-                Match.user_action.in_(["saved", "applied"])
-            )
-        ).scalar() or 0
+        false_negatives = (
+            db.query(func.count(Match.id))
+            .filter(and_(Match.match_score <= 0.7, Match.user_action.in_(["saved", "applied"])))
+            .scalar()
+            or 0
+        )
 
         # True Negatives: Low score (<=0.7) AND dismissed
-        true_negatives = db.query(func.count(Match.id)).filter(
-            and_(
-                Match.match_score <= 0.7,
-                Match.user_action == "dismissed"
-            )
-        ).scalar() or 0
+        true_negatives = (
+            db.query(func.count(Match.id))
+            .filter(and_(Match.match_score <= 0.7, Match.user_action == "dismissed"))
+            .scalar()
+            or 0
+        )
 
         # Calculate precision and recall
-        precision = _calculate_percentage(
-            true_positives, true_positives + false_positives
-        )
-        recall = _calculate_percentage(
-            true_positives, true_positives + false_negatives
-        )
+        precision = _calculate_percentage(true_positives, true_positives + false_positives)
+        recall = _calculate_percentage(true_positives, true_positives + false_negatives)
 
         # F1 score
         if precision + recall > 0:
@@ -568,9 +551,7 @@ def generate_match_quality_report(self) -> dict[str, Any]:
 
         # Accuracy
         total_labeled = true_positives + false_positives + false_negatives + true_negatives
-        accuracy = _calculate_percentage(
-            true_positives + true_negatives, total_labeled
-        )
+        accuracy = _calculate_percentage(true_positives + true_negatives, total_labeled)
 
         # ===== Score Calibration Analysis =====
         # Analyze if match scores correlate with user actions
@@ -586,47 +567,38 @@ def generate_match_quality_report(self) -> dict[str, Any]:
 
         for min_score, max_score, label in score_ranges:
             # Get matches in this score range
-            bucket_matches = db.query(Match).filter(
-                and_(
-                    Match.match_score >= min_score,
-                    Match.match_score < max_score,
-                    Match.user_action.isnot(None)
+            bucket_matches = (
+                db.query(Match)
+                .filter(
+                    and_(Match.match_score >= min_score, Match.match_score < max_score, Match.user_action.isnot(None))
                 )
-            ).all()
+                .all()
+            )
 
             if bucket_matches:
-                saved_or_applied = sum(
-                    1 for m in bucket_matches
-                    if m.user_action in ["saved", "applied"]
-                )
-                dismissed = sum(
-                    1 for m in bucket_matches if m.user_action == "dismissed"
-                )
+                saved_or_applied = sum(1 for m in bucket_matches if m.user_action in ["saved", "applied"])
+                dismissed = sum(1 for m in bucket_matches if m.user_action == "dismissed")
 
                 score_buckets_analysis[label] = {
                     "total_matches": len(bucket_matches),
                     "saved_or_applied": saved_or_applied,
                     "dismissed": dismissed,
-                    "positive_rate_percent": _calculate_percentage(
-                        saved_or_applied, len(bucket_matches)
-                    ),
+                    "positive_rate_percent": _calculate_percentage(saved_or_applied, len(bucket_matches)),
                 }
 
         # ===== Score Distribution Analysis =====
-        avg_score_saved = db.query(func.avg(Match.match_score)).filter(
-            Match.user_action.in_(["saved", "applied"])
-        ).scalar() or 0.0
+        avg_score_saved = (
+            db.query(func.avg(Match.match_score)).filter(Match.user_action.in_(["saved", "applied"])).scalar() or 0.0
+        )
 
-        avg_score_dismissed = db.query(func.avg(Match.match_score)).filter(
-            Match.user_action == "dismissed"
-        ).scalar() or 0.0
+        avg_score_dismissed = (
+            db.query(func.avg(Match.match_score)).filter(Match.user_action == "dismissed").scalar() or 0.0
+        )
 
         score_separation = round(float(avg_score_saved - avg_score_dismissed), 4)
 
         # ===== Feedback Analysis =====
-        matches_with_feedback = db.query(func.count(Match.id)).filter(
-            Match.user_feedback.isnot(None)
-        ).scalar() or 0
+        matches_with_feedback = db.query(func.count(Match.id)).filter(Match.user_feedback.isnot(None)).scalar() or 0
 
         # ===== Improvement Recommendations =====
         recommendations = []
@@ -645,8 +617,7 @@ def generate_match_quality_report(self) -> dict[str, Any]:
 
         if score_separation < 0.1:
             recommendations.append(
-                "Low score separation between saved and dismissed matches. "
-                "The scoring function may need recalibration."
+                "Low score separation between saved and dismissed matches. The scoring function may need recalibration."
             )
 
         if labeling_rate < 20:
@@ -683,9 +654,7 @@ def generate_match_quality_report(self) -> dict[str, Any]:
             },
             "feedback": {
                 "matches_with_feedback": matches_with_feedback,
-                "feedback_rate_percent": _calculate_percentage(
-                    matches_with_feedback, total_matches
-                ),
+                "feedback_rate_percent": _calculate_percentage(matches_with_feedback, total_matches),
             },
             "recommendations": recommendations,
         }
@@ -693,10 +662,7 @@ def generate_match_quality_report(self) -> dict[str, Any]:
         # Cache the report
         _store_in_cache(cache_key, quality_report, CACHE_TTL_REPORTS)
 
-        logger.info(
-            f"Match quality report generated. "
-            f"Precision: {precision}%, Recall: {recall}%, F1: {f1_score}"
-        )
+        logger.info(f"Match quality report generated. Precision: {precision}%, Recall: {recall}%, F1: {f1_score}")
 
         return quality_report
 
@@ -782,13 +748,9 @@ def compute_agent_performance_metrics(self) -> dict[str, Any]:
 
         # ===== Matching Agent Metrics =====
         # Matches computed in last 24h
-        matches_computed_24h = db.query(func.count(Match.id)).filter(
-            Match.created_at >= last_24h
-        ).scalar() or 0
+        matches_computed_24h = db.query(func.count(Match.id)).filter(Match.created_at >= last_24h).scalar() or 0
 
-        matches_computed_7d = db.query(func.count(Match.id)).filter(
-            Match.created_at >= last_7d
-        ).scalar() or 0
+        matches_computed_7d = db.query(func.count(Match.id)).filter(Match.created_at >= last_7d).scalar() or 0
 
         # Matching throughput (matches per hour)
         matching_rate_24h = round(matches_computed_24h / 24, 2)
@@ -809,15 +771,12 @@ def compute_agent_performance_metrics(self) -> dict[str, Any]:
             if match_to_discovery_ratio < 0.5:
                 matching_health["status"] = "warning"
                 matching_health["issues"].append(
-                    f"Matching rate ({matches_computed_24h}) is low compared to "
-                    f"discovery rate ({total_discovered_24h})"
+                    f"Matching rate ({matches_computed_24h}) is low compared to discovery rate ({total_discovered_24h})"
                 )
 
         # ===== Alert Delivery Metrics =====
         # Alerts sent in last 24h
-        alerts_sent_24h = db.query(func.count(AlertSent.id)).filter(
-            AlertSent.sent_at >= last_24h
-        ).scalar() or 0
+        alerts_sent_24h = db.query(func.count(AlertSent.id)).filter(AlertSent.sent_at >= last_24h).scalar() or 0
 
         # Alert delivery by channel
         alerts_by_channel_24h = (
@@ -828,19 +787,19 @@ def compute_agent_performance_metrics(self) -> dict[str, Any]:
         )
 
         # Alert engagement in last 24h
-        alerts_opened_24h = db.query(func.count(AlertSent.id)).filter(
-            and_(
-                AlertSent.sent_at >= last_24h,
-                AlertSent.opened_at.isnot(None)
-            )
-        ).scalar() or 0
+        alerts_opened_24h = (
+            db.query(func.count(AlertSent.id))
+            .filter(and_(AlertSent.sent_at >= last_24h, AlertSent.opened_at.isnot(None)))
+            .scalar()
+            or 0
+        )
 
-        alerts_clicked_24h = db.query(func.count(AlertSent.id)).filter(
-            and_(
-                AlertSent.sent_at >= last_24h,
-                AlertSent.clicked_at.isnot(None)
-            )
-        ).scalar() or 0
+        alerts_clicked_24h = (
+            db.query(func.count(AlertSent.id))
+            .filter(and_(AlertSent.sent_at >= last_24h, AlertSent.clicked_at.isnot(None)))
+            .scalar()
+            or 0
+        )
 
         # Alert delivery health
         alert_health = {
@@ -893,12 +852,8 @@ def compute_agent_performance_metrics(self) -> dict[str, Any]:
                 "alerts_by_channel_24h": dict(alerts_by_channel_24h),
                 "alerts_opened_24h": alerts_opened_24h,
                 "alerts_clicked_24h": alerts_clicked_24h,
-                "open_rate_24h_percent": _calculate_percentage(
-                    alerts_opened_24h, alerts_sent_24h
-                ),
-                "click_rate_24h_percent": _calculate_percentage(
-                    alerts_clicked_24h, alerts_sent_24h
-                ),
+                "open_rate_24h_percent": _calculate_percentage(alerts_opened_24h, alerts_sent_24h),
+                "click_rate_24h_percent": _calculate_percentage(alerts_clicked_24h, alerts_sent_24h),
             },
         }
 

@@ -8,6 +8,7 @@ This module handles:
 - Stats updates for dashboard counters
 - Multi-channel notification delivery via Redis pub/sub
 """
+
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
@@ -18,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.delivery.channels import (
     get_sendgrid_channel,
-    get_slack_channel,
     get_twilio_channel,
 )
 from backend.celery_app import celery_app, critical_task
@@ -163,10 +163,7 @@ async def _send_deadline_reminder(
             url=url,
         )
 
-        logger.info(
-            f"Sent deadline reminder: user={user_id}, grant={grant_id}, "
-            f"days={days_remaining}"
-        )
+        logger.info(f"Sent deadline reminder: user={user_id}, grant={grant_id}, days={days_remaining}")
 
         # Send email reminder if user has email notifications enabled
         if user.email_notifications:
@@ -223,9 +220,7 @@ async def _send_deadline_email(
 
     # Format deadline for display
     deadline_str = deadline.strftime("%B %d, %Y at %I:%M %p UTC")
-    days_text = (
-        "tomorrow" if days_remaining == 1 else f"in {days_remaining} days"
-    )
+    days_text = "tomorrow" if days_remaining == 1 else f"in {days_remaining} days"
 
     # Build email content
     subject = f"Deadline Reminder: {title} - Due {days_text}"
@@ -245,7 +240,7 @@ async def _send_deadline_email(
         </div>
         <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
             <h2 style="color: #333; margin-top: 0;">Deadline Reminder</h2>
-            <p>Hi {user.name or 'Researcher'},</p>
+            <p>Hi {user.name or "Researcher"},</p>
             <p>This is a reminder that the deadline for the following grant is coming up <strong>{days_text}</strong>:</p>
             <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #333;">{title}</h3>
@@ -268,7 +263,7 @@ async def _send_deadline_email(
     body_text = f"""
     Deadline Reminder
 
-    Hi {user.name or 'Researcher'},
+    Hi {user.name or "Researcher"},
 
     This is a reminder that the deadline for the following grant is coming up {days_text}:
 
@@ -295,15 +290,9 @@ async def _send_deadline_email(
         )
 
         if status.status == "sent":
-            logger.info(
-                f"Deadline email sent: user={user.id}, grant={grant_id}, "
-                f"days={days_remaining}"
-            )
+            logger.info(f"Deadline email sent: user={user.id}, grant={grant_id}, days={days_remaining}")
         else:
-            logger.warning(
-                f"Deadline email failed: user={user.id}, grant={grant_id}, "
-                f"error={status.error_message}"
-            )
+            logger.warning(f"Deadline email failed: user={user.id}, grant={grant_id}, error={status.error_message}")
 
     except Exception as e:
         logger.error(
@@ -342,7 +331,9 @@ async def _send_deadline_sms(
     # Build concise SMS message (160 char limit)
     days_text = "tomorrow" if days_remaining == 1 else f"in {days_remaining} days"
     truncated_title = title[:60] + "..." if len(title) > 60 else title
-    message = f"{settings.app_name}: Grant deadline {days_text}! '{truncated_title}' is due {deadline.strftime('%m/%d')}."
+    message = (
+        f"{settings.app_name}: Grant deadline {days_text}! '{truncated_title}' is due {deadline.strftime('%m/%d')}."
+    )
 
     try:
         status = sms_channel.send_sms(
@@ -352,15 +343,9 @@ async def _send_deadline_sms(
         )
 
         if status.status == "sent":
-            logger.info(
-                f"Deadline SMS sent: user={user.id}, grant={grant_id}, "
-                f"days={days_remaining}"
-            )
+            logger.info(f"Deadline SMS sent: user={user.id}, grant={grant_id}, days={days_remaining}")
         else:
-            logger.warning(
-                f"Deadline SMS failed: user={user.id}, grant={grant_id}, "
-                f"error={status.error_message}"
-            )
+            logger.warning(f"Deadline SMS failed: user={user.id}, grant={grant_id}, error={status.error_message}")
 
     except Exception as e:
         logger.error(
@@ -410,9 +395,7 @@ async def _send_deadline_urgent_alert_async(
             hours_remaining = (grant.deadline - datetime.utcnow()).total_seconds() / 3600
 
             if hours_remaining > 24:
-                logger.warning(
-                    f"Urgent alert called but deadline is {hours_remaining:.1f} hours away"
-                )
+                logger.warning(f"Urgent alert called but deadline is {hours_remaining:.1f} hours away")
                 return
 
             # Send notification
@@ -506,10 +489,7 @@ async def notify_grant_update(
                     message=message,
                 )
 
-            logger.info(
-                f"Sent grant update notifications: grant={grant_id}, "
-                f"users={len(user_ids)}, type={update_type}"
-            )
+            logger.info(f"Sent grant update notifications: grant={grant_id}, users={len(user_ids)}, type={update_type}")
 
             return len(user_ids)
 
@@ -604,10 +584,7 @@ async def _send_high_match_alert_async(
                 amount_range=amount_range,
             )
 
-            logger.info(
-                f"Sent high match alert: user={user_id}, grant={grant_id}, "
-                f"score={match_score:.2f}"
-            )
+            logger.info(f"Sent high match alert: user={user_id}, grant={grant_id}, score={match_score:.2f}")
 
             # Send email alert if user has email notifications enabled
             if user.email_notifications:
@@ -686,13 +663,13 @@ async def _send_high_match_email(
                 <p style="margin: 5px 0 0 0; font-size: 14px;">Exceptional match for your research profile!</p>
             </div>
             <h2 style="color: #333; margin-top: 0;">New High-Priority Grant Match</h2>
-            <p>Hi {user.name or 'Researcher'},</p>
+            <p>Hi {user.name or "Researcher"},</p>
             <p>We've found a grant opportunity that's an excellent match for your research profile:</p>
             <div style="background: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0; color: #333;">{grant.title}</h3>
-                {f'<p style="margin: 5px 0; color: #666;"><strong>Agency:</strong> {grant.agency}</p>' if grant.agency else ''}
-                {f'<p style="margin: 5px 0; color: #666;"><strong>Funding:</strong> {amount_range}</p>' if amount_range else ''}
-                {f'<p style="margin: 5px 0; color: #666;"><strong>Deadline:</strong> {deadline_str}</p>' if deadline_str else ''}
+                {f'<p style="margin: 5px 0; color: #666;"><strong>Agency:</strong> {grant.agency}</p>' if grant.agency else ""}
+                {f'<p style="margin: 5px 0; color: #666;"><strong>Funding:</strong> {amount_range}</p>' if amount_range else ""}
+                {f'<p style="margin: 5px 0; color: #666;"><strong>Deadline:</strong> {deadline_str}</p>' if deadline_str else ""}
             </div>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="{grant_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">View Grant Details</a>
@@ -712,14 +689,14 @@ async def _send_high_match_email(
 
     New High-Priority Grant Match
 
-    Hi {user.name or 'Researcher'},
+    Hi {user.name or "Researcher"},
 
     We've found a grant opportunity that's an excellent match for your research profile:
 
     {grant.title}
-    {'Agency: ' + grant.agency if grant.agency else ''}
-    {'Funding: ' + amount_range if amount_range else ''}
-    {'Deadline: ' + deadline_str if deadline_str else ''}
+    {"Agency: " + grant.agency if grant.agency else ""}
+    {"Funding: " + amount_range if amount_range else ""}
+    {"Deadline: " + deadline_str if deadline_str else ""}
 
     View grant details: {grant_link}
 
@@ -741,15 +718,9 @@ async def _send_high_match_email(
         )
 
         if status.status == "sent":
-            logger.info(
-                f"High match email sent: user={user.id}, grant={grant.id}, "
-                f"score={match_score:.2f}"
-            )
+            logger.info(f"High match email sent: user={user.id}, grant={grant.id}, score={match_score:.2f}")
         else:
-            logger.warning(
-                f"High match email failed: user={user.id}, grant={grant.id}, "
-                f"error={status.error_message}"
-            )
+            logger.warning(f"High match email failed: user={user.id}, grant={grant.id}, error={status.error_message}")
 
     except Exception as e:
         logger.error(
@@ -800,15 +771,9 @@ async def _send_high_match_sms(
         )
 
         if status.status == "sent":
-            logger.info(
-                f"High match SMS sent: user={user.id}, grant={grant.id}, "
-                f"score={match_score:.2f}"
-            )
+            logger.info(f"High match SMS sent: user={user.id}, grant={grant.id}, score={match_score:.2f}")
         else:
-            logger.warning(
-                f"High match SMS failed: user={user.id}, grant={grant.id}, "
-                f"error={status.error_message}"
-            )
+            logger.warning(f"High match SMS failed: user={user.id}, grant={grant.id}, error={status.error_message}")
 
     except Exception as e:
         logger.error(
@@ -835,16 +800,12 @@ async def send_stats_update(user_id: UUID) -> None:
         try:
             # Count new grants (last 24 hours)
             yesterday = datetime.utcnow() - timedelta(days=1)
-            result = await session.execute(
-                select(Grant)
-                .where(Grant.created_at >= yesterday)
-            )
+            result = await session.execute(select(Grant).where(Grant.created_at >= yesterday))
             new_grants_count = len(result.all())
 
             # Count high matches for this user
             result = await session.execute(
-                select(Match)
-                .where(
+                select(Match).where(
                     and_(
                         Match.user_id == user_id,
                         Match.match_score >= 0.8,
@@ -878,8 +839,7 @@ async def send_stats_update(user_id: UUID) -> None:
 
             # Count total saved grants
             result = await session.execute(
-                select(Match)
-                .where(
+                select(Match).where(
                     and_(
                         Match.user_id == user_id,
                         Match.user_action == "saved",
@@ -932,9 +892,7 @@ def send_password_reset_email(email: str, name: str, reset_url: str) -> dict:
 
         # Check if SendGrid is configured
         if not settings.sendgrid_api_key:
-            logger.warning(
-                f"SendGrid not configured - would send password reset to {email}"
-            )
+            logger.warning(f"SendGrid not configured - would send password reset to {email}")
             return {
                 "status": "skipped",
                 "reason": "SendGrid not configured",
@@ -1006,9 +964,7 @@ def send_password_reset_email(email: str, name: str, reset_url: str) -> dict:
 
         response = sg.send(mail)
 
-        logger.info(
-            f"Password reset email sent to {email}, status_code={response.status_code}"
-        )
+        logger.info(f"Password reset email sent to {email}, status_code={response.status_code}")
 
         return {
             "status": "sent",
@@ -1051,9 +1007,7 @@ def send_verification_email(email: str, name: str, verification_url: str) -> dic
 
         # Check if SendGrid is configured
         if not settings.sendgrid_api_key:
-            logger.warning(
-                f"SendGrid not configured - would send verification email to {email}"
-            )
+            logger.warning(f"SendGrid not configured - would send verification email to {email}")
             return {
                 "status": "skipped",
                 "reason": "SendGrid not configured",
@@ -1125,9 +1079,7 @@ def send_verification_email(email: str, name: str, verification_url: str) -> dic
 
         response = sg.send(mail)
 
-        logger.info(
-            f"Verification email sent to {email}, status_code={response.status_code}"
-        )
+        logger.info(f"Verification email sent to {email}, status_code={response.status_code}")
 
         return {
             "status": "sent",

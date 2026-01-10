@@ -1,10 +1,11 @@
 """
 Tests for NSF Award Search API Discovery Agent.
 """
+
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 
 from agents.discovery.nsf_api import (
     NSFDiscoveryAgent,
@@ -207,6 +208,7 @@ class TestNSFDiscoveryAgent:
         # Create async mock that returns the response directly
         async def mock_get(*args, **kwargs):
             return mock_response
+
         mock_nsf_agent.http_client = AsyncMock()
         mock_nsf_agent.http_client.get = mock_get
 
@@ -233,6 +235,7 @@ class TestNSFDiscoveryAgent:
 
         async def mock_get(*args, **kwargs):
             return mock_response
+
         mock_nsf_agent.http_client = AsyncMock()
         mock_nsf_agent.http_client.get = mock_get
 
@@ -253,6 +256,7 @@ class TestNSFDiscoveryAgent:
 
         async def mock_get(*args, **kwargs):
             return mock_response
+
         mock_nsf_agent.http_client = AsyncMock()
         mock_nsf_agent.http_client.get = mock_get
 
@@ -270,6 +274,7 @@ class TestNSFDiscoveryAgent:
 
         async def mock_get(*args, **kwargs):
             return mock_response
+
         mock_nsf_agent.http_client = AsyncMock()
         mock_nsf_agent.http_client.get = mock_get
         mock_nsf_agent.http_client.aclose = AsyncMock()
@@ -292,6 +297,7 @@ class TestNSFDiscoveryAgent:
 
         async def mock_get(*args, **kwargs):
             return mock_response
+
         mock_nsf_agent.http_client = AsyncMock()
         mock_nsf_agent.http_client.get = mock_get
         mock_nsf_agent.http_client.aclose = AsyncMock()

@@ -2,10 +2,9 @@
 Tests for Delivery Channels.
 Tests SendGrid, Twilio, and Slack channel implementations.
 """
+
 import pytest
-from datetime import datetime
 from unittest.mock import MagicMock, AsyncMock, patch
-from uuid import uuid4
 
 from agents.delivery.channels import (
     SendGridChannel,
@@ -17,8 +16,6 @@ from agents.delivery.channels import (
 )
 from agents.delivery.models import (
     DeliveryChannel,
-    EmailContent,
-    SMSContent,
     SlackContent,
 )
 
@@ -281,6 +278,7 @@ class TestChannelSingletons:
         """Test that get_sendgrid_channel returns singleton."""
         # Reset singleton
         import agents.delivery.channels as channels_module
+
         channels_module._sendgrid_channel = None
 
         channel1 = get_sendgrid_channel()
@@ -291,6 +289,7 @@ class TestChannelSingletons:
     def test_get_twilio_channel_returns_same_instance(self):
         """Test that get_twilio_channel returns singleton."""
         import agents.delivery.channels as channels_module
+
         channels_module._twilio_channel = None
 
         channel1 = get_twilio_channel()
@@ -301,6 +300,7 @@ class TestChannelSingletons:
     def test_get_slack_channel_returns_same_instance(self):
         """Test that get_slack_channel returns singleton."""
         import agents.delivery.channels as channels_module
+
         channels_module._slack_channel = None
 
         channel1 = get_slack_channel()

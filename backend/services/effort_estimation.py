@@ -2,6 +2,7 @@
 Effort Estimation Service
 Estimates time and effort required for grant applications.
 """
+
 from dataclasses import dataclass
 from typing import Optional
 
@@ -14,29 +15,24 @@ MECHANISM_EFFORT = {
     "R15": {"hours_min": 60, "hours_max": 120, "complexity": "moderate", "typical_weeks": 6},
     "R35": {"hours_min": 100, "hours_max": 250, "complexity": "complex", "typical_weeks": 10},
     "U01": {"hours_min": 100, "hours_max": 200, "complexity": "complex", "typical_weeks": 8},
-
     # Career Development
     "K01": {"hours_min": 60, "hours_max": 120, "complexity": "moderate", "typical_weeks": 6},
     "K08": {"hours_min": 60, "hours_max": 120, "complexity": "moderate", "typical_weeks": 6},
     "K23": {"hours_min": 60, "hours_max": 120, "complexity": "moderate", "typical_weeks": 6},
     "K99": {"hours_min": 80, "hours_max": 160, "complexity": "complex", "typical_weeks": 8},
-
     # Training/Fellowship
     "F31": {"hours_min": 40, "hours_max": 80, "complexity": "moderate", "typical_weeks": 4},
     "F32": {"hours_min": 40, "hours_max": 80, "complexity": "moderate", "typical_weeks": 4},
     "T32": {"hours_min": 80, "hours_max": 160, "complexity": "complex", "typical_weeks": 8},
-
     # Program/Center
     "P01": {"hours_min": 200, "hours_max": 400, "complexity": "complex", "typical_weeks": 16},
     "P30": {"hours_min": 150, "hours_max": 300, "complexity": "complex", "typical_weeks": 12},
     "P50": {"hours_min": 200, "hours_max": 400, "complexity": "complex", "typical_weeks": 16},
-
     # SBIR/STTR
     "R41": {"hours_min": 40, "hours_max": 80, "complexity": "moderate", "typical_weeks": 4},
     "R42": {"hours_min": 80, "hours_max": 160, "complexity": "complex", "typical_weeks": 8},
     "R43": {"hours_min": 40, "hours_max": 80, "complexity": "moderate", "typical_weeks": 4},
     "R44": {"hours_min": 80, "hours_max": 160, "complexity": "complex", "typical_weeks": 8},
-
     # NSF
     "CAREER": {"hours_min": 80, "hours_max": 160, "complexity": "complex", "typical_weeks": 8},
     "Standard": {"hours_min": 60, "hours_max": 120, "complexity": "moderate", "typical_weeks": 6},
@@ -51,6 +47,7 @@ DEFAULT_EFFORT = {"hours_min": 40, "hours_max": 80, "complexity": "moderate", "t
 @dataclass
 class EffortEstimate:
     """Effort estimate for a grant application."""
+
     hours_min: int
     hours_max: int
     complexity: str  # simple, moderate, complex
@@ -97,11 +94,7 @@ def estimate_effort(
     factors = []
 
     # Extract mechanism
-    mechanism = extract_mechanism_from_grant(
-        grant_title,
-        grant_description or "",
-        grant_agency or ""
-    )
+    mechanism = extract_mechanism_from_grant(grant_title, grant_description or "", grant_agency or "")
 
     # Get base effort
     if mechanism and mechanism in MECHANISM_EFFORT:

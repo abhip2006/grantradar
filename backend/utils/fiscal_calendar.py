@@ -10,41 +10,41 @@ Many federal grants have predictable patterns around fiscal year:
 - Q3 end (Jun) - quarterly deadlines
 """
 
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional
 
 
 # List of federal agency abbreviations commonly used in grant funding
 FEDERAL_AGENCIES = [
-    "NIH",      # National Institutes of Health
-    "NSF",      # National Science Foundation
-    "DOE",      # Department of Energy
-    "DOD",      # Department of Defense
-    "NASA",     # National Aeronautics and Space Administration
-    "USDA",     # United States Department of Agriculture
-    "EPA",      # Environmental Protection Agency
-    "NEH",      # National Endowment for the Humanities
-    "NEA",      # National Endowment for the Arts
-    "ED",       # Department of Education
-    "HHS",      # Department of Health and Human Services
-    "CDC",      # Centers for Disease Control and Prevention
-    "SAMHSA",   # Substance Abuse and Mental Health Services Administration
-    "HRSA",     # Health Resources and Services Administration
-    "AHRQ",     # Agency for Healthcare Research and Quality
-    "FDA",      # Food and Drug Administration
-    "VA",       # Department of Veterans Affairs
-    "NOAA",     # National Oceanic and Atmospheric Administration
-    "NIST",     # National Institute of Standards and Technology
-    "DOT",      # Department of Transportation
-    "DHS",      # Department of Homeland Security
-    "DOJ",      # Department of Justice
-    "HUD",      # Department of Housing and Urban Development
-    "DOI",      # Department of the Interior
-    "USAID",    # United States Agency for International Development
-    "NIJ",      # National Institute of Justice
-    "DARPA",    # Defense Advanced Research Projects Agency
-    "ARPA-E",   # Advanced Research Projects Agency-Energy
-    "ARPA-H",   # Advanced Research Projects Agency for Health
+    "NIH",  # National Institutes of Health
+    "NSF",  # National Science Foundation
+    "DOE",  # Department of Energy
+    "DOD",  # Department of Defense
+    "NASA",  # National Aeronautics and Space Administration
+    "USDA",  # United States Department of Agriculture
+    "EPA",  # Environmental Protection Agency
+    "NEH",  # National Endowment for the Humanities
+    "NEA",  # National Endowment for the Arts
+    "ED",  # Department of Education
+    "HHS",  # Department of Health and Human Services
+    "CDC",  # Centers for Disease Control and Prevention
+    "SAMHSA",  # Substance Abuse and Mental Health Services Administration
+    "HRSA",  # Health Resources and Services Administration
+    "AHRQ",  # Agency for Healthcare Research and Quality
+    "FDA",  # Food and Drug Administration
+    "VA",  # Department of Veterans Affairs
+    "NOAA",  # National Oceanic and Atmospheric Administration
+    "NIST",  # National Institute of Standards and Technology
+    "DOT",  # Department of Transportation
+    "DHS",  # Department of Homeland Security
+    "DOJ",  # Department of Justice
+    "HUD",  # Department of Housing and Urban Development
+    "DOI",  # Department of the Interior
+    "USAID",  # United States Agency for International Development
+    "NIJ",  # National Institute of Justice
+    "DARPA",  # Defense Advanced Research Projects Agency
+    "ARPA-E",  # Advanced Research Projects Agency-Energy
+    "ARPA-H",  # Advanced Research Projects Agency for Health
 ]
 
 
@@ -98,9 +98,9 @@ class FiscalCalendar:
     # Quarter end months in fiscal year order (Q1=Dec, Q2=Mar, Q3=Jun, Q4=Sep)
     QUARTER_END_MONTHS = {
         1: 12,  # Q1 ends December
-        2: 3,   # Q2 ends March
-        3: 6,   # Q3 ends June
-        4: 9,   # Q4 ends September (fiscal year end)
+        2: 3,  # Q2 ends March
+        3: 6,  # Q3 ends June
+        4: 9,  # Q4 ends September (fiscal year end)
     }
 
     # Days before quarter end for "use-it-or-lose-it" patterns
@@ -166,9 +166,9 @@ class FiscalCalendar:
 
         return [
             date(calendar_year_start, 12, 31),  # Q1 end - December 31
-            date(fiscal_year, 3, 31),            # Q2 end - March 31
-            date(fiscal_year, 6, 30),            # Q3 end - June 30
-            date(fiscal_year, 9, 30),            # Q4 end - September 30 (FY end)
+            date(fiscal_year, 3, 31),  # Q2 end - March 31
+            date(fiscal_year, 6, 30),  # Q3 end - June 30
+            date(fiscal_year, 9, 30),  # Q4 end - September 30 (FY end)
         ]
 
     @staticmethod
@@ -348,15 +348,11 @@ class FiscalCalendar:
             return predicted_date
 
         # Check if this funder historically releases near quarter ends
-        quarter_affinity = FiscalCalendar.analyze_historical_quarter_affinity(
-            historical_dates
-        )
+        quarter_affinity = FiscalCalendar.analyze_historical_quarter_affinity(historical_dates)
 
         if quarter_affinity >= min_quarter_affinity:
             # This funder tends to release near quarter ends
-            nearest_qe = FiscalCalendar.get_nearest_quarter_end(
-                predicted_date, snap_threshold_days
-            )
+            nearest_qe = FiscalCalendar.get_nearest_quarter_end(predicted_date, snap_threshold_days)
             if nearest_qe:
                 return nearest_qe
 
@@ -367,10 +363,7 @@ class FiscalCalendar:
             fy_end = date(fiscal_year if predicted_date.month < 10 else predicted_date.year, 9, 30)
 
             # Check if historical dates show end-of-year pattern
-            end_of_year_dates = [
-                d for d in historical_dates
-                if d.month in (8, 9)
-            ]
+            end_of_year_dates = [d for d in historical_dates if d.month in (8, 9)]
             if len(end_of_year_dates) >= len(historical_dates) * 0.3:
                 # Significant end-of-year activity, adjust to September
                 return date(fy_end.year, 9, 15)
@@ -379,10 +372,7 @@ class FiscalCalendar:
         # as these align with new appropriations
         if predicted_date.month in (10, 11):
             # Check if historical dates support this timing
-            start_of_year_dates = [
-                d for d in historical_dates
-                if d.month in (10, 11)
-            ]
+            start_of_year_dates = [d for d in historical_dates if d.month in (10, 11)]
             if len(start_of_year_dates) >= len(historical_dates) * 0.3:
                 # Pattern supports start-of-year timing
                 return predicted_date

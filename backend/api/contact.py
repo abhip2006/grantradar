@@ -1,4 +1,5 @@
 """Contact form API endpoints."""
+
 import logging
 from fastapi import APIRouter, BackgroundTasks
 from backend.schemas.contact import ContactFormRequest, ContactFormResponse
@@ -17,12 +18,12 @@ async def send_contact_email(data: ContactFormRequest):
         channel = SendGridChannel()
 
         subject_labels = {
-            'general': 'General Inquiry',
-            'support': 'Technical Support',
-            'billing': 'Billing Question',
-            'enterprise': 'Enterprise Sales',
-            'partnership': 'Partnership Opportunity',
-            'feedback': 'Product Feedback',
+            "general": "General Inquiry",
+            "support": "Technical Support",
+            "billing": "Billing Question",
+            "enterprise": "Enterprise Sales",
+            "partnership": "Partnership Opportunity",
+            "feedback": "Product Feedback",
         }
 
         subject = f"[GrantRadar Contact] {subject_labels.get(data.subject, 'General')}: {data.name}"
@@ -30,7 +31,7 @@ async def send_contact_email(data: ContactFormRequest):
         html_content = f"""
         <h2>New Contact Form Submission</h2>
         <p><strong>From:</strong> {data.name} ({data.email})</p>
-        <p><strong>Subject:</strong> {subject_labels.get(data.subject, 'General')}</p>
+        <p><strong>Subject:</strong> {subject_labels.get(data.subject, "General")}</p>
         <hr>
         <p><strong>Message:</strong></p>
         <p style="white-space: pre-wrap;">{data.message}</p>
@@ -42,10 +43,7 @@ async def send_contact_email(data: ContactFormRequest):
 
         # Send to support email
         await channel.send(
-            to_email="support@grantradar.com",
-            subject=subject,
-            html_content=html_content,
-            reply_to=data.email
+            to_email="support@grantradar.com", subject=subject, html_content=html_content, reply_to=data.email
         )
 
         logger.info(f"Contact form submitted: {data.subject} from {data.email}")
@@ -57,10 +55,7 @@ async def send_contact_email(data: ContactFormRequest):
 
 
 @router.post("", response_model=ContactFormResponse)
-async def submit_contact_form(
-    data: ContactFormRequest,
-    background_tasks: BackgroundTasks
-):
+async def submit_contact_form(data: ContactFormRequest, background_tasks: BackgroundTasks):
     """
     Submit a contact form.
 
@@ -68,15 +63,11 @@ async def submit_contact_form(
     and logged for follow-up.
     """
     # Log the submission immediately
-    logger.info(
-        f"Contact form received: subject={data.subject}, "
-        f"name={data.name}, email={data.email}"
-    )
+    logger.info(f"Contact form received: subject={data.subject}, name={data.name}, email={data.email}")
 
     # Send email in background (don't block the response)
     background_tasks.add_task(send_contact_email, data)
 
     return ContactFormResponse(
-        success=True,
-        message="Thank you for contacting us. We'll get back to you within 24 hours."
+        success=True, message="Thank you for contacting us. We'll get back to you within 24 hours."
     )

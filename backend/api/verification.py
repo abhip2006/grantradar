@@ -2,13 +2,14 @@
 Email Verification API Endpoints
 Send verification emails and verify email addresses.
 """
+
 import hashlib
 import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
 from backend.api.deps import (
@@ -103,7 +104,7 @@ async def generate_and_send_verification_email(
     "/send-verification",
     response_model=SendVerificationResponse,
     summary="Send/resend verification email",
-    description="Send or resend the email verification email. Rate limited to prevent abuse."
+    description="Send or resend the email verification email. Rate limited to prevent abuse.",
 )
 async def send_verification(
     db: AsyncSessionDep,
@@ -128,42 +129,32 @@ async def send_verification(
         email_to_verify = request.email
     else:
         # No email provided and not authenticated
-        return SendVerificationResponse(
-            message="Please provide an email address or authenticate first.",
-            success=False
-        )
+        return SendVerificationResponse(message="Please provide an email address or authenticate first.", success=False)
 
     # Always return success to prevent email enumeration
     response = SendVerificationResponse()
 
     try:
         # Find user by email
-        result = await db.execute(
-            select(User).where(User.email == email_to_verify)
-        )
+        result = await db.execute(select(User).where(User.email == email_to_verify))
         user = result.scalar_one_or_none()
 
         if user:
             # Check if already verified
             if user.email_verified:
                 logger.info(f"User {user.id} already verified, skipping email")
-                return SendVerificationResponse(
-                    message="This email address is already verified.",
-                    success=True
-                )
+                return SendVerificationResponse(message="This email address is already verified.", success=True)
 
             # Check rate limiting - don't send too many emails
             if user.email_verification_token_expires:
                 time_since_last = datetime.utcnow() - (
-                    user.email_verification_token_expires -
-                    timedelta(hours=VERIFICATION_TOKEN_EXPIRE_HOURS)
+                    user.email_verification_token_expires - timedelta(hours=VERIFICATION_TOKEN_EXPIRE_HOURS)
                 )
                 # Only allow resend if at least 1 minute has passed since last send
                 if time_since_last.total_seconds() < 60:
                     logger.warning(f"Rate limited verification email for user {user.id}")
                     return SendVerificationResponse(
-                        message="Please wait before requesting another verification email.",
-                        success=False
+                        message="Please wait before requesting another verification email.", success=False
                     )
 
             # Generate and send verification email
@@ -183,7 +174,7 @@ async def send_verification(
     "/verify-email",
     response_model=VerifyEmailResponse,
     summary="Verify email address",
-    description="Verify email using the token from the verification email."
+    description="Verify email using the token from the verification email.",
 )
 async def verify_email(
     token: str = Query(..., description="The verification token from the email"),
@@ -201,33 +192,22 @@ async def verify_email(
         token_hash = _hash_token(token)
 
         # Find user by token hash
-        result = await db.execute(
-            select(User).where(
-                User.email_verification_token_hash == token_hash
-            )
-        )
+        result = await db.execute(select(User).where(User.email_verification_token_hash == token_hash))
         user = result.scalar_one_or_none()
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification token"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
 
         # Check if already verified
         if user.email_verified:
-            return VerifyEmailResponse(
-                message="Your email is already verified.",
-                success=True,
-                email_verified=True
-            )
+            return VerifyEmailResponse(message="Your email is already verified.", success=True, email_verified=True)
 
         # Check if token is expired
         if user.email_verification_token_expires:
             if datetime.utcnow() > user.email_verification_token_expires:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Verification token has expired. Please request a new one."
+                    detail="Verification token has expired. Please request a new one.",
                 )
 
         # Mark email as verified
@@ -239,9 +219,7 @@ async def verify_email(
         logger.info(f"Email verified for user {user.id}")
 
         return VerifyEmailResponse(
-            message="Your email has been verified successfully!",
-            success=True,
-            email_verified=True
+            message="Your email has been verified successfully!", success=True, email_verified=True
         )
 
     except HTTPException:
@@ -249,8 +227,7 @@ async def verify_email(
     except Exception as e:
         logger.error(f"Error verifying email: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while verifying your email"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while verifying your email"
         )
 
 
@@ -258,7 +235,7 @@ async def verify_email(
     "/verification-status",
     response_model=VerifyEmailResponse,
     summary="Check verification status",
-    description="Check the current email verification status for the authenticated user."
+    description="Check the current email verification status for the authenticated user.",
 )
 async def get_verification_status(
     current_user: CurrentUser,
@@ -269,14 +246,10 @@ async def get_verification_status(
     Requires authentication.
     """
     if current_user.email_verified:
-        return VerifyEmailResponse(
-            message="Your email is verified.",
-            success=True,
-            email_verified=True
-        )
+        return VerifyEmailResponse(message="Your email is verified.", success=True, email_verified=True)
     else:
         return VerifyEmailResponse(
             message="Your email is not verified. Please check your inbox for the verification email.",
             success=True,
-            email_verified=False
+            email_verified=False,
         )

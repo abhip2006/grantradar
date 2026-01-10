@@ -2,6 +2,7 @@
 Matching Agent Module
 Grant-to-user profile matching using vector similarity and LLM re-ranking.
 """
+
 from .grant_embedder import GrantEmbedder
 from .matcher import (
     GrantMatcher,

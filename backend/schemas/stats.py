@@ -1,6 +1,7 @@
 """
 Statistics schemas for dashboard data.
 """
+
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -50,32 +51,19 @@ class DashboardStats(BaseModel):
     new_matches_week: int = Field(..., description="New matches in last 7 days")
 
     # Score distribution
-    score_distribution: MatchScoreDistribution = Field(
-        ...,
-        description="Distribution of match scores"
-    )
+    score_distribution: MatchScoreDistribution = Field(..., description="Distribution of match scores")
 
     # Average score
-    average_match_score: Optional[float] = Field(
-        None,
-        description="Average match score"
-    )
+    average_match_score: Optional[float] = Field(None, description="Average match score")
 
     # Upcoming deadlines
     upcoming_deadlines: list[UpcomingDeadline] = Field(
-        default_factory=list,
-        description="Grants with upcoming deadlines"
+        default_factory=list, description="Grants with upcoming deadlines"
     )
 
     # Recent matches
-    recent_matches: list[RecentMatch] = Field(
-        default_factory=list,
-        description="Most recent matches"
-    )
+    recent_matches: list[RecentMatch] = Field(default_factory=list, description="Most recent matches")
 
     # Profile status
     profile_complete: bool = Field(..., description="Whether profile is complete")
-    profile_has_embedding: bool = Field(
-        ...,
-        description="Whether profile has been embedded"
-    )
+    profile_has_embedding: bool = Field(..., description="Whether profile has been embedded")

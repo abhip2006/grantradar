@@ -3,6 +3,7 @@ Review Criteria Service
 Extracts and maps review criteria from various funding agencies (NIH, NSF, etc.)
 to help researchers write better grant applications.
 """
+
 from typing import Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -287,6 +288,7 @@ MECHANISM_OVERRIDES: Dict[str, Dict] = {
 # Review Criteria Service
 # =============================================================================
 
+
 class ReviewCriteriaService:
     """Service for managing and retrieving grant review criteria."""
 
@@ -358,10 +360,7 @@ class ReviewCriteriaService:
         mechanism_name = mechanism_names.get(mechanism_upper, mechanism_code)
 
         # Get overall guidance
-        overall_guidance = overrides.get(
-            "overall_guidance",
-            self._get_default_guidance(agency)
-        )
+        overall_guidance = overrides.get("overall_guidance", self._get_default_guidance(agency))
 
         # Get page limits
         page_limits = overrides.get("page_limits")
@@ -384,19 +383,13 @@ class ReviewCriteriaService:
         else:
             return "Review the specific solicitation for evaluation criteria. Most agencies evaluate scientific merit, feasibility, team qualifications, and broader impact."
 
-    async def get_criteria_from_db(
-        self,
-        db: AsyncSession,
-        mechanism_code: str
-    ) -> Optional[MechanismCriteria]:
+    async def get_criteria_from_db(self, db: AsyncSession, mechanism_code: str) -> Optional[MechanismCriteria]:
         """
         Get criteria from database if available, with fallback to predefined criteria.
         Enriches with data from grant_mechanisms table if present.
         """
         # Try to get mechanism from database
-        result = await db.execute(
-            select(GrantMechanism).where(GrantMechanism.code == mechanism_code.upper())
-        )
+        result = await db.execute(select(GrantMechanism).where(GrantMechanism.code == mechanism_code.upper()))
         db_mechanism = result.scalar_one_or_none()
 
         # Get predefined criteria

@@ -2,18 +2,18 @@
 Grant API Endpoints
 List, filter, search, and get grant details.
 """
+
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import and_, func, or_, select, text
-from sqlalchemy.orm import joinedload
 
 from backend.api.deps import AsyncSessionDep, OptionalUser
 from backend.core.rate_limit import RateLimitSearch, RateLimitStandard
 from backend.models import Grant, Match
-from backend.schemas.grants import GrantDetail, GrantList, GrantResponse, GrantSearch
+from backend.schemas.grants import GrantDetail, GrantList, GrantResponse
 
 router = APIRouter(prefix="/api/grants", tags=["Grants"])
 
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/grants", tags=["Grants"])
     "",
     response_model=GrantList,
     summary="List grants",
-    description="Get paginated list of grants with optional filtering."
+    description="Get paginated list of grants with optional filtering.",
 )
 async def list_grants(
     db: AsyncSessionDep,
@@ -57,20 +57,10 @@ async def list_grants(
         filters.append(Grant.categories.contains([category]))
 
     if min_amount is not None:
-        filters.append(
-            or_(
-                Grant.amount_min >= min_amount,
-                Grant.amount_max >= min_amount
-            )
-        )
+        filters.append(or_(Grant.amount_min >= min_amount, Grant.amount_max >= min_amount))
 
     if max_amount is not None:
-        filters.append(
-            or_(
-                Grant.amount_max <= max_amount,
-                Grant.amount_min <= max_amount
-            )
-        )
+        filters.append(or_(Grant.amount_max <= max_amount, Grant.amount_min <= max_amount))
 
     if deadline_after:
         filters.append(Grant.deadline >= deadline_after)
@@ -79,12 +69,7 @@ async def list_grants(
         filters.append(Grant.deadline <= deadline_before)
 
     if active_only:
-        filters.append(
-            or_(
-                Grant.deadline.is_(None),
-                Grant.deadline > datetime.now(timezone.utc)
-            )
-        )
+        filters.append(or_(Grant.deadline.is_(None), Grant.deadline > datetime.now(timezone.utc)))
 
     if filters:
         query = query.where(and_(*filters))
@@ -122,20 +107,11 @@ async def list_grants(
     ]
 
     return GrantList(
-        grants=grant_responses,
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(offset + len(grants)) < total
+        grants=grant_responses, total=total, page=page, page_size=page_size, has_more=(offset + len(grants)) < total
     )
 
 
-@router.get(
-    "/search",
-    response_model=GrantList,
-    summary="Search grants",
-    description="Search grants by text query."
-)
+@router.get("/search", response_model=GrantList, summary="Search grants", description="Search grants by text query.")
 async def search_grants(
     db: AsyncSessionDep,
     q: str = Query(..., min_length=1, max_length=500, description="Search query"),
@@ -153,7 +129,7 @@ async def search_grants(
     # Convert search query to tsquery format
     # plainto_tsquery handles plain text and converts to proper tsquery
     # websearch_to_tsquery supports quoted phrases and - for exclusion
-    search_query = func.websearch_to_tsquery('english', q)
+    search_query = func.websearch_to_tsquery("english", q)
 
     # Build full-text search query using @@ operator
     # Results are ranked by relevance using ts_rank with normalization
@@ -161,7 +137,7 @@ async def search_grants(
     rank_expression = func.ts_rank(
         Grant.search_vector,
         search_query,
-        32  # normalization: divide by 1 + document length
+        32,  # normalization: divide by 1 + document length
     )
 
     query = (
@@ -171,10 +147,7 @@ async def search_grants(
         .limit(limit)
     )
 
-    count_query = (
-        select(func.count(Grant.id))
-        .where(Grant.search_vector.op("@@")(search_query))
-    )
+    count_query = select(func.count(Grant.id)).where(Grant.search_vector.op("@@")(search_query))
 
     # Execute queries
     result = await db.execute(query)
@@ -202,11 +175,7 @@ async def search_grants(
     ]
 
     return GrantList(
-        grants=grant_responses,
-        total=total,
-        page=1,
-        page_size=limit,
-        has_more=len(grant_responses) < total
+        grants=grant_responses, total=total, page=1, page_size=limit, has_more=len(grant_responses) < total
     )
 
 
@@ -214,7 +183,7 @@ async def search_grants(
     "/{grant_id}",
     response_model=GrantDetail,
     summary="Get grant details",
-    description="Get detailed information about a specific grant."
+    description="Get detailed information about a specific grant.",
 )
 async def get_grant(
     grant_id: UUID,
@@ -227,16 +196,11 @@ async def get_grant(
     If authenticated, includes match information for the current user.
     """
     # Fetch grant
-    result = await db.execute(
-        select(Grant).where(Grant.id == grant_id)
-    )
+    result = await db.execute(select(Grant).where(Grant.id == grant_id))
     grant = result.scalar_one_or_none()
 
     if not grant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Grant not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
 
     # Get match info if user is authenticated
     match_score = None
@@ -245,12 +209,7 @@ async def get_grant(
 
     if current_user:
         match_result = await db.execute(
-            select(Match).where(
-                and_(
-                    Match.grant_id == grant_id,
-                    Match.user_id == current_user.id
-                )
-            )
+            select(Match).where(and_(Match.grant_id == grant_id, Match.user_id == current_user.id))
         )
         match = match_result.scalar_one_or_none()
 

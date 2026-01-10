@@ -3,6 +3,7 @@ Calendar API Endpoints
 Export grant deadlines to ICS format, generate calendar links,
 and provide calendar view data for deadline tracking.
 """
+
 from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -10,7 +11,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import joinedload
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
@@ -204,9 +205,7 @@ def generate_outlook_calendar_url(
 
 
 @router.get(
-    "/export",
-    summary="Export deadlines to ICS",
-    description="Export saved grant deadlines as an ICS calendar file."
+    "/export", summary="Export deadlines to ICS", description="Export saved grant deadlines as an ICS calendar file."
 )
 async def export_calendar(
     db: AsyncSessionDep,
@@ -279,16 +278,14 @@ async def export_calendar(
     return Response(
         content=ics_content,
         media_type="text/calendar",
-        headers={
-            "Content-Disposition": "attachment; filename=grantradar-deadlines.ics"
-        }
+        headers={"Content-Disposition": "attachment; filename=grantradar-deadlines.ics"},
     )
 
 
 @router.get(
     "/grant/{grant_id}/links",
     summary="Get calendar links for a grant",
-    description="Get Google Calendar and Outlook links for a specific grant deadline."
+    description="Get Google Calendar and Outlook links for a specific grant deadline.",
 )
 async def get_calendar_links(
     grant_id: UUID,
@@ -303,22 +300,14 @@ async def get_calendar_links(
     - ICS download (single event)
     """
     # Fetch grant
-    result = await db.execute(
-        select(Grant).where(Grant.id == grant_id)
-    )
+    result = await db.execute(select(Grant).where(Grant.id == grant_id))
     grant = result.scalar_one_or_none()
 
     if not grant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Grant not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
 
     if not grant.deadline:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Grant has no deadline"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Grant has no deadline")
 
     # Generate links
     google_url = generate_google_calendar_url(
@@ -348,7 +337,7 @@ async def get_calendar_links(
 @router.get(
     "/grant/{grant_id}/ics",
     summary="Download ICS for a single grant",
-    description="Download an ICS file for a single grant deadline."
+    description="Download an ICS file for a single grant deadline.",
 )
 async def download_grant_ics(
     grant_id: UUID,
@@ -358,22 +347,14 @@ async def download_grant_ics(
     Download an ICS file for a single grant deadline.
     """
     # Fetch grant
-    result = await db.execute(
-        select(Grant).where(Grant.id == grant_id)
-    )
+    result = await db.execute(select(Grant).where(Grant.id == grant_id))
     grant = result.scalar_one_or_none()
 
     if not grant:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Grant not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
 
     if not grant.deadline:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Grant has no deadline"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Grant has no deadline")
 
     # Generate single event ICS
     event = generate_ics_event(
@@ -394,9 +375,7 @@ async def download_grant_ics(
     return Response(
         content=ics_content,
         media_type="text/calendar",
-        headers={
-            "Content-Disposition": f'attachment; filename="grant-deadline-{safe_title}.ics"'
-        }
+        headers={"Content-Disposition": f'attachment; filename="grant-deadline-{safe_title}.ics"'},
     )
 
 
@@ -432,7 +411,7 @@ def compute_days_until(deadline: datetime) -> int:
     "/deadlines",
     response_model=CalendarDeadlinesResponse,
     summary="Get deadlines for date range",
-    description="Get all grant deadlines for a specified date range from saved matches and pipeline items."
+    description="Get all grant deadlines for a specified date range from saved matches and pipeline items.",
 )
 async def get_calendar_deadlines(
     db: AsyncSessionDep,
@@ -486,20 +465,22 @@ async def get_calendar_deadlines(
                 continue
 
             seen_grant_ids.add(grant.id)
-            events.append(CalendarEvent(
-                grant_id=grant.id,
-                title=grant.title,
-                deadline=deadline,
-                event_type=CalendarEventType.SAVED,
-                stage=None,
-                urgency=compute_urgency(deadline),
-                days_until_deadline=compute_days_until(deadline),
-                agency=grant.agency,
-                amount_max=grant.amount_max,
-                url=grant.url,
-                match_id=match.id,
-                pipeline_item_id=None,
-            ))
+            events.append(
+                CalendarEvent(
+                    grant_id=grant.id,
+                    title=grant.title,
+                    deadline=deadline,
+                    event_type=CalendarEventType.SAVED,
+                    stage=None,
+                    urgency=compute_urgency(deadline),
+                    days_until_deadline=compute_days_until(deadline),
+                    agency=grant.agency,
+                    amount_max=grant.amount_max,
+                    url=grant.url,
+                    match_id=match.id,
+                    pipeline_item_id=None,
+                )
+            )
 
     # Get pipeline items with deadlines
     if include_pipeline:
@@ -528,20 +509,22 @@ async def get_calendar_deadlines(
                 continue
 
             seen_grant_ids.add(grant.id)
-            events.append(CalendarEvent(
-                grant_id=grant.id,
-                title=grant.title,
-                deadline=deadline,
-                event_type=CalendarEventType.PIPELINE,
-                stage=item.stage.value,
-                urgency=compute_urgency(deadline),
-                days_until_deadline=compute_days_until(deadline),
-                agency=grant.agency,
-                amount_max=grant.amount_max,
-                url=grant.url,
-                match_id=None,
-                pipeline_item_id=item.id,
-            ))
+            events.append(
+                CalendarEvent(
+                    grant_id=grant.id,
+                    title=grant.title,
+                    deadline=deadline,
+                    event_type=CalendarEventType.PIPELINE,
+                    stage=item.stage.value,
+                    urgency=compute_urgency(deadline),
+                    days_until_deadline=compute_days_until(deadline),
+                    agency=grant.agency,
+                    amount_max=grant.amount_max,
+                    url=grant.url,
+                    match_id=None,
+                    pipeline_item_id=item.id,
+                )
+            )
 
     # Sort by deadline
     events.sort(key=lambda e: e.deadline)
@@ -558,7 +541,7 @@ async def get_calendar_deadlines(
     "/month/{year}/{month}",
     response_model=CalendarMonthResponse,
     summary="Get deadlines for a month",
-    description="Get all grant deadlines for a specific month, grouped by day."
+    description="Get all grant deadlines for a specific month, grouped by day.",
 )
 async def get_calendar_month(
     year: int,
@@ -572,10 +555,7 @@ async def get_calendar_month(
     Get deadlines for a specific month, organized by day.
     """
     if not (1 <= month <= 12):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Month must be between 1 and 12"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Month must be between 1 and 12")
 
     # Calculate month boundaries
     start_date = datetime(year, month, 1, tzinfo=timezone.utc)
@@ -603,11 +583,13 @@ async def get_calendar_month(
     for day in range(1, last_day + 1):
         day_events = events_by_day.get(day, [])
         if day_events:  # Only include days with events
-            days.append(CalendarDay(
-                date=datetime(year, month, day, tzinfo=timezone.utc),
-                events=day_events,
-                count=len(day_events),
-            ))
+            days.append(
+                CalendarDay(
+                    date=datetime(year, month, day, tzinfo=timezone.utc),
+                    events=day_events,
+                    count=len(day_events),
+                )
+            )
 
     return CalendarMonthResponse(
         year=year,
@@ -621,7 +603,7 @@ async def get_calendar_month(
     "/upcoming",
     response_model=UpcomingDeadlinesResponse,
     summary="Get upcoming deadlines",
-    description="Get the next 30 days of deadlines with urgency levels."
+    description="Get the next 30 days of deadlines with urgency levels.",
 )
 async def get_upcoming_deadlines(
     db: AsyncSessionDep,

@@ -2,6 +2,7 @@
 GrantRadar Test Configuration and Fixtures
 Shared pytest fixtures for all test modules.
 """
+
 import asyncio
 import json
 import uuid
@@ -11,12 +12,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.models import Base, Grant, User, LabProfile, Match, AlertSent
+from backend.models import Base, Grant, User, LabProfile, Match
 
 
 # =============================================================================
@@ -162,17 +162,19 @@ def mock_redis_stream_data():
             (
                 "1704067200000-0",
                 {
-                    "payload": json.dumps({
-                        "event_id": str(uuid.uuid4()),
-                        "grant_id": str(uuid.uuid4()),
-                        "source": "grants_gov",
-                        "title": "Test Research Grant",
-                        "url": "https://grants.gov/test",
-                        "timestamp": datetime.utcnow().isoformat(),
-                    }),
+                    "payload": json.dumps(
+                        {
+                            "event_id": str(uuid.uuid4()),
+                            "grant_id": str(uuid.uuid4()),
+                            "source": "grants_gov",
+                            "title": "Test Research Grant",
+                            "url": "https://grants.gov/test",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                    ),
                     "event_type": "GrantDiscoveredEvent",
                     "published_at": datetime.utcnow().isoformat(),
-                }
+                },
             )
         ]
     }
@@ -207,7 +209,9 @@ class FakeRedis:
                 result.append((stream_name, messages[-count:] if count else messages))
         return result
 
-    async def xreadgroup(self, groupname: str, consumername: str, streams: dict, count: int = None, block: int = None) -> list:
+    async def xreadgroup(
+        self, groupname: str, consumername: str, streams: dict, count: int = None, block: int = None
+    ) -> list:
         """Read from streams using consumer group."""
         return await self.xread(streams, count, block)
 
@@ -701,6 +705,7 @@ def freeze_time():
 def sample_embedding():
     """Sample 1536-dimensional embedding vector."""
     import random
+
     random.seed(42)
     return [random.uniform(-1, 1) for _ in range(1536)]
 
@@ -709,6 +714,7 @@ def sample_embedding():
 def high_similarity_embedding(sample_embedding):
     """Embedding with high similarity to sample_embedding."""
     import random
+
     random.seed(43)
     # Add small noise to create similar but not identical embedding
     return [v + random.uniform(-0.01, 0.01) for v in sample_embedding]
@@ -718,5 +724,6 @@ def high_similarity_embedding(sample_embedding):
 def low_similarity_embedding():
     """Embedding with low similarity to sample_embedding."""
     import random
+
     random.seed(99)
     return [random.uniform(-1, 1) for _ in range(1536)]

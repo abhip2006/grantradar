@@ -2,7 +2,7 @@
 Grant Matching Engine
 Matches grants to user profiles using vector similarity and LLM re-ranking.
 """
-import asyncio
+
 import json
 import time
 from datetime import datetime, timezone
@@ -16,7 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from backend.celery_app import celery_app, high_priority_task
+from backend.celery_app import celery_app
 from backend.core.config import settings
 from backend.core.events import MatchComputedEvent, PriorityLevel
 
@@ -67,9 +67,7 @@ class GrantMatcher:
             db_engine: SQLAlchemy engine for database operations.
         """
         self.db_engine = db_engine
-        self.anthropic_client = anthropic.Anthropic(
-            api_key=settings.anthropic_api_key
-        )
+        self.anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self._redis_client: Optional[redis.Redis] = None
 
     @property
@@ -153,9 +151,7 @@ class GrantMatcher:
             embedding=result.embedding,
         )
 
-    def find_similar_profiles(
-        self, grant_embedding: list[float], session: Session
-    ) -> list[ProfileMatch]:
+    def find_similar_profiles(self, grant_embedding: list[float], session: Session) -> list[ProfileMatch]:
         """
         Find user profiles similar to grant using pgvector.
 
@@ -280,9 +276,7 @@ Consider:
 
 Return ONLY the JSON array, no additional text."""
 
-    def evaluate_matches_batch(
-        self, request: BatchMatchRequest
-    ) -> BatchMatchResponse:
+    def evaluate_matches_batch(self, request: BatchMatchRequest) -> BatchMatchResponse:
         """
         Evaluate multiple profile matches using Claude.
 
@@ -344,9 +338,7 @@ Return ONLY the JSON array, no additional text."""
             )
             raise
 
-    def _compute_priority_level(
-        self, match_score: float, deadline: Optional[datetime]
-    ) -> PriorityLevel:
+    def _compute_priority_level(self, match_score: float, deadline: Optional[datetime]) -> PriorityLevel:
         """
         Compute priority level based on score and deadline.
 

@@ -4,6 +4,7 @@ Standardized API response schemas.
 Provides consistent response wrappers for all API endpoints.
 Re-exports pagination schemas from common.py for convenience.
 """
+
 from typing import Generic, TypeVar, List
 
 from pydantic import BaseModel, Field
@@ -11,7 +12,7 @@ from pydantic import BaseModel, Field
 # Re-export pagination schemas from common.py
 from backend.schemas.common import PaginationInfo, PaginatedResponse, create_paginated_response
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class PaginationMeta(BaseModel):
@@ -20,6 +21,7 @@ class PaginationMeta(BaseModel):
 
     Alias for PaginationInfo for backwards compatibility.
     """
+
     total: int = Field(..., description="Total number of items")
     offset: int = Field(..., description="Number of items skipped")
     limit: int = Field(..., description="Maximum items per page")
@@ -35,6 +37,7 @@ class SingleResponse(BaseModel, Generic[T]):
         "data": {...}
     }
     """
+
     data: T = Field(..., description="The requested resource")
 
 
@@ -48,6 +51,7 @@ class SuccessResponse(BaseModel):
         "message": "Operation completed successfully"
     }
     """
+
     success: bool = Field(default=True, description="Whether the operation was successful")
     message: str = Field(..., description="Description of the operation result")
 
@@ -61,6 +65,7 @@ class ErrorResponse(BaseModel):
         "detail": "Error message"
     }
     """
+
     detail: str = Field(..., description="Error message describing what went wrong")
 
 
@@ -75,6 +80,7 @@ class ErrorDetail(BaseModel):
         ]
     }
     """
+
     loc: List[str] = Field(..., description="Location of the error (path to the field)")
     msg: str = Field(..., description="Error message")
     type: str = Field(..., description="Error type identifier")
@@ -91,6 +97,7 @@ class ValidationErrorResponse(BaseModel):
         ]
     }
     """
+
     detail: List[ErrorDetail] = Field(..., description="List of validation errors")
 
 

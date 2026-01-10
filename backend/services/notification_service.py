@@ -1,4 +1,5 @@
 """In-app notification service for managing user notifications."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from uuid import UUID
@@ -114,7 +115,7 @@ class InAppNotificationService:
         query = select(Notification).where(Notification.user_id == user_id)
 
         if unread_only:
-            query = query.where(Notification.read == False)
+            query = query.where(not Notification.read)
 
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -122,11 +123,7 @@ class InAppNotificationService:
         total = count_result.scalar() or 0
 
         # Apply pagination and ordering
-        query = (
-            query.order_by(Notification.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-        )
+        query = query.order_by(Notification.created_at.desc()).offset(offset).limit(limit)
 
         result = await self.db.execute(query)
         notifications = list(result.scalars().all())
@@ -149,7 +146,7 @@ class InAppNotificationService:
             .where(
                 and_(
                     Notification.user_id == user_id,
-                    Notification.read == False,
+                    not Notification.read,
                 )
             )
         )
@@ -209,7 +206,7 @@ class InAppNotificationService:
             select(Notification).where(
                 and_(
                     Notification.user_id == user_id,
-                    Notification.read == False,
+                    not Notification.read,
                 )
             )
         )
@@ -288,7 +285,7 @@ class InAppNotificationService:
             .select_from(Notification)
             .where(
                 and_(
-                    Notification.read == True,
+                    Notification.read,
                     Notification.created_at < cutoff,
                 )
             )
@@ -299,7 +296,7 @@ class InAppNotificationService:
             await self.db.execute(
                 delete(Notification).where(
                     and_(
-                        Notification.read == True,
+                        Notification.read,
                         Notification.created_at < cutoff,
                     )
                 )
@@ -345,9 +342,7 @@ class InAppNotificationService:
         actor_name = actor.name or actor.email
 
         # Build notification content based on event type
-        title, message, action_url = self._get_team_event_content(
-            event_type, actor_name, entity_name, metadata
-        )
+        title, message, action_url = self._get_team_event_content(event_type, actor_name, entity_name, metadata)
 
         # Merge event-specific metadata
         full_metadata = {

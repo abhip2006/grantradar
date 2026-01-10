@@ -1,11 +1,11 @@
 """
 Tests for the audit logging system.
 """
+
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.audit import AuditLog

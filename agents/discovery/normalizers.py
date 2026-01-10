@@ -2,6 +2,7 @@
 Grant Data Normalizers
 Utilities for normalizing grant data from different sources to a consistent format.
 """
+
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
@@ -94,7 +95,7 @@ class GrantNormalizer:
             try:
                 # Remove currency symbols and whitespace
                 cleaned = value.strip()
-                cleaned = re.sub(r'[,$\s]', '', cleaned)
+                cleaned = re.sub(r"[,$\s]", "", cleaned)
 
                 # Handle empty string
                 if not cleaned:
@@ -102,10 +103,10 @@ class GrantNormalizer:
 
                 # Handle K/M suffixes (e.g., "500K", "1.5M")
                 multiplier = 1
-                if cleaned.upper().endswith('K'):
+                if cleaned.upper().endswith("K"):
                     multiplier = 1000
                     cleaned = cleaned[:-1]
-                elif cleaned.upper().endswith('M'):
+                elif cleaned.upper().endswith("M"):
                     multiplier = 1000000
                     cleaned = cleaned[:-1]
 
@@ -119,11 +120,7 @@ class GrantNormalizer:
         return None
 
     @classmethod
-    def parse_date(
-        cls,
-        value: Any,
-        formats: Optional[list[str]] = None
-    ) -> Optional[str]:
+    def parse_date(cls, value: Any, formats: Optional[list[str]] = None) -> Optional[str]:
         """
         Parse date from various formats to ISO format string.
 
@@ -153,8 +150,10 @@ class GrantNormalizer:
         for fmt in formats_to_try:
             try:
                 # Handle ISO with timezone
-                date_str = value.split('T')[0] if 'T' in value and fmt.startswith('%Y-%m-%d') and 'T' not in fmt else value
-                dt = datetime.strptime(date_str, fmt.split('T')[0] if 'T' not in fmt else fmt)
+                date_str = (
+                    value.split("T")[0] if "T" in value and fmt.startswith("%Y-%m-%d") and "T" not in fmt else value
+                )
+                dt = datetime.strptime(date_str, fmt.split("T")[0] if "T" not in fmt else fmt)
                 return dt.date().isoformat()
             except ValueError:
                 continue
@@ -162,11 +161,7 @@ class GrantNormalizer:
         return None
 
     @classmethod
-    def normalize_agency(
-        cls,
-        agency: Optional[str],
-        institute: Optional[str] = None
-    ) -> str:
+    def normalize_agency(cls, agency: Optional[str], institute: Optional[str] = None) -> str:
         """
         Normalize agency name to full standardized form.
 
@@ -222,7 +217,7 @@ class GrantNormalizer:
 
         # Truncate if needed
         if max_length and len(cleaned) > max_length:
-            cleaned = cleaned[:max_length-3] + "..."
+            cleaned = cleaned[: max_length - 3] + "..."
 
         return cleaned if cleaned else None
 
@@ -304,7 +299,7 @@ class NSFNormalizer(GrantNormalizer):
         amount = cls.parse_amount(award.get("fundsObligatedAmt"))
 
         # Parse dates
-        start_date = cls.parse_date(award.get("startDate"), [cls.DATE_FORMAT])
+        cls.parse_date(award.get("startDate"), [cls.DATE_FORMAT])
         end_date = cls.parse_date(award.get("expDate"), [cls.DATE_FORMAT])
         posted_date = cls.parse_date(award.get("date"), [cls.DATE_FORMAT])
 
@@ -316,7 +311,7 @@ class NSFNormalizer(GrantNormalizer):
             pi_parts.append(award["piMiddeInitial"])
         if award.get("piLastName"):
             pi_parts.append(award["piLastName"])
-        pi_name = " ".join(pi_parts) if pi_parts else None
+        " ".join(pi_parts) if pi_parts else None
 
         # Extract categories
         categories = cls.extract_categories(
@@ -371,8 +366,6 @@ class NIHReporterNormalizer(GrantNormalizer):
 
         # Get PI info
         pis = project.get("principal_investigators", []) or []
-        pi_name = None
-        pi_email = None
         if pis:
             primary_pi = pis[0]
             pi_parts = []
@@ -382,8 +375,8 @@ class NIHReporterNormalizer(GrantNormalizer):
                 pi_parts.append(primary_pi["middle_name"])
             if primary_pi.get("last_name"):
                 pi_parts.append(primary_pi["last_name"])
-            pi_name = " ".join(pi_parts) if pi_parts else None
-            pi_email = primary_pi.get("email")
+            " ".join(pi_parts) if pi_parts else None
+            primary_pi.get("email")
 
         # Get organization info
         org = project.get("organization", {}) or {}
@@ -411,7 +404,9 @@ class NIHReporterNormalizer(GrantNormalizer):
                 "institution": org.get("org_name"),
                 "institution_city": org.get("org_city"),
                 "institution_state": org.get("org_state"),
-            } if org else None,
+            }
+            if org
+            else None,
             "raw_data": project,
         }
 
@@ -436,22 +431,17 @@ class GrantsGovNormalizer(GrantNormalizer):
 
         # Parse dates - handle various field names
         deadline = cls.parse_date(
-            opportunity.get("close_date") or
-            opportunity.get("closeDate") or
-            opportunity.get("applicationsDueDate")
+            opportunity.get("close_date") or opportunity.get("closeDate") or opportunity.get("applicationsDueDate")
         )
-        posted_date = cls.parse_date(
-            opportunity.get("posted_date") or
-            opportunity.get("postedDate")
-        )
+        posted_date = cls.parse_date(opportunity.get("posted_date") or opportunity.get("postedDate"))
 
         # Get agency
         agency_name = (
-            opportunity.get("agency_name") or
-            opportunity.get("agencyName") or
-            opportunity.get("agency_code") or
-            opportunity.get("agencyCode") or
-            "Unknown Agency"
+            opportunity.get("agency_name")
+            or opportunity.get("agencyName")
+            or opportunity.get("agency_code")
+            or opportunity.get("agencyCode")
+            or "Unknown Agency"
         )
         agency = cls.normalize_agency(agency_name)
 
@@ -479,14 +469,9 @@ class GrantsGovNormalizer(GrantNormalizer):
             "external_id": opp_id,
             "source": "grants_gov",
             "title": cls.clean_text(
-                opportunity.get("title") or
-                opportunity.get("opportunityTitle") or
-                opportunity.get("opportunity_title")
+                opportunity.get("title") or opportunity.get("opportunityTitle") or opportunity.get("opportunity_title")
             ),
-            "description": cls.clean_text(
-                opportunity.get("description") or
-                opportunity.get("synopsis")
-            ),
+            "description": cls.clean_text(opportunity.get("description") or opportunity.get("synopsis")),
             "agency": agency,
             "amount_min": amount_min,
             "amount_max": amount_max,

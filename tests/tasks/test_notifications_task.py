@@ -2,15 +2,10 @@
 Tests for notification Celery tasks.
 Tests deadline reminders, grant updates, and high match alerts.
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
-import pytest_asyncio
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.models import Grant, Match, User
+from unittest.mock import patch
 
 
 class TestDeadlineReminderLogic:
@@ -371,6 +366,7 @@ class TestNotificationServiceIntegration:
 
     def test_notification_status_sent(self):
         """Test notification status sent handling."""
+
         class MockStatus:
             status = "sent"
 
@@ -380,6 +376,7 @@ class TestNotificationServiceIntegration:
 
     def test_notification_status_failed(self):
         """Test notification status failed handling."""
+
         class MockStatus:
             status = "failed"
             error_message = "Invalid email address"

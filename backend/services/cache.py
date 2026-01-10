@@ -10,6 +10,7 @@ Features:
 - Cache key generation from function arguments
 - Manual cache invalidation support
 """
+
 from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar
@@ -176,6 +177,7 @@ def cached(ttl_minutes: int = 5):
             # ... expensive operation ...
             return result
     """
+
     def decorator(func: F) -> F:
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -191,7 +193,9 @@ def cached(ttl_minutes: int = 5):
             result = await func(*args, **kwargs)
             set_cached(key, result)
             return result
+
         return wrapper  # type: ignore
+
     return decorator
 
 
@@ -205,6 +209,7 @@ def cached_sync(ttl_minutes: int = 5):
     Returns:
         Decorator function
     """
+
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -220,7 +225,9 @@ def cached_sync(ttl_minutes: int = 5):
             result = func(*args, **kwargs)
             set_cached(key, result)
             return result
+
         return wrapper  # type: ignore
+
     return decorator
 
 

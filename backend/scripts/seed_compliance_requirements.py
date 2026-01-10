@@ -10,6 +10,7 @@ need to track after receiving grant awards.
 Usage:
     python -m backend.scripts.seed_compliance_requirements
 """
+
 import asyncio
 import json
 import uuid
@@ -377,7 +378,7 @@ COMPLIANCE_TEMPLATES = [
                     "fields": [
                         {"name": "major_goals", "type": "textarea", "label": "Major Goals"},
                         {"name": "accomplishments", "type": "textarea", "label": "Significant Accomplishments"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Products",
@@ -387,7 +388,7 @@ COMPLIANCE_TEMPLATES = [
                         {"name": "publications", "type": "list", "label": "Publications"},
                         {"name": "datasets", "type": "list", "label": "Datasets"},
                         {"name": "patents", "type": "list", "label": "Patents/Inventions"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Participants",
@@ -396,7 +397,7 @@ COMPLIANCE_TEMPLATES = [
                     "fields": [
                         {"name": "key_personnel", "type": "list", "label": "Key Personnel"},
                         {"name": "trainees", "type": "list", "label": "Trainees"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Impact",
@@ -405,7 +406,7 @@ COMPLIANCE_TEMPLATES = [
                     "fields": [
                         {"name": "scientific_impact", "type": "textarea", "label": "Scientific Impact"},
                         {"name": "broader_impacts", "type": "textarea", "label": "Broader Impacts"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Changes",
@@ -414,7 +415,7 @@ COMPLIANCE_TEMPLATES = [
                     "fields": [
                         {"name": "changes_problems", "type": "textarea", "label": "Changes/Problems"},
                         {"name": "budget_changes", "type": "textarea", "label": "Budget Changes"},
-                    ]
+                    ],
                 },
             ]
         },
@@ -434,21 +435,21 @@ COMPLIANCE_TEMPLATES = [
                     "fields": [
                         {"name": "data_types", "type": "textarea", "label": "Types and amount of data"},
                         {"name": "data_formats", "type": "text", "label": "Data formats"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Tools and Software",
                     "required": True,
                     "fields": [
                         {"name": "tools", "type": "textarea", "label": "Tools/software needed to access data"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Standards",
                     "required": True,
                     "fields": [
                         {"name": "standards", "type": "textarea", "label": "Data standards applied"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Repository",
@@ -456,7 +457,7 @@ COMPLIANCE_TEMPLATES = [
                     "fields": [
                         {"name": "repository", "type": "text", "label": "Repository name"},
                         {"name": "persistent_id", "type": "text", "label": "Persistent unique identifier plan"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Access and Preservation",
@@ -465,7 +466,7 @@ COMPLIANCE_TEMPLATES = [
                         {"name": "access_timeline", "type": "text", "label": "When data will be available"},
                         {"name": "access_restrictions", "type": "textarea", "label": "Access restrictions"},
                         {"name": "preservation_period", "type": "text", "label": "Preservation period"},
-                    ]
+                    ],
                 },
             ]
         },
@@ -487,7 +488,7 @@ COMPLIANCE_TEMPLATES = [
                         {"name": "major_activities", "type": "textarea", "label": "Major Activities"},
                         {"name": "specific_objectives", "type": "textarea", "label": "Specific Objectives"},
                         {"name": "significant_results", "type": "textarea", "label": "Significant Results"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Products",
@@ -496,7 +497,7 @@ COMPLIANCE_TEMPLATES = [
                         {"name": "publications", "type": "list", "label": "Publications"},
                         {"name": "websites", "type": "list", "label": "Websites"},
                         {"name": "other_products", "type": "textarea", "label": "Other Products"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Participants",
@@ -506,27 +507,55 @@ COMPLIANCE_TEMPLATES = [
                         {"name": "postdocs", "type": "list", "label": "Postdoctoral Researchers"},
                         {"name": "graduate_students", "type": "list", "label": "Graduate Students"},
                         {"name": "undergraduates", "type": "list", "label": "Undergraduate Students"},
-                    ]
+                    ],
                 },
                 {
                     "name": "Impacts",
                     "required": True,
                     "fields": [
-                        {"name": "scientific_impact", "type": "textarea", "label": "What is the impact on the development of the principal discipline(s)?"},
-                        {"name": "other_disciplines", "type": "textarea", "label": "What is the impact on other disciplines?"},
-                        {"name": "human_resources", "type": "textarea", "label": "What is the impact on human resource development?"},
-                        {"name": "physical_resources", "type": "textarea", "label": "What is the impact on physical resources?"},
-                        {"name": "society_impact", "type": "textarea", "label": "What is the impact on society beyond science and technology?"},
-                    ]
+                        {
+                            "name": "scientific_impact",
+                            "type": "textarea",
+                            "label": "What is the impact on the development of the principal discipline(s)?",
+                        },
+                        {
+                            "name": "other_disciplines",
+                            "type": "textarea",
+                            "label": "What is the impact on other disciplines?",
+                        },
+                        {
+                            "name": "human_resources",
+                            "type": "textarea",
+                            "label": "What is the impact on human resource development?",
+                        },
+                        {
+                            "name": "physical_resources",
+                            "type": "textarea",
+                            "label": "What is the impact on physical resources?",
+                        },
+                        {
+                            "name": "society_impact",
+                            "type": "textarea",
+                            "label": "What is the impact on society beyond science and technology?",
+                        },
+                    ],
                 },
                 {
                     "name": "Changes",
                     "required": True,
                     "fields": [
-                        {"name": "changes_problems", "type": "textarea", "label": "Changes in approach or reasons for change"},
-                        {"name": "opportunities", "type": "textarea", "label": "Opportunities for training and professional development"},
+                        {
+                            "name": "changes_problems",
+                            "type": "textarea",
+                            "label": "Changes in approach or reasons for change",
+                        },
+                        {
+                            "name": "opportunities",
+                            "type": "textarea",
+                            "label": "Opportunities for training and professional development",
+                        },
                         {"name": "dissemination", "type": "textarea", "label": "How have results been disseminated?"},
-                    ]
+                    ],
                 },
             ]
         },
@@ -542,12 +571,7 @@ async def seed_compliance_requirements():
     async with get_async_session() as session:
         try:
             # Combine all requirements
-            all_requirements = (
-                NIH_REQUIREMENTS +
-                NSF_REQUIREMENTS +
-                FOUNDATION_REQUIREMENTS +
-                DOE_REQUIREMENTS
-            )
+            all_requirements = NIH_REQUIREMENTS + NSF_REQUIREMENTS + FOUNDATION_REQUIREMENTS + DOE_REQUIREMENTS
 
             requirements_inserted = 0
             now = datetime.now(timezone.utc)
@@ -565,7 +589,7 @@ async def seed_compliance_requirements():
                         "funder_name": req["funder_name"],
                         "requirement_type": req["requirement_type"],
                         "requirement_text": req["requirement_text"],
-                    }
+                    },
                 )
                 existing = result.fetchone()
 
@@ -599,7 +623,7 @@ async def seed_compliance_requirements():
                         "is_active": True,
                         "created_at": now,
                         "updated_at": now,
-                    }
+                    },
                 )
                 requirements_inserted += 1
                 print(f"Inserted: {req['funder_name']} - {req['requirement_text'][:50]}...")
@@ -620,7 +644,7 @@ async def seed_compliance_requirements():
                     {
                         "funder_name": template["funder_name"],
                         "template_name": template["template_name"],
-                    }
+                    },
                 )
                 existing = result.fetchone()
 
@@ -653,13 +677,13 @@ async def seed_compliance_requirements():
                         "is_active": True,
                         "created_at": now,
                         "updated_at": now,
-                    }
+                    },
                 )
                 templates_inserted += 1
                 print(f"Inserted template: {template['template_name']}")
 
             await session.commit()
-            print(f"\nSeed complete!")
+            print("\nSeed complete!")
             print(f"  - Requirements inserted: {requirements_inserted}")
             print(f"  - Templates inserted: {templates_inserted}")
 

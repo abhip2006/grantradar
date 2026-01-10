@@ -6,6 +6,7 @@ Handles background tasks for team invitations including:
 - Sending reminder emails before expiration
 - Expiring old invitations
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -52,9 +53,7 @@ def send_invitation_email(
     try:
         # Check if SendGrid is configured
         if not settings.sendgrid_api_key:
-            logger.warning(
-                f"SendGrid not configured - would send invitation email to {to_email}"
-            )
+            logger.warning(f"SendGrid not configured - would send invitation email to {to_email}")
             return {
                 "status": "skipped",
                 "reason": "SendGrid not configured",
@@ -89,9 +88,7 @@ def send_invitation_email(
             "member": "As a Member, you'll be able to create and edit applications, and collaborate with the team.",
             "viewer": "As a Viewer, you'll be able to view applications and track progress.",
         }
-        role_description = role_descriptions.get(
-            role.lower(), "You'll be able to collaborate on grant applications."
-        )
+        role_description = role_descriptions.get(role.lower(), "You'll be able to collaborate on grant applications.")
 
         # HTML content
         html_content = f"""
@@ -140,7 +137,7 @@ def send_invitation_email(
 
         {inviter_name} has invited you to join {lab_name} on {settings.app_name} as a {role.title()}.
 
-        {f'Personal message: "{message}"' if message else ''}
+        {f'Personal message: "{message}"' if message else ""}
 
         {role_description}
 
@@ -159,9 +156,7 @@ def send_invitation_email(
 
         response = sg.send(mail)
 
-        logger.info(
-            f"Invitation email sent to {to_email}, status_code={response.status_code}"
-        )
+        logger.info(f"Invitation email sent to {to_email}, status_code={response.status_code}")
 
         return {
             "status": "sent",
@@ -218,9 +213,7 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
         try:
             # Fetch member with lab owner
             result = await session.execute(
-                select(LabMember, User)
-                .join(User, LabMember.lab_owner_id == User.id)
-                .where(LabMember.id == member_id)
+                select(LabMember, User).join(User, LabMember.lab_owner_id == User.id).where(LabMember.id == member_id)
             )
             row = result.one_or_none()
 
@@ -232,24 +225,17 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
 
             # Check if still pending
             if member.invitation_status != InvitationStatus.PENDING.value:
-                logger.info(
-                    f"Skipping reminder for {member.member_email} - status is {member.invitation_status}"
-                )
+                logger.info(f"Skipping reminder for {member.member_email} - status is {member.invitation_status}")
                 return {"status": "skipped", "reason": "not_pending"}
 
             # Check if not expired
-            if (
-                member.invitation_expires_at
-                and member.invitation_expires_at < datetime.now(timezone.utc)
-            ):
+            if member.invitation_expires_at and member.invitation_expires_at < datetime.now(timezone.utc):
                 logger.info(f"Skipping reminder for {member.member_email} - already expired")
                 return {"status": "skipped", "reason": "expired"}
 
             # Check if SendGrid is configured
             if not settings.sendgrid_api_key:
-                logger.warning(
-                    f"SendGrid not configured - would send reminder to {member.member_email}"
-                )
+                logger.warning(f"SendGrid not configured - would send reminder to {member.member_email}")
                 return {"status": "skipped", "reason": "sendgrid_not_configured"}
 
             import sendgrid
@@ -262,9 +248,7 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
             subject = f"Reminder: Your invitation to join {lab_owner.institution or 'a team'} expires soon"
 
             accept_url = f"{settings.frontend_url}/team/accept?token={member.invitation_token}"
-            expires_in = (
-                member.invitation_expires_at - datetime.now(timezone.utc)
-            ).days
+            expires_in = (member.invitation_expires_at - datetime.now(timezone.utc)).days
 
             html_content = f"""
             <!DOCTYPE html>
@@ -280,7 +264,7 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
                 <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                     <h2 style="color: #333; margin-top: 0;">Your Invitation is Expiring Soon</h2>
                     <p>Hi there,</p>
-                    <p>This is a friendly reminder that your invitation from <strong>{lab_owner.name or lab_owner.email}</strong> to join <strong>{lab_owner.institution or 'their team'}</strong> will expire in <strong>{expires_in} day{'s' if expires_in != 1 else ''}</strong>.</p>
+                    <p>This is a friendly reminder that your invitation from <strong>{lab_owner.name or lab_owner.email}</strong> to join <strong>{lab_owner.institution or "their team"}</strong> will expire in <strong>{expires_in} day{"s" if expires_in != 1 else ""}</strong>.</p>
                     <div style="text-align: center; margin: 30px 0;">
                         <a href="{accept_url}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Accept Invitation</a>
                     </div>
@@ -300,7 +284,7 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
 
             Hi there,
 
-            This is a friendly reminder that your invitation from {lab_owner.name or lab_owner.email} to join {lab_owner.institution or 'their team'} will expire in {expires_in} day{'s' if expires_in != 1 else ''}.
+            This is a friendly reminder that your invitation from {lab_owner.name or lab_owner.email} to join {lab_owner.institution or "their team"} will expire in {expires_in} day{"s" if expires_in != 1 else ""}.
 
             Accept the invitation: {accept_url}
 
@@ -309,17 +293,12 @@ async def _send_invitation_reminder_async(member_id: UUID) -> dict:
             - The {settings.app_name} Team
             """
 
-            mail = Mail(
-                from_email, to_email, subject, Content("text/plain", plain_content)
-            )
+            mail = Mail(from_email, to_email, subject, Content("text/plain", plain_content))
             mail.add_content(Content("text/html", html_content))
 
             response = sg.send(mail)
 
-            logger.info(
-                f"Invitation reminder sent to {member.member_email}, "
-                f"status_code={response.status_code}"
-            )
+            logger.info(f"Invitation reminder sent to {member.member_email}, status_code={response.status_code}")
 
             return {
                 "status": "sent",

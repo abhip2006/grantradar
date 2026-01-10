@@ -1,9 +1,10 @@
 """Review workflow service layer for business logic."""
+
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,7 +23,6 @@ from backend.schemas.reviews import (
     ReviewStatus,
     AddTeamMemberRequest,
     UpdateTeamMemberRequest,
-    WorkflowStage,
     WorkflowStageResponse,
     ReviewStageActionResponse,
     ApplicationReviewResponse,
@@ -50,7 +50,7 @@ class ReviewWorkflowService:
         query = select(ReviewWorkflow).where(ReviewWorkflow.user_id == user_id)
 
         if not include_inactive:
-            query = query.where(ReviewWorkflow.is_active == True)
+            query = query.where(ReviewWorkflow.is_active)
 
         query = query.order_by(ReviewWorkflow.is_default.desc(), ReviewWorkflow.created_at.desc())
 
@@ -113,8 +113,7 @@ class ReviewWorkflowService:
         # Handle stages conversion
         if "stages" in update_data and update_data["stages"]:
             update_data["stages"] = [
-                stage.model_dump() if hasattr(stage, "model_dump") else stage
-                for stage in update_data["stages"]
+                stage.model_dump() if hasattr(stage, "model_dump") else stage for stage in update_data["stages"]
             ]
 
         for key, value in update_data.items():
@@ -152,7 +151,7 @@ class ReviewWorkflowService:
             ReviewWorkflow.__table__.update()
             .where(
                 ReviewWorkflow.user_id == user_id,
-                ReviewWorkflow.is_default == True,
+                ReviewWorkflow.is_default,
             )
             .values(is_default=False)
         )
@@ -162,8 +161,8 @@ class ReviewWorkflowService:
         result = await self.db.execute(
             select(ReviewWorkflow).where(
                 ReviewWorkflow.user_id == user_id,
-                ReviewWorkflow.is_default == True,
-                ReviewWorkflow.is_active == True,
+                ReviewWorkflow.is_default,
+                ReviewWorkflow.is_active,
             )
         )
         return result.scalar_one_or_none()
@@ -362,9 +361,7 @@ class ReviewWorkflowService:
                 or_(
                     GrantApplication.user_id == user_id,
                     ApplicationReview.kanban_card_id.in_(
-                        select(ApplicationTeamMember.kanban_card_id).where(
-                            ApplicationTeamMember.user_id == user_id
-                        )
+                        select(ApplicationTeamMember.kanban_card_id).where(ApplicationTeamMember.user_id == user_id)
                     ),
                 )
             )
@@ -383,7 +380,7 @@ class ReviewWorkflowService:
     async def get_review_stats(self, user_id: UUID) -> Dict[str, Any]:
         """Get review statistics for a user."""
         # Get all reviews for user's applications
-        base_query = (
+        (
             select(ApplicationReview)
             .join(GrantApplication, ApplicationReview.kanban_card_id == GrantApplication.id)
             .where(GrantApplication.user_id == user_id)
@@ -416,7 +413,7 @@ class ReviewWorkflowService:
         result = await self.db.execute(
             select(func.count(ReviewWorkflow.id)).where(
                 ReviewWorkflow.user_id == user_id,
-                ReviewWorkflow.is_active == True,
+                ReviewWorkflow.is_active,
             )
         )
         workflows_count = result.scalar() or 0
@@ -465,9 +462,7 @@ class ReviewWorkflowService:
         member_user_id = data.user_id
         if not member_user_id and data.email:
             # Look up user by email
-            result = await self.db.execute(
-                select(User).where(User.email == data.email)
-            )
+            result = await self.db.execute(select(User).where(User.email == data.email))
             member_user = result.scalar_one_or_none()
             if member_user:
                 member_user_id = member_user.id
@@ -603,14 +598,16 @@ class ReviewWorkflowService:
         """Build a workflow response from model."""
         stages = []
         for stage_data in workflow.stages or []:
-            stages.append(WorkflowStageResponse(
-                order=stage_data.get("order", 0),
-                name=stage_data.get("name", "Unknown"),
-                required_role=stage_data.get("required_role"),
-                sla_hours=stage_data.get("sla_hours"),
-                auto_escalate=stage_data.get("auto_escalate", False),
-                description=stage_data.get("description"),
-            ))
+            stages.append(
+                WorkflowStageResponse(
+                    order=stage_data.get("order", 0),
+                    name=stage_data.get("name", "Unknown"),
+                    required_role=stage_data.get("required_role"),
+                    sla_hours=stage_data.get("sla_hours"),
+                    auto_escalate=stage_data.get("auto_escalate", False),
+                    description=stage_data.get("description"),
+                )
+            )
 
         return ReviewWorkflowResponse(
             id=workflow.id,

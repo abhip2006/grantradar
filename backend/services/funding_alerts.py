@@ -1,4 +1,5 @@
 """Funding alerts service for personalized email newsletters."""
+
 import anthropic
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
@@ -6,7 +7,7 @@ from uuid import UUID
 import structlog
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select
 
 from backend.core.config import settings
 from backend.models import User, Grant, Match, Deadline, FundingAlertPreference, LabProfile
@@ -29,13 +30,9 @@ class FundingAlertsService:
         else:
             self.client = None
 
-    async def get_or_create_preferences(
-        self, db: AsyncSession, user_id: UUID
-    ) -> FundingAlertPreference:
+    async def get_or_create_preferences(self, db: AsyncSession, user_id: UUID) -> FundingAlertPreference:
         """Get or create funding alert preferences for a user."""
-        result = await db.execute(
-            select(FundingAlertPreference).where(FundingAlertPreference.user_id == user_id)
-        )
+        result = await db.execute(select(FundingAlertPreference).where(FundingAlertPreference.user_id == user_id))
         prefs = result.scalar_one_or_none()
 
         if not prefs:
@@ -80,9 +77,7 @@ class FundingAlertsService:
         await db.refresh(prefs)
         return prefs
 
-    async def preview_alert(
-        self, db: AsyncSession, user: User
-    ) -> FundingAlertPreview:
+    async def preview_alert(self, db: AsyncSession, user: User) -> FundingAlertPreview:
         """Generate a preview of what the alert email would contain."""
         prefs = await self.get_or_create_preferences(db, user.id)
 
@@ -92,7 +87,7 @@ class FundingAlertsService:
                 upcoming_deadlines=[],
                 personalized_insights=None,
                 would_send=False,
-                reason="Alerts are disabled"
+                reason="Alerts are disabled",
             )
 
         # Get new matching grants
@@ -206,9 +201,7 @@ class FundingAlertsService:
             return None
 
         # Get user's research profile
-        profile_result = await db.execute(
-            select(LabProfile).where(LabProfile.user_id == user.id)
-        )
+        profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
         profile = profile_result.scalar_one_or_none()
 
         profile_context = ""
@@ -216,15 +209,11 @@ class FundingAlertsService:
             areas = ", ".join(profile.research_areas or [])
             profile_context = f"Research areas: {areas}. Career stage: {profile.career_stage or 'Unknown'}"
 
-        grants_context = "\n".join([
-            f"- {g.title} ({g.funder}, {g.match_score}% match, deadline: {g.deadline})"
-            for g in grants[:5]
-        ])
+        grants_context = "\n".join(
+            [f"- {g.title} ({g.funder}, {g.match_score}% match, deadline: {g.deadline})" for g in grants[:5]]
+        )
 
-        deadlines_context = "\n".join([
-            f"- {d.title} ({d.funder}, {d.days_until} days)"
-            for d in deadlines[:5]
-        ])
+        deadlines_context = "\n".join([f"- {d.title} ({d.funder}, {d.days_until} days)" for d in deadlines[:5]])
 
         prompt = f"""You are a grant advisor helping a researcher. Generate 2-3 personalized insights (max 150 words total) based on their current opportunities.
 
@@ -256,9 +245,7 @@ Keep it concise and actionable."""
             logger.error("Failed to generate insights", error=str(e))
             return None
 
-    def generate_email_html(
-        self, user: User, preview: FundingAlertPreview
-    ) -> str:
+    def generate_email_html(self, user: User, preview: FundingAlertPreview) -> str:
         """Generate HTML email content."""
         # Build grants section
         grants_html = ""
@@ -270,7 +257,7 @@ Keep it concise and actionable."""
                 grants_html += f"""
                 <li style="margin-bottom: 15px;">
                     <strong>{g.title}</strong><br>
-                    <span style="color: #666;">{g.funder} | {g.mechanism or 'Various'}</span><br>
+                    <span style="color: #666;">{g.funder} | {g.mechanism or "Various"}</span><br>
                     <span style="color: #2563eb;">Match Score: {g.match_score}%</span> |
                     Funding: {amount_str} | Deadline: {deadline_str}
                 </li>"""
@@ -311,7 +298,7 @@ Keep it concise and actionable."""
         </head>
         <body>
             <h1>GrantRadar Funding Alert</h1>
-            <p>Hi {user.name or 'Researcher'},</p>
+            <p>Hi {user.name or "Researcher"},</p>
             <p>Here's your personalized funding update:</p>
 
             {grants_html}

@@ -1,10 +1,10 @@
 """Notifications API endpoints for managing user notifications."""
+
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -95,9 +95,7 @@ async def _get_notification_by_id(
 async def list_notifications(
     db: AsyncSessionDep,
     current_user: CurrentUser,
-    unread_only: bool = Query(
-        False, description="Filter to show only unread notifications"
-    ),
+    unread_only: bool = Query(False, description="Filter to show only unread notifications"),
     limit: int = Query(50, ge=1, le=100, description="Maximum results to return"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
 ) -> NotificationListResponse:
@@ -112,7 +110,7 @@ async def list_notifications(
 
     # Apply unread filter if requested
     if unread_only:
-        query = query.where(Notification.read == False)
+        query = query.where(not Notification.read)
 
     # Get total count
     count_query = select(func.count()).select_from(query.subquery())
@@ -123,18 +121,14 @@ async def list_notifications(
     unread_query = select(func.count()).where(
         and_(
             Notification.user_id == current_user.id,
-            Notification.read == False,
+            not Notification.read,
         )
     )
     unread_result = await db.execute(unread_query)
     unread_count = unread_result.scalar() or 0
 
     # Apply pagination and ordering
-    query = (
-        query.order_by(Notification.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
+    query = query.order_by(Notification.created_at.desc()).offset(offset).limit(limit)
 
     result = await db.execute(query)
     notifications = list(result.scalars().all())
@@ -168,7 +162,7 @@ async def get_unread_count(
         select(func.count()).where(
             and_(
                 Notification.user_id == current_user.id,
-                Notification.read == False,
+                not Notification.read,
             )
         )
     )
@@ -230,7 +224,7 @@ async def mark_all_notifications_read(
         select(Notification).where(
             and_(
                 Notification.user_id == current_user.id,
-                Notification.read == False,
+                not Notification.read,
             )
         )
     )
@@ -246,9 +240,7 @@ async def mark_all_notifications_read(
 
     if updated_count > 0:
         await db.commit()
-        logger.info(
-            f"Marked {updated_count} notifications as read for user {current_user.id}"
-        )
+        logger.info(f"Marked {updated_count} notifications as read for user {current_user.id}")
 
     return MarkReadResponse(
         success=True,

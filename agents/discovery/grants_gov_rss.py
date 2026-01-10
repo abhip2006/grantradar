@@ -10,7 +10,6 @@ import hashlib
 import time
 from datetime import datetime
 from typing import Optional
-from urllib.parse import urljoin
 
 import feedparser
 import httpx
@@ -83,21 +82,13 @@ class GrantsGovDetails(BaseModel):
     archive_date: Optional[str] = Field(None, alias="archiveDate")
     description: Optional[str] = Field(None, alias="description")
     cfda_numbers: Optional[list[str]] = Field(default_factory=list, alias="cfdaList")
-    eligible_applicants: Optional[list[str]] = Field(
-        default_factory=list, alias="eligibleApplicants"
-    )
-    funding_instrument_type: Optional[str] = Field(
-        None, alias="fundingInstrumentType"
-    )
+    eligible_applicants: Optional[list[str]] = Field(default_factory=list, alias="eligibleApplicants")
+    funding_instrument_type: Optional[str] = Field(None, alias="fundingInstrumentType")
     category_of_funding: Optional[str] = Field(None, alias="categoryOfFundingActivity")
     award_ceiling: Optional[float] = Field(None, alias="awardCeiling")
     award_floor: Optional[float] = Field(None, alias="awardFloor")
-    estimated_total_funding: Optional[float] = Field(
-        None, alias="estimatedTotalProgramFunding"
-    )
-    expected_number_of_awards: Optional[int] = Field(
-        None, alias="expectedNumberOfAwards"
-    )
+    estimated_total_funding: Optional[float] = Field(None, alias="estimatedTotalProgramFunding")
+    expected_number_of_awards: Optional[int] = Field(None, alias="expectedNumberOfAwards")
     cost_sharing: Optional[bool] = Field(None, alias="costSharingOrMatchingRequirement")
     additional_info_url: Optional[str] = Field(None, alias="additionalInformationUrl")
     grantor_contact_email: Optional[str] = Field(None, alias="grantorContactEmail")
@@ -120,20 +111,12 @@ class DiscoveredGrant(BaseModel):
     award_ceiling: Optional[float] = Field(None, description="Maximum award amount")
     award_floor: Optional[float] = Field(None, description="Minimum award amount")
     estimated_funding: Optional[float] = Field(None, description="Total program funding")
-    eligible_applicants: list[str] = Field(
-        default_factory=list, description="Eligible applicant types"
-    )
-    cfda_numbers: list[str] = Field(
-        default_factory=list, description="CFDA/Assistance Listing numbers"
-    )
+    eligible_applicants: list[str] = Field(default_factory=list, description="Eligible applicant types")
+    cfda_numbers: list[str] = Field(default_factory=list, description="CFDA/Assistance Listing numbers")
     funding_type: Optional[str] = Field(None, description="Funding instrument type")
     category: Optional[str] = Field(None, description="Category of funding activity")
-    cost_sharing_required: Optional[bool] = Field(
-        None, description="Cost sharing requirement"
-    )
-    discovered_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Timestamp of discovery"
-    )
+    cost_sharing_required: Optional[bool] = Field(None, description="Cost sharing requirement")
+    discovered_at: datetime = Field(default_factory=datetime.utcnow, description="Timestamp of discovery")
     raw_data: Optional[dict] = Field(None, description="Raw API response data")
 
     def to_stream_dict(self) -> dict:
@@ -174,9 +157,7 @@ class RateLimiter:
         async with self._lock:
             now = time.monotonic()
             # Remove old timestamps outside the time window
-            self.request_times = [
-                t for t in self.request_times if now - t < self.time_window
-            ]
+            self.request_times = [t for t in self.request_times if now - t < self.time_window]
 
             if len(self.request_times) >= self.max_requests:
                 # Wait until the oldest request expires
@@ -185,9 +166,7 @@ class RateLimiter:
                     await asyncio.sleep(sleep_time)
                     # Remove expired timestamps after sleeping
                     now = time.monotonic()
-                    self.request_times = [
-                        t for t in self.request_times if now - t < self.time_window
-                    ]
+                    self.request_times = [t for t in self.request_times if now - t < self.time_window]
 
             self.request_times.append(time.monotonic())
 
@@ -353,9 +332,7 @@ class GrantsGovRSSAgent:
         agency = "Unknown Agency"
 
         # Often the agency is in the summary/description
-        description = getattr(entry, "summary", "") or getattr(
-            entry, "description", ""
-        )
+        description = getattr(entry, "summary", "") or getattr(entry, "description", "")
 
         return GrantsGovEntry(
             opportunity_id=opportunity_id,
@@ -372,9 +349,7 @@ class GrantsGovRSSAgent:
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
     )
-    async def fetch_grant_details(
-        self, opportunity_id: str
-    ) -> Optional[GrantsGovDetails]:
+    async def fetch_grant_details(self, opportunity_id: str) -> Optional[GrantsGovDetails]:
         """
         Fetch full grant details from Grants.gov API.
 
@@ -457,9 +432,7 @@ class GrantsGovRSSAgent:
             )
             return None
 
-    def _normalize_grant(
-        self, entry: GrantsGovEntry, details: Optional[GrantsGovDetails]
-    ) -> DiscoveredGrant:
+    def _normalize_grant(self, entry: GrantsGovEntry, details: Optional[GrantsGovDetails]) -> DiscoveredGrant:
         """
         Normalize RSS entry and API details into a DiscoveredGrant.
 
@@ -503,11 +476,7 @@ class GrantsGovRSSAgent:
         agency = (
             details.agency_name
             if details and details.agency_name
-            else (
-                details.agency_code
-                if details and details.agency_code
-                else entry.agency
-            )
+            else (details.agency_code if details and details.agency_code else entry.agency)
         )
 
         return DiscoveredGrant(
@@ -517,20 +486,14 @@ class GrantsGovRSSAgent:
             agency=agency,
             deadline=deadline,
             url=url,
-            description=(
-                details.description if details else entry.description
-            ),
+            description=(details.description if details else entry.description),
             posted_date=posted_date,
             award_ceiling=details.award_ceiling if details else None,
             award_floor=details.award_floor if details else None,
             estimated_funding=details.estimated_total_funding if details else None,
-            eligible_applicants=(
-                details.eligible_applicants if details else []
-            ),
+            eligible_applicants=(details.eligible_applicants if details else []),
             cfda_numbers=details.cfda_numbers if details else [],
-            funding_type=(
-                details.funding_instrument_type if details else None
-            ),
+            funding_type=(details.funding_instrument_type if details else None),
             category=details.category_of_funding if details else None,
             cost_sharing_required=details.cost_sharing if details else None,
             raw_data=details.model_dump() if details else None,
@@ -559,6 +522,7 @@ class GrantsGovRSSAgent:
             Stream message ID
         """
         import json as json_lib
+
         redis = await self._get_redis()
         # Wrap in "data" key as JSON string - format expected by validator
         stream_data = {"data": json_lib.dumps(grant.to_stream_dict())}

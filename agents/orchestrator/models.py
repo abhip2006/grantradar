@@ -2,6 +2,7 @@
 GrantRadar Orchestrator Agent Models
 Pydantic models for pipeline state, agent health, and system metrics.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
@@ -58,9 +59,7 @@ class PipelineState(BaseModel):
     """
 
     grant_id: UUID = Field(..., description="Unique identifier for the grant")
-    current_stage: PipelineStage = Field(
-        ..., description="Current stage in the pipeline"
-    )
+    current_stage: PipelineStage = Field(..., description="Current stage in the pipeline")
     started_at: datetime = Field(
         default_factory=datetime.utcnow,
         description="When pipeline processing started",

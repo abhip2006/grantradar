@@ -2,21 +2,20 @@
 ML-based Forecast Service for GrantRadar
 Uses Prophet for time-series forecasting of grant deadlines.
 """
+
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 from prophet import Prophet
-from sqlalchemy import and_, extract, func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import Grant
 from backend.services.forecast import (
     calculate_confidence,
-    calculate_recurrence_pattern,
     predict_next_opening,
 )
 
@@ -98,11 +97,7 @@ class GrantDeadlinePredictor:
         deadlines = []
         for row in rows:
             if row.deadline:
-                deadline_date = (
-                    row.deadline.date()
-                    if isinstance(row.deadline, datetime)
-                    else row.deadline
-                )
+                deadline_date = row.deadline.date() if isinstance(row.deadline, datetime) else row.deadline
                 deadlines.append(deadline_date)
 
         return deadlines
@@ -126,10 +121,12 @@ class GrantDeadlinePredictor:
         """
         data = []
         for deadline in deadlines:
-            data.append({
-                'ds': pd.Timestamp(deadline),
-                'y': deadline.timetuple().tm_yday,  # Day of year (1-365)
-            })
+            data.append(
+                {
+                    "ds": pd.Timestamp(deadline),
+                    "y": deadline.timetuple().tm_yday,  # Day of year (1-365)
+                }
+            )
 
         df = pd.DataFrame(data)
         return df
@@ -177,8 +174,7 @@ class GrantDeadlinePredictor:
 
         if len(deadlines) < self.min_data_points:
             logger.warning(
-                f"Insufficient data for funder '{funder_name}': "
-                f"got {len(deadlines)}, need {self.min_data_points}"
+                f"Insufficient data for funder '{funder_name}': got {len(deadlines)}, need {self.min_data_points}"
             )
             return False
 
@@ -193,10 +189,7 @@ class GrantDeadlinePredictor:
             # Cache the trained model
             self._model_cache[funder_name] = (model, datetime.utcnow())
 
-            logger.info(
-                f"Successfully trained model for funder '{funder_name}' "
-                f"with {len(deadlines)} data points"
-            )
+            logger.info(f"Successfully trained model for funder '{funder_name}' with {len(deadlines)} data points")
             return True
 
         except Exception as e:
@@ -223,10 +216,7 @@ class GrantDeadlinePredictor:
             ValueError: If no trained model exists for this funder
         """
         if funder_name not in self._model_cache:
-            raise ValueError(
-                f"No trained model for funder '{funder_name}'. "
-                "Call train_funder_model first."
-            )
+            raise ValueError(f"No trained model for funder '{funder_name}'. Call train_funder_model first.")
 
         model, _ = self._model_cache[funder_name]
 
@@ -236,9 +226,9 @@ class GrantDeadlinePredictor:
         future_dates = pd.date_range(
             start=today,
             periods=365 * periods_ahead,
-            freq='D',
+            freq="D",
         )
-        future_df = pd.DataFrame({'ds': future_dates})
+        future_df = pd.DataFrame({"ds": future_dates})
 
         # Make predictions
         forecast = model.predict(future_df)
@@ -249,22 +239,20 @@ class GrantDeadlinePredictor:
         # the historical pattern
 
         # Get the most likely day-of-year based on predictions
-        forecast['predicted_day_of_year'] = forecast['yhat'].round().astype(int).clip(1, 365)
-        forecast['match_score'] = abs(
-            forecast['ds'].dt.dayofyear - forecast['predicted_day_of_year']
-        )
+        forecast["predicted_day_of_year"] = forecast["yhat"].round().astype(int).clip(1, 365)
+        forecast["match_score"] = abs(forecast["ds"].dt.dayofyear - forecast["predicted_day_of_year"])
 
         # Find future dates where the actual day matches the predicted pattern
         # (match_score close to 0 means the date aligns with historical patterns)
-        forecast['is_match'] = forecast['match_score'] <= 15  # Within 15 days tolerance
+        forecast["is_match"] = forecast["match_score"] <= 15  # Within 15 days tolerance
 
-        matches = forecast[forecast['is_match']]
+        matches = forecast[forecast["is_match"]]
 
         if len(matches) == 0:
             # Fallback: find the date closest to the mean predicted day
-            mean_day = int(forecast['yhat'].mean())
+            mean_day = int(forecast["yhat"].mean())
             for idx, row in forecast.iterrows():
-                if row['ds'].dayofyear == mean_day and row['ds'].date() > today:
+                if row["ds"].dayofyear == mean_day and row["ds"].date() > today:
                     best_match = row
                     break
             else:
@@ -274,11 +262,11 @@ class GrantDeadlinePredictor:
             # Use the first matching date
             best_match = matches.iloc[0]
 
-        predicted_date = best_match['ds'].date()
+        predicted_date = best_match["ds"].date()
 
         # Calculate confidence based on prediction uncertainty
-        yhat_lower = best_match['yhat_lower']
-        yhat_upper = best_match['yhat_upper']
+        yhat_lower = best_match["yhat_lower"]
+        yhat_upper = best_match["yhat_upper"]
         uncertainty_range = yhat_upper - yhat_lower
 
         # Convert uncertainty to confidence (lower uncertainty = higher confidence)
@@ -289,8 +277,8 @@ class GrantDeadlinePredictor:
         confidence = max(0.5, min(confidence, 0.95))
 
         # Calculate date bounds based on uncertainty interval
-        days_lower = int((yhat_lower - best_match['yhat']) / 2)
-        days_upper = int((yhat_upper - best_match['yhat']) / 2)
+        days_lower = int((yhat_lower - best_match["yhat"]) / 2)
+        days_upper = int((yhat_upper - best_match["yhat"]) / 2)
 
         lower_bound = predicted_date + timedelta(days=days_lower)
         upper_bound = predicted_date + timedelta(days=days_upper)
@@ -325,25 +313,20 @@ class GrantDeadlinePredictor:
 
         if model_trained:
             try:
-                predicted_date, confidence, (lower_bound, upper_bound) = (
-                    self.predict_next_deadline(funder_name)
-                )
+                predicted_date, confidence, (lower_bound, upper_bound) = self.predict_next_deadline(funder_name)
 
                 uncertainty_days = (upper_bound - predicted_date).days
 
                 return {
-                    'predicted_date': predicted_date,
-                    'confidence': confidence,
-                    'method': 'ml',
-                    'uncertainty_days': abs(uncertainty_days),
-                    'lower_bound': lower_bound,
-                    'upper_bound': upper_bound,
+                    "predicted_date": predicted_date,
+                    "confidence": confidence,
+                    "method": "ml",
+                    "uncertainty_days": abs(uncertainty_days),
+                    "lower_bound": lower_bound,
+                    "upper_bound": upper_bound,
                 }
             except Exception as e:
-                logger.warning(
-                    f"ML prediction failed for '{funder_name}', "
-                    f"falling back to rule-based: {e}"
-                )
+                logger.warning(f"ML prediction failed for '{funder_name}', falling back to rule-based: {e}")
 
         # Fallback to rule-based prediction
         return await self._get_rule_based_prediction(db, funder_name)
@@ -372,12 +355,12 @@ class GrantDeadlinePredictor:
             # No data at all - return generic prediction
             future_date = date.today() + timedelta(days=90)
             return {
-                'predicted_date': future_date,
-                'confidence': 0.3,
-                'method': 'rule_based',
-                'uncertainty_days': 60,
-                'lower_bound': None,
-                'upper_bound': None,
+                "predicted_date": future_date,
+                "confidence": 0.3,
+                "method": "rule_based",
+                "uncertainty_days": 60,
+                "lower_bound": None,
+                "upper_bound": None,
             }
 
         # Extract months from deadlines for pattern analysis
@@ -412,12 +395,12 @@ class GrantDeadlinePredictor:
             uncertainty_days = 60
 
         return {
-            'predicted_date': predicted_date,
-            'confidence': confidence,
-            'method': 'rule_based',
-            'uncertainty_days': uncertainty_days,
-            'lower_bound': None,
-            'upper_bound': None,
+            "predicted_date": predicted_date,
+            "confidence": confidence,
+            "method": "rule_based",
+            "uncertainty_days": uncertainty_days,
+            "lower_bound": None,
+            "upper_bound": None,
         }
 
     async def batch_predict(
@@ -437,9 +420,7 @@ class GrantDeadlinePredictor:
         """
         results = {}
         for funder_name in funder_names:
-            results[funder_name] = await self.get_prediction_with_fallback(
-                db, funder_name
-            )
+            results[funder_name] = await self.get_prediction_with_fallback(db, funder_name)
         return results
 
     async def get_all_funder_predictions(
@@ -463,8 +444,8 @@ class GrantDeadlinePredictor:
         query = (
             select(
                 Grant.agency,
-                func.count(Grant.id).label('grant_count'),
-                func.max(Grant.deadline).label('last_deadline'),
+                func.count(Grant.id).label("grant_count"),
+                func.max(Grant.deadline).label("last_deadline"),
             )
             .where(
                 and_(
@@ -488,20 +469,20 @@ class GrantDeadlinePredictor:
             prediction = await self.get_prediction_with_fallback(db, funder_name)
 
             # Only include predictions within lookahead window
-            if prediction['predicted_date'] <= cutoff_date:
-                predictions.append({
-                    'funder_name': funder_name,
-                    'grant_count': row.grant_count,
-                    'last_deadline': (
-                        row.last_deadline.date()
-                        if isinstance(row.last_deadline, datetime)
-                        else row.last_deadline
-                    ),
-                    **prediction,
-                })
+            if prediction["predicted_date"] <= cutoff_date:
+                predictions.append(
+                    {
+                        "funder_name": funder_name,
+                        "grant_count": row.grant_count,
+                        "last_deadline": (
+                            row.last_deadline.date() if isinstance(row.last_deadline, datetime) else row.last_deadline
+                        ),
+                        **prediction,
+                    }
+                )
 
         # Sort by predicted date
-        predictions.sort(key=lambda x: x['predicted_date'])
+        predictions.sort(key=lambda x: x["predicted_date"])
 
         return predictions
 
@@ -527,9 +508,9 @@ class GrantDeadlinePredictor:
             Dictionary with cache statistics
         """
         return {
-            'cached_models': len(self._model_cache),
-            'funder_names': list(self._model_cache.keys()),
-            'cache_expiry_hours': self._cache_expiry_hours,
+            "cached_models": len(self._model_cache),
+            "funder_names": list(self._model_cache.keys()),
+            "cache_expiry_hours": self._cache_expiry_hours,
         }
 
 

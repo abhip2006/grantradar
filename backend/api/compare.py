@@ -2,6 +2,7 @@
 Grant Comparison API Endpoint
 Compare multiple grants side-by-side.
 """
+
 from typing import Optional
 from uuid import UUID
 
@@ -17,16 +18,15 @@ router = APIRouter(prefix="/api/grants", tags=["Grants"])
 
 class CompareRequest(BaseModel):
     """Request body for comparing grants."""
+
     grant_ids: list[str] = Field(
-        ...,
-        min_length=2,
-        max_length=4,
-        description="List of grant IDs to compare (2-4 grants)"
+        ..., min_length=2, max_length=4, description="List of grant IDs to compare (2-4 grants)"
     )
 
 
 class ComparisonGrant(BaseModel):
     """Schema for grant comparison response."""
+
     id: UUID = Field(..., description="Grant ID")
     title: str = Field(..., description="Grant title")
     agency: Optional[str] = Field(None, description="Funding agency")
@@ -46,6 +46,7 @@ class ComparisonGrant(BaseModel):
 
 class CompareResponse(BaseModel):
     """Response for grant comparison."""
+
     grants: list[ComparisonGrant] = Field(..., description="List of grants to compare")
     comparison_id: Optional[str] = Field(None, description="ID to save/share this comparison")
 
@@ -54,7 +55,7 @@ class CompareResponse(BaseModel):
     "/compare",
     response_model=CompareResponse,
     summary="Compare multiple grants",
-    description="Get normalized grant details for side-by-side comparison."
+    description="Get normalized grant details for side-by-side comparison.",
 )
 async def compare_grants(
     request: CompareRequest,
@@ -73,33 +74,22 @@ async def compare_grants(
     try:
         grant_uuids = [UUID(gid) for gid in request.grant_ids]
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid grant ID format"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid grant ID format")
 
     # Fetch grants
-    result = await db.execute(
-        select(Grant).where(Grant.id.in_(grant_uuids))
-    )
+    result = await db.execute(select(Grant).where(Grant.id.in_(grant_uuids)))
     grants = result.scalars().all()
 
     if len(grants) != len(grant_uuids):
         found_ids = {str(g.id) for g in grants}
         missing_ids = [gid for gid in request.grant_ids if gid not in found_ids]
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Grants not found: {', '.join(missing_ids)}"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Grants not found: {', '.join(missing_ids)}")
 
     # Get match scores if user is authenticated
     match_scores = {}
     if current_user:
         match_result = await db.execute(
-            select(Match).where(
-                Match.grant_id.in_(grant_uuids),
-                Match.user_id == current_user.id
-            )
+            select(Match).where(Match.grant_id.in_(grant_uuids), Match.user_id == current_user.id)
         )
         matches = match_result.scalars().all()
         match_scores = {str(m.grant_id): m.match_score for m in matches}
@@ -129,5 +119,5 @@ async def compare_grants(
 
     return CompareResponse(
         grants=comparison_grants,
-        comparison_id=None  # Could generate a shareable ID here in future
+        comparison_id=None,  # Could generate a shareable ID here in future
     )

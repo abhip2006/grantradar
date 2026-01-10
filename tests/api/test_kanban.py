@@ -1,8 +1,7 @@
 """Tests for Kanban Board API endpoints."""
+
 import pytest
 from datetime import datetime, timezone, timedelta
-from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.models import (
     GrantApplication,
@@ -17,7 +16,6 @@ from backend.models import (
     Grant,
     ApplicationStage,
 )
-from backend.schemas.kanban import Priority, FieldType
 
 pytestmark = pytest.mark.asyncio
 
@@ -34,15 +32,13 @@ class TestKanbanBoard:
         """Test getting kanban board with no applications."""
         from sqlalchemy import select
 
-        result = await async_session.execute(
-            select(GrantApplication).where(GrantApplication.user_id == db_user.id)
-        )
+        result = await async_session.execute(select(GrantApplication).where(GrantApplication.user_id == db_user.id))
         applications = result.scalars().all()
 
         # Group by stage
         columns = {stage.value: [] for stage in ApplicationStage}
         for app in applications:
-            stage_value = app.stage.value if hasattr(app.stage, 'value') else str(app.stage)
+            stage_value = app.stage.value if hasattr(app.stage, "value") else str(app.stage)
             if stage_value in columns:
                 columns[stage_value].append(app)
 
@@ -55,9 +51,7 @@ class TestKanbanBoard:
         """Test getting board with existing applications."""
         from sqlalchemy import select
 
-        result = await async_session.execute(
-            select(GrantApplication).where(GrantApplication.user_id == db_user.id)
-        )
+        result = await async_session.execute(select(GrantApplication).where(GrantApplication.user_id == db_user.id))
         applications = result.scalars().all()
 
         # Should have at least one card
@@ -70,6 +64,7 @@ class TestKanbanBoard:
         """Test board filtering by priority."""
         # Create a second grant for testing
         from datetime import timedelta
+
         grant2 = Grant(
             source="nsf",
             external_id="NSF-TEST-002",
@@ -117,6 +112,7 @@ class TestKanbanBoard:
         """Test board filtering by stage."""
         # Create a second grant for testing
         from datetime import timedelta
+
         grant2 = Grant(
             source="nsf",
             external_id="NSF-TEST-003",
@@ -162,6 +158,7 @@ class TestKanbanBoard:
         """Test that archived applications are excluded by default."""
         # Create a second grant for testing
         from datetime import timedelta
+
         grant2 = Grant(
             source="nsf",
             external_id="NSF-TEST-004",
@@ -197,7 +194,7 @@ class TestKanbanBoard:
         result = await async_session.execute(
             select(GrantApplication).where(
                 GrantApplication.user_id == db_user.id,
-                GrantApplication.archived == False,
+                not GrantApplication.archived,
             )
         )
         non_archived = result.scalars().all()
@@ -257,7 +254,6 @@ class TestCardOperations:
 
     async def test_move_card_to_different_stage(self, async_session, db_pipeline_item):
         """Test moving card to different stage."""
-        original_stage = db_pipeline_item.stage
         db_pipeline_item.stage = ApplicationStage.WRITING
         await async_session.commit()
         await async_session.refresh(db_pipeline_item)
@@ -268,6 +264,7 @@ class TestCardOperations:
         """Test reordering card positions."""
         # Create a second grant for testing
         from datetime import timedelta
+
         grant2 = Grant(
             source="nsf",
             external_id="NSF-TEST-005",
@@ -319,9 +316,7 @@ class TestSubtasks:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationSubtask).where(
-                ApplicationSubtask.application_id == db_pipeline_item.id
-            )
+            select(ApplicationSubtask).where(ApplicationSubtask.application_id == db_pipeline_item.id)
         )
         subtasks = result.scalars().all()
 
@@ -407,9 +402,7 @@ class TestSubtasks:
 
         from sqlalchemy import select
 
-        result = await async_session.execute(
-            select(ApplicationSubtask).where(ApplicationSubtask.id == subtask_id)
-        )
+        result = await async_session.execute(select(ApplicationSubtask).where(ApplicationSubtask.id == subtask_id))
         assert result.scalar_one_or_none() is None
 
     async def test_subtask_ordering(self, async_session, db_pipeline_item):
@@ -453,9 +446,7 @@ class TestActivities:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationActivity).where(
-                ApplicationActivity.application_id == db_pipeline_item.id
-            )
+            select(ApplicationActivity).where(ApplicationActivity.application_id == db_pipeline_item.id)
         )
         activities = result.scalars().all()
 
@@ -530,9 +521,7 @@ class TestCustomFields:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(CustomFieldDefinition).where(
-                CustomFieldDefinition.user_id == db_user.id
-            )
+            select(CustomFieldDefinition).where(CustomFieldDefinition.user_id == db_user.id)
         )
         fields = result.scalars().all()
 
@@ -610,9 +599,7 @@ class TestCustomFields:
 
         from sqlalchemy import select
 
-        result = await async_session.execute(
-            select(CustomFieldDefinition).where(CustomFieldDefinition.id == field_id)
-        )
+        result = await async_session.execute(select(CustomFieldDefinition).where(CustomFieldDefinition.id == field_id))
         assert result.scalar_one_or_none() is None
 
     async def test_set_custom_field_value(self, async_session, db_pipeline_item, db_custom_field):
@@ -659,9 +646,7 @@ class TestTeamManagement:
         """Test getting team members when none invited."""
         from sqlalchemy import select
 
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.lab_owner_id == db_user.id)
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.lab_owner_id == db_user.id))
         members = result.scalars().all()
 
         assert members == []
@@ -714,9 +699,7 @@ class TestTeamManagement:
 
         from sqlalchemy import select
 
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.id == member_id)
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.id == member_id))
         assert result.scalar_one_or_none() is None
 
     async def test_assign_user_to_application(self, async_session, db_pipeline_item, db_user):
@@ -732,9 +715,7 @@ class TestTeamManagement:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationAssignee).where(
-                ApplicationAssignee.application_id == db_pipeline_item.id
-            )
+            select(ApplicationAssignee).where(ApplicationAssignee.application_id == db_pipeline_item.id)
         )
         assignees = result.scalars().all()
 
@@ -758,9 +739,7 @@ class TestTeamManagement:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationAssignee).where(
-                ApplicationAssignee.application_id == db_pipeline_item.id
-            )
+            select(ApplicationAssignee).where(ApplicationAssignee.application_id == db_pipeline_item.id)
         )
         assignees = result.scalars().all()
 
@@ -780,9 +759,7 @@ class TestAttachments:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationAttachment).where(
-                ApplicationAttachment.application_id == db_pipeline_item.id
-            )
+            select(ApplicationAttachment).where(ApplicationAttachment.application_id == db_pipeline_item.id)
         )
         attachments = result.scalars().all()
 
@@ -829,9 +806,7 @@ class TestAttachments:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationAttachment).where(
-                ApplicationAttachment.application_id == db_pipeline_item.id
-            )
+            select(ApplicationAttachment).where(ApplicationAttachment.application_id == db_pipeline_item.id)
         )
         attachments = result.scalars().all()
 
@@ -902,9 +877,7 @@ class TestAccessControl:
         from sqlalchemy import select
 
         # Query for our user's applications
-        result = await async_session.execute(
-            select(GrantApplication).where(GrantApplication.user_id == db_user.id)
-        )
+        result = await async_session.execute(select(GrantApplication).where(GrantApplication.user_id == db_user.id))
         apps = result.scalars().all()
 
         assert len(apps) == 1
@@ -943,9 +916,7 @@ class TestAccessControl:
 
         # Query for our user's fields
         result = await async_session.execute(
-            select(CustomFieldDefinition).where(
-                CustomFieldDefinition.user_id == db_user.id
-            )
+            select(CustomFieldDefinition).where(CustomFieldDefinition.user_id == db_user.id)
         )
         fields = result.scalars().all()
 
@@ -982,9 +953,7 @@ class TestAccessControl:
         from sqlalchemy import select
 
         # Query for our user's team
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.lab_owner_id == db_user.id)
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.lab_owner_id == db_user.id))
         members = result.scalars().all()
 
         assert len(members) == 1
@@ -1099,8 +1068,6 @@ class TestEdgeCases:
         from sqlalchemy import select
 
         result = await async_session.execute(
-            select(ApplicationSubtask).where(
-                ApplicationSubtask.application_id == app_id
-            )
+            select(ApplicationSubtask).where(ApplicationSubtask.application_id == app_id)
         )
         assert result.scalars().all() == []

@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import redis
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.celery_app import celery_app
@@ -280,12 +280,16 @@ def cleanup_old_alerts(days_old: int = 90) -> dict[str, Any]:
         cutoff_date = datetime.utcnow() - timedelta(days=days_old)
 
         # First, collect summary statistics before deletion
-        summary_query = select(
-            AlertSent.channel,
-            func.count(AlertSent.id).label("total_sent"),
-            func.count(AlertSent.opened_at).label("total_opened"),
-            func.count(AlertSent.clicked_at).label("total_clicked"),
-        ).where(AlertSent.sent_at < cutoff_date).group_by(AlertSent.channel)
+        summary_query = (
+            select(
+                AlertSent.channel,
+                func.count(AlertSent.id).label("total_sent"),
+                func.count(AlertSent.opened_at).label("total_opened"),
+                func.count(AlertSent.clicked_at).label("total_clicked"),
+            )
+            .where(AlertSent.sent_at < cutoff_date)
+            .group_by(AlertSent.channel)
+        )
 
         summary_results = db.execute(summary_query).all()
 
@@ -295,16 +299,8 @@ def cleanup_old_alerts(days_old: int = 90) -> dict[str, Any]:
                 "total_sent": row.total_sent,
                 "total_opened": row.total_opened,
                 "total_clicked": row.total_clicked,
-                "open_rate": (
-                    (row.total_opened / row.total_sent * 100)
-                    if row.total_sent > 0
-                    else 0
-                ),
-                "click_rate": (
-                    (row.total_clicked / row.total_sent * 100)
-                    if row.total_sent > 0
-                    else 0
-                ),
+                "open_rate": ((row.total_opened / row.total_sent * 100) if row.total_sent > 0 else 0),
+                "click_rate": ((row.total_clicked / row.total_sent * 100) if row.total_sent > 0 else 0),
             }
 
         # Delete old alerts
@@ -394,11 +390,7 @@ def cleanup_redis_streams(max_length: int = 10000) -> dict[str, Any]:
                         "entries_removed": removed,
                     }
 
-                    logger.info(
-                        f"Trimmed stream {stream_name}: "
-                        f"{current_length} -> {max_length} "
-                        f"({removed} removed)"
-                    )
+                    logger.info(f"Trimmed stream {stream_name}: {current_length} -> {max_length} ({removed} removed)")
                 else:
                     stats["stream_details"][stream_name] = {
                         "length": current_length,
@@ -450,8 +442,7 @@ def cleanup_redis_streams(max_length: int = 10000) -> dict[str, Any]:
         stats["duration_seconds"] = (end_time - start_time).total_seconds()
 
         logger.info(
-            f"Trimmed {stats['streams_trimmed']} streams, "
-            f"removed {stats['total_entries_removed']} entries",
+            f"Trimmed {stats['streams_trimmed']} streams, removed {stats['total_entries_removed']} entries",
             extra={"stats": stats},
         )
 
@@ -504,9 +495,7 @@ def cleanup_failed_tasks(days_old: int = 7) -> dict[str, Any]:
         redis_client = get_celery_redis_client()
 
         # Calculate cutoff timestamp (in milliseconds)
-        cutoff_timestamp = int(
-            (datetime.utcnow() - timedelta(days=days_old)).timestamp() * 1000
-        )
+        cutoff_timestamp = int((datetime.utcnow() - timedelta(days=days_old)).timestamp() * 1000)
 
         # =====================================================================
         # 1. Clean up old Celery task results
@@ -514,7 +503,6 @@ def cleanup_failed_tasks(days_old: int = 7) -> dict[str, Any]:
         # Celery stores results with keys like: celery-task-meta-{task_id}
         task_result_pattern = "celery-task-meta-*"
         task_keys = redis_client.keys(task_result_pattern)
-        deleted_count = 0
 
         for key in task_keys:
             try:

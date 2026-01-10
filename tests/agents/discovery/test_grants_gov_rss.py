@@ -7,7 +7,6 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pydantic import ValidationError
 
 from agents.discovery.grants_gov_rss import (
     DiscoveredGrant,
@@ -397,9 +396,7 @@ class TestGrantsGovRSSAgent:
             result = await agent.is_processed("123456")
 
         assert result is True
-        mock_redis.sismember.assert_called_once_with(
-            "grants_gov:processed_ids", "123456"
-        )
+        mock_redis.sismember.assert_called_once_with("grants_gov:processed_ids", "123456")
 
     @pytest.mark.asyncio
     async def test_mark_processed(self, agent):

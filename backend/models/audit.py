@@ -2,6 +2,7 @@
 Global Audit Logging Model
 Comprehensive audit logging for all system actions.
 """
+
 import enum
 import uuid
 from datetime import datetime

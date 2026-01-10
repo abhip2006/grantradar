@@ -2,7 +2,6 @@
 Tests for Similarity Service.
 Tests algorithmic similarity calculations for grants.
 """
-import pytest
 
 
 class TestExtractKeywords:

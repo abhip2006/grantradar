@@ -16,9 +16,9 @@ import httpx
 
 async def test_nsf_api():
     """Test NSF Award Search API."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Testing NSF Award Search API")
-    print("="*60)
+    print("=" * 60)
 
     api_url = "https://www.research.gov/awardapi-service/v1/awards.json"
 
@@ -54,9 +54,9 @@ async def test_nsf_api():
 
 async def test_grants_gov_xml():
     """Test Grants.gov XML Extract download and parsing."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Testing Grants.gov XML Extract")
-    print("="*60)
+    print("=" * 60)
 
     # Try today, then yesterday
     dates_to_try = [
@@ -76,7 +76,7 @@ async def test_grants_gov_xml():
             try:
                 response = await client.get(url)
                 if response.status_code == 404:
-                    print(f"  Not found, trying previous day...")
+                    print("  Not found, trying previous day...")
                     continue
 
                 response.raise_for_status()
@@ -86,7 +86,7 @@ async def test_grants_gov_xml():
 
                 # Parse the ZIP
                 with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
-                    xml_files = [f for f in zf.namelist() if f.endswith('.xml')]
+                    xml_files = [f for f in zf.namelist() if f.endswith(".xml")]
                     print(f"[OK] Found XML file: {xml_files[0]}")
 
                     with zf.open(xml_files[0]) as xml_file:
@@ -94,27 +94,24 @@ async def test_grants_gov_xml():
                         count = 0
                         sample_opps = []
 
-                        context = ET.iterparse(xml_file, events=('end',))
+                        context = ET.iterparse(xml_file, events=("end",))
                         for event, elem in context:
                             # Handle namespaced tags
-                            tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-                            if tag_name == 'OpportunitySynopsisDetail_1_0':
+                            tag_name = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                            if tag_name == "OpportunitySynopsisDetail_1_0":
                                 count += 1
                                 if len(sample_opps) < 3:
                                     # Find child elements with namespace handling
                                     opp_id = None
                                     title = None
                                     for child in elem:
-                                        child_tag = child.tag.split('}')[-1] if '}' in child.tag else child.tag
-                                        if child_tag == 'OpportunityID':
+                                        child_tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+                                        if child_tag == "OpportunityID":
                                             opp_id = child.text
-                                        elif child_tag == 'OpportunityTitle':
+                                        elif child_tag == "OpportunityTitle":
                                             title = child.text
                                     if opp_id and title:
-                                        sample_opps.append({
-                                            'id': opp_id,
-                                            'title': title[:50] if title else 'N/A'
-                                        })
+                                        sample_opps.append({"id": opp_id, "title": title[:50] if title else "N/A"})
                                 elem.clear()
 
                                 # Stop after counting 1000 for speed
@@ -136,9 +133,9 @@ async def test_grants_gov_xml():
 
 async def test_nih_page():
     """Test NIH funding page accessibility."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Testing NIH Funding Page")
-    print("="*60)
+    print("=" * 60)
 
     url = "https://grants.nih.gov/funding/searchguide/"
 
@@ -151,7 +148,7 @@ async def test_nih_page():
             print(f"[OK] Content length: {len(response.text)} bytes")
 
             # Check for grant-related content
-            if 'funding' in response.text.lower() or 'grant' in response.text.lower():
+            if "funding" in response.text.lower() or "grant" in response.text.lower():
                 print("[OK] Contains funding/grant content")
             else:
                 print("[WARN] May not contain expected content")
@@ -169,9 +166,9 @@ async def test_nih_page():
 
 async def test_nih_reporter_api():
     """Test NIH Reporter API as alternative data source."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Testing NIH Reporter API (Alternative)")
-    print("="*60)
+    print("=" * 60)
 
     api_url = "https://api.reporter.nih.gov/v2/projects/search"
 
@@ -208,21 +205,21 @@ async def test_nih_reporter_api():
 
 async def main():
     """Run all tests."""
-    print("\n" + "#"*60)
+    print("\n" + "#" * 60)
     print("# GRANT DATA SOURCE VERIFICATION")
-    print("#"*60)
+    print("#" * 60)
 
     results = {}
 
-    results['NSF API'] = await test_nsf_api()
-    results['Grants.gov XML'] = await test_grants_gov_xml()
-    results['NIH Page'] = await test_nih_page()
-    results['NIH Reporter API'] = await test_nih_reporter_api()
+    results["NSF API"] = await test_nsf_api()
+    results["Grants.gov XML"] = await test_grants_gov_xml()
+    results["NIH Page"] = await test_nih_page()
+    results["NIH Reporter API"] = await test_nih_reporter_api()
 
     # Summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     all_passed = True
     for source, passed in results.items():

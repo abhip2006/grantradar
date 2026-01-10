@@ -2,13 +2,14 @@
 Resource Permission Service
 Service for managing fine-grained resource-level permissions and sharing.
 """
+
 import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
 from passlib.context import CryptContext
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,8 +17,6 @@ from backend.core.exceptions import AuthorizationError, NotFoundError, Validatio
 from backend.models import Grant, GrantApplication, User
 from backend.models.resource_permission import ResourcePermission, ShareLink
 from backend.schemas.sharing import (
-    PermissionLevel,
-    ResourceType,
     ShareResourceRequest,
     CreateShareLinkRequest,
     UpdatePermissionRequest,
@@ -87,9 +86,7 @@ class ResourcePermissionService:
             raise ValidationError("Cannot share a resource with yourself")
 
         # Check for existing permission
-        existing = await self._get_existing_permission(
-            resource_type, resource_id, target_user.id
-        )
+        existing = await self._get_existing_permission(resource_type, resource_id, target_user.id)
         if existing:
             # Update existing permission if different level
             if existing.permission_level != data.permission_level.value:
@@ -164,9 +161,7 @@ class ResourcePermissionService:
         await self.db.delete(permission)
         await self.db.commit()
 
-        logger.info(
-            f"Revoked permission: resource={resource_type}/{resource_id}, user={user_id}"
-        )
+        logger.info(f"Revoked permission: resource={resource_type}/{resource_id}, user={user_id}")
 
         return True
 
@@ -201,9 +196,7 @@ class ResourcePermissionService:
             raise NotFoundError("Permission", str(permission_id))
 
         # Verify ownership
-        await self._verify_resource_ownership(
-            owner_id, permission.resource_type, permission.resource_id
-        )
+        await self._verify_resource_ownership(owner_id, permission.resource_type, permission.resource_id)
 
         # Update fields
         if data.permission_level is not None:
@@ -240,9 +233,7 @@ class ResourcePermissionService:
             AuthorizationError: If not authorized.
         """
         # Verify ownership
-        await self._verify_resource_ownership(
-            owner_id, data.resource_type.value, data.resource_id
-        )
+        await self._verify_resource_ownership(owner_id, data.resource_type.value, data.resource_id)
 
         # Hash password if provided
         password_hash = None
@@ -266,8 +257,7 @@ class ResourcePermissionService:
         await self.db.refresh(share_link)
 
         logger.info(
-            f"Created share link: resource={data.resource_type}/{data.resource_id}, "
-            f"token={share_link.token[:8]}..."
+            f"Created share link: resource={data.resource_type}/{data.resource_id}, token={share_link.token[:8]}..."
         )
 
         return share_link
@@ -283,9 +273,7 @@ class ResourcePermissionService:
             ShareLink if found and valid, None otherwise.
         """
         result = await self.db.execute(
-            select(ShareLink)
-            .options(selectinload(ShareLink.creator))
-            .where(ShareLink.token == token)
+            select(ShareLink).options(selectinload(ShareLink.creator)).where(ShareLink.token == token)
         )
         return result.scalar_one_or_none()
 
@@ -354,7 +342,7 @@ class ResourcePermissionService:
         if resource_id:
             query = query.where(ShareLink.resource_id == resource_id)
         if not include_inactive:
-            query = query.where(ShareLink.is_active == True)
+            query = query.where(ShareLink.is_active)
 
         # Get total count
         count_query = select(func.count()).select_from(query.subquery())
@@ -490,9 +478,7 @@ class ResourcePermissionService:
                 return False, None, None
 
             # Check level
-            has_level = self._has_permission_level(
-                permission.permission_level, required_level
-            )
+            has_level = self._has_permission_level(permission.permission_level, required_level)
             return has_level, permission.permission_level, "direct"
 
         # No permission found
@@ -554,9 +540,7 @@ class ResourcePermissionService:
         Returns:
             Tuple of (permissions, total_count).
         """
-        query = select(ResourcePermission).where(
-            ResourcePermission.user_id == user_id
-        )
+        query = select(ResourcePermission).where(ResourcePermission.user_id == user_id)
 
         if resource_type:
             query = query.where(ResourcePermission.resource_type == resource_type)
@@ -597,13 +581,9 @@ class ResourcePermissionService:
             raise ValidationError("Either user_id or email must be provided")
 
         if user_id:
-            result = await self.db.execute(
-                select(User).where(User.id == user_id)
-            )
+            result = await self.db.execute(select(User).where(User.id == user_id))
         else:
-            result = await self.db.execute(
-                select(User).where(User.email == email)
-            )
+            result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
     async def _get_existing_permission(
@@ -638,13 +618,9 @@ class ResourcePermissionService:
         is_owner = await self._is_resource_owner(user_id, resource_type, resource_id)
         if not is_owner:
             # Check for admin permission
-            has_admin, _, _ = await self.check_permission(
-                user_id, resource_type, resource_id, "admin"
-            )
+            has_admin, _, _ = await self.check_permission(user_id, resource_type, resource_id, "admin")
             if not has_admin:
-                raise AuthorizationError(
-                    "You don't have permission to manage sharing for this resource"
-                )
+                raise AuthorizationError("You don't have permission to manage sharing for this resource")
         return True
 
     async def _is_resource_owner(
@@ -658,6 +634,7 @@ class ResourcePermissionService:
             # Grants are typically matched to users via Match table
             # For now, check if user has a match for this grant
             from backend.models import Match
+
             result = await self.db.execute(
                 select(Match).where(
                     Match.grant_id == resource_id,
@@ -699,9 +676,7 @@ class ResourcePermissionService:
     ) -> Optional[dict]:
         """Get basic info about a resource for display."""
         if resource_type == "grant":
-            result = await self.db.execute(
-                select(Grant).where(Grant.id == resource_id)
-            )
+            result = await self.db.execute(select(Grant).where(Grant.id == resource_id))
             grant = result.scalar_one_or_none()
             if grant:
                 return {
@@ -710,9 +685,7 @@ class ResourcePermissionService:
                 }
 
         elif resource_type == "application":
-            result = await self.db.execute(
-                select(GrantApplication).where(GrantApplication.id == resource_id)
-            )
+            result = await self.db.execute(select(GrantApplication).where(GrantApplication.id == resource_id))
             app = result.scalar_one_or_none()
             if app:
                 return {

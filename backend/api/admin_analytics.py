@@ -2,12 +2,12 @@
 Admin Analytics API Endpoints
 Platform-wide analytics for admin users with usage monitoring.
 """
+
 import logging
 from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.models import User
@@ -59,15 +59,11 @@ async def require_admin(current_user: CurrentUser) -> User:
     # Development fallback: Check for admin email patterns
     admin_patterns = ["admin@", "dev@", "test@"]
     if any(pattern in current_user.email.lower() for pattern in admin_patterns):
-        logger.warning(
-            f"Admin access granted via email pattern for user: {current_user.email}"
-        )
+        logger.warning(f"Admin access granted via email pattern for user: {current_user.email}")
         return current_user
 
     # Not authorized
-    logger.warning(
-        f"Unauthorized admin access attempt by user: {current_user.email} (id: {current_user.id})"
-    )
+    logger.warning(f"Unauthorized admin access attempt by user: {current_user.email} (id: {current_user.id})")
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Admin privileges required to access this resource",
@@ -96,12 +92,8 @@ AdminUser = Annotated[User, Depends(require_admin)]
 async def get_platform_overview_endpoint(
     db: AsyncSessionDep,
     admin_user: AdminUser,
-    start_date: Optional[datetime] = Query(
-        None, description="Start date for filtering metrics"
-    ),
-    end_date: Optional[datetime] = Query(
-        None, description="End date for filtering metrics"
-    ),
+    start_date: Optional[datetime] = Query(None, description="Start date for filtering metrics"),
+    end_date: Optional[datetime] = Query(None, description="End date for filtering metrics"),
 ) -> PlatformOverviewResponse:
     """
     Platform-wide metrics for admins.
@@ -137,12 +129,8 @@ async def get_platform_overview_endpoint(
 async def get_user_analytics_endpoint(
     db: AsyncSessionDep,
     admin_user: AdminUser,
-    start_date: Optional[datetime] = Query(
-        None, description="Start date for filtering metrics"
-    ),
-    end_date: Optional[datetime] = Query(
-        None, description="End date for filtering metrics"
-    ),
+    start_date: Optional[datetime] = Query(None, description="Start date for filtering metrics"),
+    end_date: Optional[datetime] = Query(None, description="End date for filtering metrics"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
 ) -> UserAnalyticsResponse:
     """
@@ -178,12 +166,8 @@ async def get_user_analytics_endpoint(
 async def get_ai_usage_endpoint(
     db: AsyncSessionDep,
     admin_user: AdminUser,
-    start_date: Optional[datetime] = Query(
-        None, description="Start date for filtering metrics"
-    ),
-    end_date: Optional[datetime] = Query(
-        None, description="End date for filtering metrics"
-    ),
+    start_date: Optional[datetime] = Query(None, description="Start date for filtering metrics"),
+    end_date: Optional[datetime] = Query(None, description="End date for filtering metrics"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
 ) -> AIUsageResponse:
     """
@@ -220,12 +204,8 @@ async def get_ai_usage_endpoint(
 async def get_grant_analytics_endpoint(
     db: AsyncSessionDep,
     admin_user: AdminUser,
-    start_date: Optional[datetime] = Query(
-        None, description="Start date for filtering metrics"
-    ),
-    end_date: Optional[datetime] = Query(
-        None, description="End date for filtering metrics"
-    ),
+    start_date: Optional[datetime] = Query(None, description="Start date for filtering metrics"),
+    end_date: Optional[datetime] = Query(None, description="End date for filtering metrics"),
 ) -> GrantAnalyticsResponse:
     """
     Grant discovery and application metrics.
@@ -260,12 +240,8 @@ async def get_grant_analytics_endpoint(
 async def get_team_analytics_endpoint(
     db: AsyncSessionDep,
     admin_user: AdminUser,
-    start_date: Optional[datetime] = Query(
-        None, description="Start date for filtering metrics"
-    ),
-    end_date: Optional[datetime] = Query(
-        None, description="End date for filtering metrics"
-    ),
+    start_date: Optional[datetime] = Query(None, description="Start date for filtering metrics"),
+    end_date: Optional[datetime] = Query(None, description="End date for filtering metrics"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
 ) -> TeamAnalyticsResponse:
     """
@@ -309,9 +285,7 @@ async def invalidate_cache(
     from backend.services.admin_analytics import invalidate_admin_analytics_cache
 
     invalidated = invalidate_admin_analytics_cache()
-    logger.info(
-        f"Admin {admin_user.email} invalidated {invalidated} analytics cache entries"
-    )
+    logger.info(f"Admin {admin_user.email} invalidated {invalidated} analytics cache entries")
     return {
         "status": "success",
         "message": f"Invalidated {invalidated} cache entries",

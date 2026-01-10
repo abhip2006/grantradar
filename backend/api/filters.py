@@ -2,6 +2,7 @@
 Filter Options API Endpoints
 Provides distinct values for filter dropdowns on the dashboard.
 """
+
 from typing import Any
 
 from fastapi import APIRouter
@@ -50,11 +51,7 @@ async def get_filter_options(db: AsyncSessionDep) -> dict[str, Any]:
     categories = [r[0] for r in categories_result.all() if r[0]]
 
     # Get distinct sources
-    sources_query = (
-        select(distinct(Grant.source))
-        .where(Grant.source.isnot(None))
-        .order_by(Grant.source)
-    )
+    sources_query = select(distinct(Grant.source)).where(Grant.source.isnot(None)).order_by(Grant.source)
     sources_result = await db.execute(sources_query)
     sources = [r[0] for r in sources_result.all()]
 

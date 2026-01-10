@@ -1,4 +1,5 @@
 """Funding alert schemas."""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
@@ -14,6 +15,7 @@ class AlertFrequency(str, Enum):
 
 class FundingAlertPreferencesCreate(BaseModel):
     """Create/update funding alert preferences."""
+
     enabled: bool = True
     frequency: AlertFrequency = AlertFrequency.WEEKLY
     min_match_score: int = Field(default=70, ge=0, le=100)
@@ -25,6 +27,7 @@ class FundingAlertPreferencesCreate(BaseModel):
 
 class FundingAlertPreferencesResponse(BaseModel):
     """Funding alert preferences response."""
+
     id: UUID
     user_id: UUID
     enabled: bool
@@ -44,6 +47,7 @@ class FundingAlertPreferencesResponse(BaseModel):
 
 class AlertGrantSummary(BaseModel):
     """Grant summary for alert email."""
+
     id: UUID
     title: str
     funder: str
@@ -56,6 +60,7 @@ class AlertGrantSummary(BaseModel):
 
 class AlertDeadlineSummary(BaseModel):
     """Deadline summary for alert email."""
+
     id: UUID
     title: str
     funder: Optional[str]
@@ -66,6 +71,7 @@ class AlertDeadlineSummary(BaseModel):
 
 class FundingAlertPreview(BaseModel):
     """Preview of what alert email would contain."""
+
     new_grants: List[AlertGrantSummary]
     upcoming_deadlines: List[AlertDeadlineSummary]
     personalized_insights: Optional[str]

@@ -2,11 +2,12 @@
 API Key Database Model
 SQLAlchemy ORM model for managing external API keys.
 """
+
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

@@ -1,4 +1,5 @@
 """Team collaboration service layer for business logic."""
+
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
@@ -66,9 +67,7 @@ class TeamService:
             ValidationError: If trying to invite self.
         """
         # Get lab owner details
-        owner_result = await self.db.execute(
-            select(User).where(User.id == lab_owner_id)
-        )
+        owner_result = await self.db.execute(select(User).where(User.id == lab_owner_id))
         lab_owner = owner_result.scalar_one_or_none()
         if not lab_owner:
             raise NotFoundError("User", str(lab_owner_id))
@@ -89,9 +88,7 @@ class TeamService:
             if existing.invitation_status == InvitationStatus.ACCEPTED.value:
                 raise ConflictError("This person is already a member of your team")
             elif existing.invitation_status == InvitationStatus.PENDING.value:
-                raise ConflictError(
-                    "An invitation is already pending for this email address"
-                )
+                raise ConflictError("An invitation is already pending for this email address")
             elif existing.invitation_status in [
                 InvitationStatus.DECLINED.value,
                 InvitationStatus.EXPIRED.value,
@@ -102,9 +99,7 @@ class TeamService:
                 await self.db.flush()
 
         # Check if invited user exists
-        user_result = await self.db.execute(
-            select(User).where(User.email == data.email.lower())
-        )
+        user_result = await self.db.execute(select(User).where(User.email == data.email.lower()))
         existing_user = user_result.scalar_one_or_none()
 
         # Generate invitation token and expiry
@@ -172,15 +167,11 @@ class TeamService:
             InvitationStatus.PENDING.value,
             InvitationStatus.EXPIRED.value,
         ]:
-            raise ValidationError(
-                f"Cannot resend invitation with status '{member.invitation_status}'"
-            )
+            raise ValidationError(f"Cannot resend invitation with status '{member.invitation_status}'")
 
         # Generate new token and expiry
         member.invitation_token = self._generate_invitation_token()
-        member.invitation_expires_at = datetime.now(timezone.utc) + timedelta(
-            days=INVITATION_EXPIRY_DAYS
-        )
+        member.invitation_expires_at = datetime.now(timezone.utc) + timedelta(days=INVITATION_EXPIRY_DAYS)
         member.invitation_status = InvitationStatus.PENDING.value
 
         # Log activity
@@ -222,9 +213,7 @@ class TeamService:
         """
         # Find invitation by token
         result = await self.db.execute(
-            select(LabMember)
-            .options(selectinload(LabMember.lab_owner))
-            .where(LabMember.invitation_token == token)
+            select(LabMember).options(selectinload(LabMember.lab_owner)).where(LabMember.invitation_token == token)
         )
         member = result.scalar_one_or_none()
 
@@ -233,15 +222,10 @@ class TeamService:
 
         # Check if pending
         if member.invitation_status != InvitationStatus.PENDING.value:
-            raise ValidationError(
-                f"Invitation has already been {member.invitation_status}"
-            )
+            raise ValidationError(f"Invitation has already been {member.invitation_status}")
 
         # Check expiration
-        if (
-            member.invitation_expires_at
-            and member.invitation_expires_at < datetime.now(timezone.utc)
-        ):
+        if member.invitation_expires_at and member.invitation_expires_at < datetime.now(timezone.utc):
             member.invitation_status = InvitationStatus.EXPIRED.value
             await self.db.commit()
             raise ValidationError("This invitation has expired")
@@ -256,9 +240,7 @@ class TeamService:
             member.member_user_id = user.id
         else:
             # Try to find user by email
-            user_result = await self.db.execute(
-                select(User).where(User.email == member.member_email)
-            )
+            user_result = await self.db.execute(select(User).where(User.email == member.member_email))
             existing_user = user_result.scalar_one_or_none()
             if existing_user:
                 member.member_user_id = existing_user.id
@@ -299,9 +281,7 @@ class TeamService:
             ValidationError: If invitation is not pending.
         """
         # Find invitation by token
-        result = await self.db.execute(
-            select(LabMember).where(LabMember.invitation_token == token)
-        )
+        result = await self.db.execute(select(LabMember).where(LabMember.invitation_token == token))
         member = result.scalar_one_or_none()
 
         if not member:
@@ -309,9 +289,7 @@ class TeamService:
 
         # Check if pending
         if member.invitation_status != InvitationStatus.PENDING.value:
-            raise ValidationError(
-                f"Invitation has already been {member.invitation_status}"
-            )
+            raise ValidationError(f"Invitation has already been {member.invitation_status}")
 
         # Update member record
         member.invitation_status = InvitationStatus.DECLINED.value
@@ -353,9 +331,7 @@ class TeamService:
         member = await self._get_member_by_id(lab_owner_id, member_id)
 
         if member.invitation_status != InvitationStatus.PENDING.value:
-            raise ValidationError(
-                f"Cannot cancel invitation with status '{member.invitation_status}'"
-            )
+            raise ValidationError(f"Cannot cancel invitation with status '{member.invitation_status}'")
 
         member.invitation_status = InvitationStatus.CANCELLED.value
         member.invitation_token = None
@@ -393,15 +369,11 @@ class TeamService:
             List of LabMember records.
         """
         query = (
-            select(LabMember)
-            .options(selectinload(LabMember.member_user))
-            .where(LabMember.lab_owner_id == lab_owner_id)
+            select(LabMember).options(selectinload(LabMember.member_user)).where(LabMember.lab_owner_id == lab_owner_id)
         )
 
         if not include_pending:
-            query = query.where(
-                LabMember.invitation_status == InvitationStatus.ACCEPTED.value
-            )
+            query = query.where(LabMember.invitation_status == InvitationStatus.ACCEPTED.value)
 
         result = await self.db.execute(query.order_by(LabMember.invited_at.desc()))
         return list(result.scalars().all())
@@ -620,11 +592,7 @@ class TeamService:
         total = count_result.scalar() or 0
 
         # Apply pagination and ordering
-        query = (
-            query.order_by(TeamActivityLog.created_at.desc())
-            .offset(filters.offset)
-            .limit(filters.limit)
-        )
+        query = query.order_by(TeamActivityLog.created_at.desc()).offset(filters.offset).limit(filters.limit)
 
         result = await self.db.execute(query)
         activities = list(result.scalars().all())
@@ -646,25 +614,15 @@ class TeamService:
             Dictionary of team statistics.
         """
         # Get all members
-        members_result = await self.db.execute(
-            select(LabMember).where(LabMember.lab_owner_id == lab_owner_id)
-        )
+        members_result = await self.db.execute(select(LabMember).where(LabMember.lab_owner_id == lab_owner_id))
         members = members_result.scalars().all()
 
         # Calculate stats
         total = len(members)
-        active = sum(
-            1 for m in members if m.invitation_status == InvitationStatus.ACCEPTED.value
-        )
-        pending = sum(
-            1 for m in members if m.invitation_status == InvitationStatus.PENDING.value
-        )
-        declined = sum(
-            1 for m in members if m.invitation_status == InvitationStatus.DECLINED.value
-        )
-        expired = sum(
-            1 for m in members if m.invitation_status == InvitationStatus.EXPIRED.value
-        )
+        active = sum(1 for m in members if m.invitation_status == InvitationStatus.ACCEPTED.value)
+        pending = sum(1 for m in members if m.invitation_status == InvitationStatus.PENDING.value)
+        declined = sum(1 for m in members if m.invitation_status == InvitationStatus.DECLINED.value)
+        expired = sum(1 for m in members if m.invitation_status == InvitationStatus.EXPIRED.value)
 
         # Count by role (only accepted members)
         members_by_role = {}
@@ -725,9 +683,7 @@ class TeamService:
             }
         """
         # Get lab owner details
-        owner_result = await self.db.execute(
-            select(User).where(User.id == lab_owner_id)
-        )
+        owner_result = await self.db.execute(select(User).where(User.id == lab_owner_id))
         lab_owner = owner_result.scalar_one_or_none()
         if not lab_owner:
             raise NotFoundError("User", str(lab_owner_id))
@@ -743,18 +699,22 @@ class TeamService:
 
             # Validate email
             if not email or "@" not in email:
-                failed.append({
-                    "email": email or "(empty)",
-                    "error": "Invalid email address",
-                })
+                failed.append(
+                    {
+                        "email": email or "(empty)",
+                        "error": "Invalid email address",
+                    }
+                )
                 continue
 
             # Prevent self-invitation
             if lab_owner.email.lower() == email:
-                failed.append({
-                    "email": email,
-                    "error": "Cannot invite yourself",
-                })
+                failed.append(
+                    {
+                        "email": email,
+                        "error": "Cannot invite yourself",
+                    }
+                )
                 continue
 
             try:
@@ -772,16 +732,20 @@ class TeamService:
 
                 if existing:
                     if existing.invitation_status == InvitationStatus.ACCEPTED.value:
-                        failed.append({
-                            "email": email,
-                            "error": "Already a team member",
-                        })
+                        failed.append(
+                            {
+                                "email": email,
+                                "error": "Already a team member",
+                            }
+                        )
                         continue
                     elif existing.invitation_status == InvitationStatus.PENDING.value:
-                        failed.append({
-                            "email": email,
-                            "error": "Invitation already pending",
-                        })
+                        failed.append(
+                            {
+                                "email": email,
+                                "error": "Invitation already pending",
+                            }
+                        )
                         continue
                     else:
                         # Remove old declined/expired/cancelled invitation
@@ -789,9 +753,7 @@ class TeamService:
                         await self.db.flush()
 
                 # Check if invited user exists
-                user_result = await self.db.execute(
-                    select(User).where(User.email == email)
-                )
+                user_result = await self.db.execute(select(User).where(User.email == email))
                 existing_user = user_result.scalar_one_or_none()
 
                 # Generate invitation token and expiry
@@ -832,22 +794,28 @@ class TeamService:
                     },
                 )
 
-                successful.append({
-                    "email": email,
-                    "member_id": str(member.id),
-                    "role": role.value,
-                })
+                successful.append(
+                    {
+                        "email": email,
+                        "member_id": str(member.id),
+                        "role": role.value,
+                    }
+                )
 
-            except ValueError as e:
-                failed.append({
-                    "email": email,
-                    "error": f"Invalid role: {role_str}",
-                })
+            except ValueError:
+                failed.append(
+                    {
+                        "email": email,
+                        "error": f"Invalid role: {role_str}",
+                    }
+                )
             except Exception as e:
-                failed.append({
-                    "email": email,
-                    "error": str(e),
-                })
+                failed.append(
+                    {
+                        "email": email,
+                        "error": str(e),
+                    }
+                )
 
         # Commit all successful invitations
         if successful:
@@ -882,20 +850,14 @@ class TeamService:
 
         # Build query
         stmt = (
-            select(LabMember)
-            .options(selectinload(LabMember.member_user))
-            .where(LabMember.lab_owner_id == lab_owner_id)
+            select(LabMember).options(selectinload(LabMember.member_user)).where(LabMember.lab_owner_id == lab_owner_id)
         )
 
         if not include_pending:
-            stmt = stmt.where(
-                LabMember.invitation_status == InvitationStatus.ACCEPTED.value
-            )
+            stmt = stmt.where(LabMember.invitation_status == InvitationStatus.ACCEPTED.value)
 
         # Search by email or user name (if linked)
-        stmt = stmt.where(
-            func.lower(LabMember.member_email).like(search_query)
-        )
+        stmt = stmt.where(func.lower(LabMember.member_email).like(search_query))
 
         result = await self.db.execute(stmt.order_by(LabMember.member_email))
         members_by_email = list(result.scalars().all())
@@ -914,9 +876,7 @@ class TeamService:
         )
 
         if not include_pending:
-            stmt_name = stmt_name.where(
-                LabMember.invitation_status == InvitationStatus.ACCEPTED.value
-            )
+            stmt_name = stmt_name.where(LabMember.invitation_status == InvitationStatus.ACCEPTED.value)
 
         result_name = await self.db.execute(stmt_name)
         members_by_name = list(result_name.scalars().all())

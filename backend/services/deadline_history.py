@@ -2,6 +2,7 @@
 Deadline History Service for GrantRadar
 Manages historical deadline data extraction and pattern analysis.
 """
+
 import logging
 import statistics
 from collections import defaultdict
@@ -26,12 +27,16 @@ async def extract_deadline_history_from_grants(db: AsyncSession) -> int:
     Uses explicit check-before-insert to handle deduplication.
     """
     # Query all grants with deadline and agency info
-    query = select(Grant).where(
-        and_(
-            Grant.deadline.isnot(None),
-            Grant.agency.isnot(None),
+    query = (
+        select(Grant)
+        .where(
+            and_(
+                Grant.deadline.isnot(None),
+                Grant.agency.isnot(None),
+            )
         )
-    ).order_by(Grant.deadline.desc())
+        .order_by(Grant.deadline.desc())
+    )
 
     result = await db.execute(query)
     grants = result.scalars().all()
@@ -48,13 +53,13 @@ async def extract_deadline_history_from_grants(db: AsyncSession) -> int:
         # Extract fiscal year from deadline
         deadline_dt = grant.deadline
         if isinstance(deadline_dt, datetime):
-            deadline_date_obj = deadline_dt.date() if hasattr(deadline_dt, 'date') else deadline_dt
+            deadline_date_obj = deadline_dt.date() if hasattr(deadline_dt, "date") else deadline_dt
         else:
             deadline_date_obj = deadline_dt
 
         # Federal fiscal year typically starts October 1
         # If deadline is Oct-Dec, it's the next fiscal year
-        if hasattr(deadline_date_obj, 'month'):
+        if hasattr(deadline_date_obj, "month"):
             if deadline_date_obj.month >= 10:
                 fiscal_year = deadline_date_obj.year + 1
             else:
@@ -69,13 +74,17 @@ async def extract_deadline_history_from_grants(db: AsyncSession) -> int:
         processed_keys.add(dedup_key)
 
         # Check if record already exists in database
-        existing_query = select(GrantDeadlineHistory.id).where(
-            and_(
-                GrantDeadlineHistory.funder_name == grant.agency,
-                GrantDeadlineHistory.grant_title == grant.title,
-                func.date(GrantDeadlineHistory.deadline_date) == deadline_date_obj,
+        existing_query = (
+            select(GrantDeadlineHistory.id)
+            .where(
+                and_(
+                    GrantDeadlineHistory.funder_name == grant.agency,
+                    GrantDeadlineHistory.grant_title == grant.title,
+                    func.date(GrantDeadlineHistory.deadline_date) == deadline_date_obj,
+                )
             )
-        ).limit(1)
+            .limit(1)
+        )
 
         existing_result = await db.execute(existing_query)
         if existing_result.scalar_one_or_none() is not None:
@@ -275,9 +284,7 @@ async def get_deadline_patterns(
     # Get all deadline history for this funder
     query = (
         select(GrantDeadlineHistory)
-        .where(
-            func.lower(GrantDeadlineHistory.funder_name).contains(funder_name.lower())
-        )
+        .where(func.lower(GrantDeadlineHistory.funder_name).contains(funder_name.lower()))
         .order_by(GrantDeadlineHistory.deadline_date.asc())
     )
 
@@ -332,11 +339,7 @@ async def get_deadline_patterns(
     month_counts = defaultdict(int)
     for month in months:
         month_counts[month] += 1
-    typical_months = sorted(
-        month_counts.keys(),
-        key=lambda m: month_counts[m],
-        reverse=True
-    )
+    typical_months = sorted(month_counts.keys(), key=lambda m: month_counts[m], reverse=True)
 
     # Calculate standard deviation of day-of-month
     if len(days_of_month) > 1:
@@ -348,7 +351,7 @@ async def get_deadline_patterns(
     cycle_lengths = []
     sorted_dates = sorted(deadline_dates)
     for i in range(1, len(sorted_dates)):
-        delta = (sorted_dates[i] - sorted_dates[i-1]).days
+        delta = (sorted_dates[i] - sorted_dates[i - 1]).days
         # Only consider cycles between 30 and 730 days (1 month to 2 years)
         if 30 <= delta <= 730:
             cycle_lengths.append(delta)
@@ -429,13 +432,9 @@ async def predict_next_deadline(
         Dict with prediction details or None if insufficient data
     """
     # Build query
-    conditions = [
-        func.lower(GrantDeadlineHistory.funder_name).contains(funder_name.lower())
-    ]
+    conditions = [func.lower(GrantDeadlineHistory.funder_name).contains(funder_name.lower())]
     if grant_title:
-        conditions.append(
-            func.lower(GrantDeadlineHistory.grant_title).contains(grant_title.lower())
-        )
+        conditions.append(func.lower(GrantDeadlineHistory.grant_title).contains(grant_title.lower()))
 
     query = (
         select(GrantDeadlineHistory)
@@ -624,10 +623,7 @@ async def get_deadline_history_stats(db: AsyncSession) -> dict:
         .limit(10)
     )
     top_funders_result = await db.execute(top_funders_query)
-    top_funders = [
-        {"funder": row.funder_name, "records": row.count}
-        for row in top_funders_result.all()
-    ]
+    top_funders = [{"funder": row.funder_name, "records": row.count} for row in top_funders_result.all()]
 
     return {
         "total_records": total_records,

@@ -2,6 +2,7 @@
 GrantRadar Event Models
 Pydantic models for Redis Streams event payloads
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -216,6 +217,7 @@ class DeadLetterEvent(BaseEvent):
 # =============================================================================
 # WebSocket Event Payloads
 # =============================================================================
+
 
 class WebSocketEvent(BaseModel):
     """Base class for WebSocket event payloads."""

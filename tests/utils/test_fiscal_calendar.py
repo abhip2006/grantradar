@@ -2,9 +2,9 @@
 Tests for fiscal calendar utilities.
 Tests federal fiscal year calculations and quarter detection.
 """
+
 from datetime import date
 
-import pytest
 
 from backend.utils.fiscal_calendar import FiscalCalendar, is_federal_funder, FEDERAL_AGENCIES
 
@@ -121,9 +121,9 @@ class TestFiscalCalendar:
         result = FiscalCalendar.get_quarter_end_dates(2026)
         assert len(result) == 4
         assert result[0] == date(2025, 12, 31)  # Q1 end
-        assert result[1] == date(2026, 3, 31)   # Q2 end
-        assert result[2] == date(2026, 6, 30)   # Q3 end
-        assert result[3] == date(2026, 9, 30)   # Q4 end
+        assert result[1] == date(2026, 3, 31)  # Q2 end
+        assert result[2] == date(2026, 6, 30)  # Q3 end
+        assert result[3] == date(2026, 9, 30)  # Q4 end
 
     # =========================================================================
     # Near Quarter End Tests

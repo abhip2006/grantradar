@@ -2,7 +2,8 @@
 Similar Grants API Endpoints
 Find grants similar to a given grant using algorithmic similarity.
 """
-from typing import Any, Optional
+
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -49,7 +50,7 @@ class SimilarGrantsResponse(BaseModel):
     "/{grant_id}/similar",
     response_model=SimilarGrantsResponse,
     summary="Find similar grants",
-    description="Find grants similar to the given grant based on categories, agency, funding, and keywords."
+    description="Find grants similar to the given grant based on categories, agency, funding, and keywords.",
 )
 async def get_similar_grants(
     grant_id: UUID,
@@ -81,14 +82,9 @@ async def get_similar_grants(
         from sqlalchemy import select
         from backend.models import Grant
 
-        check_result = await db.execute(
-            select(Grant.id).where(Grant.id == grant_id)
-        )
+        check_result = await db.execute(select(Grant.id).where(Grant.id == grant_id))
         if not check_result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Grant not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
 
     # Convert to response models
     similar_grants = []

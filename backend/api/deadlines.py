@@ -2,21 +2,21 @@
 Deadline management API endpoints.
 CRUD operations for user deadlines with filtering, sorting, status tracking, and iCal export.
 """
+
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.models import Deadline, DeadlineStatusHistory, Grant
 from backend.schemas.deadlines import (
     DeadlineCreate,
     DeadlineList,
-    DeadlinePriority,
     DeadlineResponse,
     DeadlineStatsResponse,
     DeadlineStatus,
@@ -28,7 +28,6 @@ from backend.schemas.deadlines import (
     RECURRENCE_PRESETS,
     StatusChangeRequest,
     StatusHistoryList,
-    StatusHistoryResponse,
 )
 
 router = APIRouter(prefix="/api/deadlines", tags=["Deadlines"])
@@ -235,9 +234,7 @@ async def get_deadline(
 ) -> DeadlineResponse:
     """Get a specific deadline by ID."""
     result = await db.execute(
-        select(Deadline).where(
-            and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id)
-        )
+        select(Deadline).where(and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id))
     )
     deadline = result.scalar_one_or_none()
     if not deadline:
@@ -266,9 +263,7 @@ async def update_deadline(
     Only provided fields are updated; others remain unchanged.
     """
     result = await db.execute(
-        select(Deadline).where(
-            and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id)
-        )
+        select(Deadline).where(and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id))
     )
     deadline = result.scalar_one_or_none()
     if not deadline:
@@ -305,9 +300,7 @@ async def delete_deadline(
 ) -> None:
     """Delete a deadline."""
     result = await db.execute(
-        select(Deadline).where(
-            and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id)
-        )
+        select(Deadline).where(and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id))
     )
     deadline = result.scalar_one_or_none()
     if not deadline:
@@ -396,9 +389,7 @@ async def change_deadline_status(
     Records the change in status history for audit purposes.
     """
     result = await db.execute(
-        select(Deadline).where(
-            and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id)
-        )
+        select(Deadline).where(and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id))
     )
     deadline = result.scalar_one_or_none()
     if not deadline:
@@ -454,9 +445,7 @@ async def get_deadline_history(
     """
     # Verify deadline exists and belongs to user
     result = await db.execute(
-        select(Deadline).where(
-            and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id)
-        )
+        select(Deadline).where(and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id))
     )
     deadline = result.scalar_one_or_none()
     if not deadline:
@@ -494,9 +483,7 @@ async def update_reminder_config(
     Specify days before deadline when reminders should be sent.
     """
     result = await db.execute(
-        select(Deadline).where(
-            and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id)
-        )
+        select(Deadline).where(and_(Deadline.id == deadline_id, Deadline.user_id == current_user.id))
     )
     deadline = result.scalar_one_or_none()
     if not deadline:
@@ -529,9 +516,7 @@ async def get_deadline_stats(
 
     Returns counts by status, priority, and time-based metrics.
     """
-    result = await db.execute(
-        select(Deadline).where(Deadline.user_id == current_user.id)
-    )
+    result = await db.execute(select(Deadline).where(Deadline.user_id == current_user.id))
     deadlines = result.scalars().all()
 
     now = datetime.now(timezone.utc)
@@ -598,7 +583,6 @@ async def get_recurrence_presets() -> RecurrencePresetsResponse:
     like NIH standard dates, NSF quarterly, etc.
     """
     presets = [
-        RecurrencePreset(key=key, label=value["label"], rule=value["rule"])
-        for key, value in RECURRENCE_PRESETS.items()
+        RecurrencePreset(key=key, label=value["label"], rule=value["rule"]) for key, value in RECURRENCE_PRESETS.items()
     ]
     return RecurrencePresetsResponse(presets=presets)

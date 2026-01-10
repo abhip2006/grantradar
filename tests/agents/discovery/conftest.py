@@ -2,8 +2,8 @@
 Discovery agent test fixtures.
 Provides mock data and utilities for testing discovery agents.
 """
+
 import pytest
-from datetime import datetime, timezone
 from unittest.mock import MagicMock, AsyncMock
 
 
@@ -86,7 +86,7 @@ def sample_nsf_api_response(sample_nsf_award):
             "award": [sample_nsf_award],
             "metadata": {
                 "totalCount": 1,
-            }
+            },
         }
     }
 
@@ -111,13 +111,8 @@ def sample_nih_reporter_project():
         "award_type": "1",
         "direct_cost_amt": 500000,
         "indirect_cost_amt": 250000,
-        "agency_ic_admin": {
-            "abbreviation": "NCI",
-            "name": "National Cancer Institute"
-        },
-        "agency_ic_fundings": [
-            {"abbreviation": "NCI", "name": "National Cancer Institute"}
-        ],
+        "agency_ic_admin": {"abbreviation": "NCI", "name": "National Cancer Institute"},
+        "agency_ic_fundings": [{"abbreviation": "NCI", "name": "National Cancer Institute"}],
         "principal_investigators": [
             {
                 "first_name": "John",

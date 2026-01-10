@@ -6,6 +6,7 @@ Provides factories for creating:
 - LabMember instances for team collaboration testing
 - TeamActivityLog instances for activity feed testing
 """
+
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -287,8 +288,10 @@ class LabMemberFactory:
             member_user_id=member_user_id,
             role=role,
             invitation_status=invitation_status,
-            invitation_token=invitation_token or (secrets.token_urlsafe(32) if invitation_status == "pending" else None),
-            invitation_expires_at=invitation_expires_at or (now + timedelta(days=7) if invitation_status == "pending" else None),
+            invitation_token=invitation_token
+            or (secrets.token_urlsafe(32) if invitation_status == "pending" else None),
+            invitation_expires_at=invitation_expires_at
+            or (now + timedelta(days=7) if invitation_status == "pending" else None),
             invited_at=invited_at or now,
             accepted_at=accepted_at,
             declined_at=declined_at,

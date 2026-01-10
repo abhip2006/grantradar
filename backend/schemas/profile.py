@@ -1,6 +1,7 @@
 """
 Profile schemas for lab profile management and onboarding.
 """
+
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
@@ -11,96 +12,49 @@ from pydantic import BaseModel, Field
 class LabProfileCreate(BaseModel):
     """Schema for creating a new lab profile."""
 
-    research_areas: list[str] = Field(
-        ...,
-        min_length=1,
-        max_length=20,
-        description="Primary research areas/topics"
-    )
-    methods: Optional[list[str]] = Field(
-        None,
-        max_length=20,
-        description="Research methodologies"
-    )
+    research_areas: list[str] = Field(..., min_length=1, max_length=20, description="Primary research areas/topics")
+    methods: Optional[list[str]] = Field(None, max_length=20, description="Research methodologies")
     career_stage: Optional[str] = Field(
-        None,
-        pattern="^(early_career|mid_career|established|senior)$",
-        description="Career stage"
+        None, pattern="^(early_career|mid_career|established|senior)$", description="Career stage"
     )
     citizenship_status: Optional[str] = Field(
         None,
         pattern="^(us_citizen|permanent_resident|visa_holder|international)$",
-        description="Citizenship/visa status for eligibility filtering"
+        description="Citizenship/visa status for eligibility filtering",
     )
     institution_type: Optional[str] = Field(
         None,
         pattern="^(r1_university|r2_university|liberal_arts|community_college|nonprofit|industry|government|hbcu|msi|other)$",
-        description="Type of institution"
+        description="Type of institution",
     )
-    is_pi_eligible: Optional[bool] = Field(
-        False,
-        description="Whether user is eligible to be a Principal Investigator"
-    )
-    past_grants: Optional[dict[str, Any]] = Field(
-        None,
-        description="Historical grant awards"
-    )
-    publications: Optional[dict[str, Any]] = Field(
-        None,
-        description="Publication history"
-    )
-    orcid: Optional[str] = Field(
-        None,
-        pattern="^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$",
-        description="ORCID identifier"
-    )
+    is_pi_eligible: Optional[bool] = Field(False, description="Whether user is eligible to be a Principal Investigator")
+    past_grants: Optional[dict[str, Any]] = Field(None, description="Historical grant awards")
+    publications: Optional[dict[str, Any]] = Field(None, description="Publication history")
+    orcid: Optional[str] = Field(None, pattern="^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$", description="ORCID identifier")
 
 
 class LabProfileUpdate(BaseModel):
     """Schema for updating an existing lab profile."""
 
-    research_areas: Optional[list[str]] = Field(
-        None,
-        max_length=20,
-        description="Primary research areas"
-    )
-    methods: Optional[list[str]] = Field(
-        None,
-        max_length=20,
-        description="Research methodologies"
-    )
+    research_areas: Optional[list[str]] = Field(None, max_length=20, description="Primary research areas")
+    methods: Optional[list[str]] = Field(None, max_length=20, description="Research methodologies")
     career_stage: Optional[str] = Field(
-        None,
-        pattern="^(early_career|mid_career|established|senior)$",
-        description="Career stage"
+        None, pattern="^(early_career|mid_career|established|senior)$", description="Career stage"
     )
     citizenship_status: Optional[str] = Field(
         None,
         pattern="^(us_citizen|permanent_resident|visa_holder|international)$",
-        description="Citizenship/visa status for eligibility filtering"
+        description="Citizenship/visa status for eligibility filtering",
     )
     institution_type: Optional[str] = Field(
         None,
         pattern="^(r1_university|r2_university|liberal_arts|community_college|nonprofit|industry|government|hbcu|msi|other)$",
-        description="Type of institution"
+        description="Type of institution",
     )
-    is_pi_eligible: Optional[bool] = Field(
-        None,
-        description="Whether user is eligible to be a Principal Investigator"
-    )
-    past_grants: Optional[dict[str, Any]] = Field(
-        None,
-        description="Historical grant awards"
-    )
-    publications: Optional[dict[str, Any]] = Field(
-        None,
-        description="Publication history"
-    )
-    orcid: Optional[str] = Field(
-        None,
-        pattern="^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$",
-        description="ORCID identifier"
-    )
+    is_pi_eligible: Optional[bool] = Field(None, description="Whether user is eligible to be a Principal Investigator")
+    past_grants: Optional[dict[str, Any]] = Field(None, description="Historical grant awards")
+    publications: Optional[dict[str, Any]] = Field(None, description="Publication history")
+    orcid: Optional[str] = Field(None, pattern="^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$", description="ORCID identifier")
 
 
 class LabProfileResponse(BaseModel):
@@ -133,40 +87,23 @@ class OnboardingData(BaseModel):
     phone: Optional[str] = Field(None, description="Phone for SMS alerts")
 
     # Profile data
-    research_areas: list[str] = Field(
-        ...,
-        min_length=1,
-        max_length=20,
-        description="Research areas"
-    )
+    research_areas: list[str] = Field(..., min_length=1, max_length=20, description="Research areas")
     methods: Optional[list[str]] = Field(None, description="Methods")
-    career_stage: Optional[str] = Field(
-        None,
-        pattern="^(early_career|mid_career|established|senior)$"
-    )
+    career_stage: Optional[str] = Field(None, pattern="^(early_career|mid_career|established|senior)$")
     citizenship_status: Optional[str] = Field(
         None,
         pattern="^(us_citizen|permanent_resident|visa_holder|international)$",
-        description="Citizenship/visa status for eligibility filtering"
+        description="Citizenship/visa status for eligibility filtering",
     )
     institution_type: Optional[str] = Field(
         None,
         pattern="^(r1_university|r2_university|liberal_arts|community_college|nonprofit|industry|government|hbcu|msi|other)$",
-        description="Type of institution"
+        description="Type of institution",
     )
-    is_pi_eligible: Optional[bool] = Field(
-        False,
-        description="Whether user is eligible to be a Principal Investigator"
-    )
+    is_pi_eligible: Optional[bool] = Field(False, description="Whether user is eligible to be a Principal Investigator")
     past_grants: Optional[dict[str, Any]] = Field(None, description="Past grants")
     publications: Optional[dict[str, Any]] = Field(None, description="Publications")
-    orcid: Optional[str] = Field(
-        None,
-        pattern="^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
-    )
+    orcid: Optional[str] = Field(None, pattern="^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$")
 
     # Preferences
-    notification_preferences: Optional[dict[str, bool]] = Field(
-        None,
-        description="Email/SMS notification preferences"
-    )
+    notification_preferences: Optional[dict[str, bool]] = Field(None, description="Email/SMS notification preferences")

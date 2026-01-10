@@ -11,31 +11,27 @@ Covers:
 - POST /api/analytics/workflow/refresh - Force cache refresh
 - GET /api/analytics/workflow/cache-status - Cache statistics
 """
+
 import pytest
 import pytest_asyncio
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
-from unittest.mock import patch, AsyncMock, MagicMock
 
 from backend.models import (
     ApplicationStage,
     Grant,
     GrantApplication,
-    User,
 )
 from backend.models.workflow_analytics import (
-    WorkflowEvent,
     WorkflowEventType,
     WorkflowStage,
 )
 from tests.fixtures.analytics_factories import (
     WorkflowEventFactory,
-    WorkflowAnalyticsFactory,
 )
 from tests.fixtures.factories import (
     UserFactory,
     GrantFactory,
-    GrantApplicationFactory,
 )
 
 
@@ -78,7 +74,7 @@ async def db_application_with_events(async_session, db_user, db_grant):
 @pytest_asyncio.fixture
 async def db_applications_varied_stages(async_session, db_user, db_grant):
     """Create multiple applications in various stages with events."""
-    now = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
     applications = []
     all_events = []
 
@@ -86,8 +82,14 @@ async def db_applications_varied_stages(async_session, db_user, db_grant):
         (ApplicationStage.RESEARCHING, [WorkflowStage.RESEARCHING]),
         (ApplicationStage.WRITING, [WorkflowStage.RESEARCHING, WorkflowStage.WRITING]),
         (ApplicationStage.SUBMITTED, [WorkflowStage.RESEARCHING, WorkflowStage.WRITING, WorkflowStage.SUBMITTED]),
-        (ApplicationStage.AWARDED, [WorkflowStage.RESEARCHING, WorkflowStage.WRITING, WorkflowStage.SUBMITTED, WorkflowStage.AWARDED]),
-        (ApplicationStage.REJECTED, [WorkflowStage.RESEARCHING, WorkflowStage.WRITING, WorkflowStage.SUBMITTED, WorkflowStage.REJECTED]),
+        (
+            ApplicationStage.AWARDED,
+            [WorkflowStage.RESEARCHING, WorkflowStage.WRITING, WorkflowStage.SUBMITTED, WorkflowStage.AWARDED],
+        ),
+        (
+            ApplicationStage.REJECTED,
+            [WorkflowStage.RESEARCHING, WorkflowStage.WRITING, WorkflowStage.SUBMITTED, WorkflowStage.REJECTED],
+        ),
     ]
 
     for app_stage, workflow_stages in stages_data:
@@ -134,11 +136,11 @@ async def db_applications_with_deadlines(async_session, db_user):
     applications = []
 
     deadline_scenarios = [
-        (3, "high"),    # 3 days - critical
-        (7, "high"),    # 7 days - high risk
-        (14, "medium"), # 14 days - medium
-        (30, "low"),    # 30 days - low risk
-        (60, "low"),    # 60 days - safe
+        (3, "high"),  # 3 days - critical
+        (7, "high"),  # 7 days - high risk
+        (14, "medium"),  # 14 days - medium
+        (30, "low"),  # 30 days - low risk
+        (60, "low"),  # 60 days - safe
     ]
 
     for days_until, priority in deadline_scenarios:
@@ -194,7 +196,7 @@ async def db_stuck_applications(async_session, db_user):
     # Create applications stuck in various stages
     stuck_scenarios = [
         (WorkflowStage.RESEARCHING, 30),  # Stuck 30 days in researching
-        (WorkflowStage.WRITING, 45),      # Stuck 45 days in writing
+        (WorkflowStage.WRITING, 45),  # Stuck 45 days in writing
         (WorkflowStage.RESEARCHING, 60),  # Stuck 60 days in researching
     ]
 
@@ -264,9 +266,7 @@ class TestWorkflowAnalyticsSummary:
         assert result.summary.workflow_health == "healthy"
 
     @pytest.mark.asyncio
-    async def test_get_analytics_summary_with_applications(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_get_analytics_summary_with_applications(self, async_session, db_user, db_applications_varied_stages):
         """Test getting analytics with multiple applications."""
         from backend.services.workflow_analytics import get_workflow_analytics_summary
 
@@ -284,12 +284,9 @@ class TestWorkflowAnalyticsSummary:
         assert result.period_end is not None
 
     @pytest.mark.asyncio
-    async def test_get_analytics_with_date_range(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_get_analytics_with_date_range(self, async_session, db_user, db_applications_varied_stages):
         """Test analytics with custom date range."""
         from backend.services.workflow_analytics import get_workflow_analytics_summary
-        from datetime import date
 
         now = datetime.now(timezone.utc)
         start_date = (now - timedelta(days=30)).date()
@@ -306,9 +303,7 @@ class TestWorkflowAnalyticsSummary:
         assert result.period_end == end_date
 
     @pytest.mark.asyncio
-    async def test_analytics_returns_all_components(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_analytics_returns_all_components(self, async_session, db_user, db_applications_varied_stages):
         """Test that analytics response includes all required components."""
         from backend.services.workflow_analytics import get_workflow_analytics_summary
 
@@ -357,9 +352,7 @@ class TestBottleneckIdentification:
         assert result.total_at_risk == 0
 
     @pytest.mark.asyncio
-    async def test_identifies_stuck_applications(
-        self, async_session, db_user, db_stuck_applications
-    ):
+    async def test_identifies_stuck_applications(self, async_session, db_user, db_stuck_applications):
         """Test that stuck applications are identified as bottlenecks."""
         from backend.services.workflow_analytics import identify_bottlenecks_cached
 
@@ -375,9 +368,7 @@ class TestBottleneckIdentification:
         assert hasattr(result, "total_at_risk")
 
     @pytest.mark.asyncio
-    async def test_bottleneck_severity_levels(
-        self, async_session, db_user, db_stuck_applications
-    ):
+    async def test_bottleneck_severity_levels(self, async_session, db_user, db_stuck_applications):
         """Test that bottlenecks have appropriate severity levels."""
         from backend.services.workflow_analytics import identify_bottlenecks_cached
 
@@ -392,9 +383,7 @@ class TestBottleneckIdentification:
             assert bottleneck.recommendation is not None
 
     @pytest.mark.asyncio
-    async def test_bottleneck_recommendations(
-        self, async_session, db_user, db_stuck_applications
-    ):
+    async def test_bottleneck_recommendations(self, async_session, db_user, db_stuck_applications):
         """Test that bottlenecks include actionable recommendations."""
         from backend.services.workflow_analytics import identify_bottlenecks_cached
 
@@ -430,9 +419,7 @@ class TestTimePerStage:
         assert hasattr(result, "total_avg_time_hours")
 
     @pytest.mark.asyncio
-    async def test_time_per_stage_with_data(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_time_per_stage_with_data(self, async_session, db_user, db_applications_varied_stages):
         """Test time per stage calculation with application data."""
         from backend.services.workflow_analytics import calculate_time_per_stage_cached
 
@@ -451,12 +438,9 @@ class TestTimePerStage:
                 assert stage_metric.avg_hours >= 0
 
     @pytest.mark.asyncio
-    async def test_time_per_stage_with_date_range(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_time_per_stage_with_date_range(self, async_session, db_user, db_applications_varied_stages):
         """Test time per stage with date range filter."""
         from backend.services.workflow_analytics import calculate_time_per_stage_cached
-        from datetime import date
 
         now = datetime.now(timezone.utc)
 
@@ -496,9 +480,7 @@ class TestCompletionRates:
         assert hasattr(result, "trend")
 
     @pytest.mark.asyncio
-    async def test_completion_rates_monthly(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_completion_rates_monthly(self, async_session, db_user, db_applications_varied_stages):
         """Test monthly completion rate calculation."""
         from backend.services.workflow_analytics import calculate_completion_rates_cached
 
@@ -515,9 +497,7 @@ class TestCompletionRates:
         assert result.trend in ["improving", "declining", "stable"]
 
     @pytest.mark.asyncio
-    async def test_completion_rates_quarterly(
-        self, async_session, db_user, db_applications_varied_stages
-    ):
+    async def test_completion_rates_quarterly(self, async_session, db_user, db_applications_varied_stages):
         """Test quarterly completion rate calculation."""
         from backend.services.workflow_analytics import calculate_completion_rates_cached
 
@@ -555,9 +535,7 @@ class TestDeadlineRiskForecast:
         assert result.critical_risk_count == 0
 
     @pytest.mark.asyncio
-    async def test_deadline_risks_with_upcoming_deadlines(
-        self, async_session, db_user, db_applications_with_deadlines
-    ):
+    async def test_deadline_risks_with_upcoming_deadlines(self, async_session, db_user, db_applications_with_deadlines):
         """Test deadline risk identification for applications with deadlines."""
         from backend.services.workflow_analytics import forecast_deadline_risks
 
@@ -570,17 +548,12 @@ class TestDeadlineRiskForecast:
         assert result.total_applications >= 0
         # Check risk counts add up
         total_risk = (
-            result.low_risk_count +
-            result.medium_risk_count +
-            result.high_risk_count +
-            result.critical_risk_count
+            result.low_risk_count + result.medium_risk_count + result.high_risk_count + result.critical_risk_count
         )
         assert total_risk == result.total_applications
 
     @pytest.mark.asyncio
-    async def test_at_risk_applications_include_details(
-        self, async_session, db_user, db_applications_with_deadlines
-    ):
+    async def test_at_risk_applications_include_details(self, async_session, db_user, db_applications_with_deadlines):
         """Test that at-risk applications include required details."""
         from backend.services.workflow_analytics import forecast_deadline_risks
 
@@ -607,9 +580,7 @@ class TestApplicationEvents:
     """Tests for the GET /api/kanban/{card_id}/events endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_events_for_application(
-        self, async_session, db_user, db_application_with_events
-    ):
+    async def test_get_events_for_application(self, async_session, db_user, db_application_with_events):
         """Test retrieving events for a specific application."""
         from backend.services.workflow_analytics import get_application_events
 
@@ -627,9 +598,7 @@ class TestApplicationEvents:
         assert result.pagination.total >= len(expected_events)
 
     @pytest.mark.asyncio
-    async def test_get_events_pagination(
-        self, async_session, db_user, db_application_with_events
-    ):
+    async def test_get_events_pagination(self, async_session, db_user, db_application_with_events):
         """Test event retrieval with pagination."""
         from backend.services.workflow_analytics import get_application_events
 
@@ -671,9 +640,7 @@ class TestApplicationEvents:
         assert len(result.data) == 0
 
     @pytest.mark.asyncio
-    async def test_events_ordered_by_time(
-        self, async_session, db_user, db_application_with_events
-    ):
+    async def test_events_ordered_by_time(self, async_session, db_user, db_application_with_events):
         """Test that events are returned ordered by occurrence time."""
         from backend.services.workflow_analytics import get_application_events
 
@@ -705,7 +672,6 @@ class TestCacheManagement:
         """Test cache refresh functionality."""
         from backend.services.workflow_analytics import (
             invalidate_user_analytics_cache,
-            invalidate_and_refresh_cache,
         )
 
         # Invalidate cache
@@ -805,7 +771,6 @@ class TestEdgeCases:
     async def test_analytics_with_future_dates(self, async_session, db_user):
         """Test analytics with future date range."""
         from backend.services.workflow_analytics import get_workflow_analytics_summary
-        from datetime import date
 
         future_start = (datetime.now(timezone.utc) + timedelta(days=30)).date()
         future_end = (datetime.now(timezone.utc) + timedelta(days=60)).date()
@@ -825,7 +790,6 @@ class TestEdgeCases:
     async def test_analytics_with_old_date_range(self, async_session, db_user):
         """Test analytics with very old date range."""
         from backend.services.workflow_analytics import get_workflow_analytics_summary
-        from datetime import date
 
         old_start = (datetime.now(timezone.utc) - timedelta(days=365)).date()
         old_end = (datetime.now(timezone.utc) - timedelta(days=300)).date()

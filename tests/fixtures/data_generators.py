@@ -2,8 +2,8 @@
 Test Data Generators
 Utilities for generating realistic test data for various scenarios.
 """
+
 import random
-import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -160,14 +160,16 @@ class ScenarioDataGenerator:
 
         for i in range(num_months):
             month_start = now - timedelta(days=30 * i)
-            months.append({
-                "date": month_start,
-                "applications": random.randint(2, 10),
-                "awarded": random.randint(0, 3),
-                "rejected": random.randint(0, 2),
-                "funding_applied": random.randint(100000, 1000000),
-                "funding_awarded": random.randint(0, 500000),
-            })
+            months.append(
+                {
+                    "date": month_start,
+                    "applications": random.randint(2, 10),
+                    "awarded": random.randint(0, 3),
+                    "rejected": random.randint(0, 2),
+                    "funding_applied": random.randint(100000, 1000000),
+                    "funding_awarded": random.randint(0, 500000),
+                }
+            )
 
         return {
             "months": list(reversed(months)),
@@ -203,24 +205,30 @@ class ScenarioDataGenerator:
 
         # Urgent (within 7 days)
         for i in range(3):
-            deadlines.append({
-                "days_until": random.randint(1, 7),
-                "urgency": "urgent",
-            })
+            deadlines.append(
+                {
+                    "days_until": random.randint(1, 7),
+                    "urgency": "urgent",
+                }
+            )
 
         # Soon (8-30 days)
         for i in range(5):
-            deadlines.append({
-                "days_until": random.randint(8, 30),
-                "urgency": "soon",
-            })
+            deadlines.append(
+                {
+                    "days_until": random.randint(8, 30),
+                    "urgency": "soon",
+                }
+            )
 
         # Later (31-90 days)
         for i in range(7):
-            deadlines.append({
-                "days_until": random.randint(31, 90),
-                "urgency": "later",
-            })
+            deadlines.append(
+                {
+                    "days_until": random.randint(31, 90),
+                    "urgency": "later",
+                }
+            )
 
         return {
             "deadlines": deadlines,
@@ -233,15 +241,15 @@ class ScenarioDataGenerator:
         now = datetime.now(timezone.utc)
 
         seasonal_patterns = {
-            1: 0.8,   # January - lower
-            2: 0.9,   # February
-            3: 1.2,   # March - higher (end of fiscal year)
-            4: 1.1,   # April
-            5: 1.0,   # May
-            6: 0.9,   # June
-            7: 0.7,   # July - lower (summer)
-            8: 0.7,   # August
-            9: 1.3,   # September - higher (new fiscal year)
+            1: 0.8,  # January - lower
+            2: 0.9,  # February
+            3: 1.2,  # March - higher (end of fiscal year)
+            4: 1.1,  # April
+            5: 1.0,  # May
+            6: 0.9,  # June
+            7: 0.7,  # July - lower (summer)
+            8: 0.7,  # August
+            9: 1.3,  # September - higher (new fiscal year)
             10: 1.2,  # October
             11: 1.0,  # November
             12: 0.8,  # December - lower (holidays)
@@ -253,11 +261,13 @@ class ScenarioDataGenerator:
             month = future_date.month
             base_count = 50
 
-            forecasts.append({
-                "month": month,
-                "expected_grants": int(base_count * seasonal_patterns[month]),
-                "confidence": round(0.9 - (i * 0.05), 2),  # Confidence decreases further out
-            })
+            forecasts.append(
+                {
+                    "month": month,
+                    "expected_grants": int(base_count * seasonal_patterns[month]),
+                    "confidence": round(0.9 - (i * 0.05), 2),  # Confidence decreases further out
+                }
+            )
 
         return {
             "forecasts": forecasts,

@@ -2,12 +2,13 @@
 Resource Permission Models for Fine-Grained Access Control
 SQLAlchemy ORM models for resource-level sharing and permission management.
 """
+
 import secrets
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

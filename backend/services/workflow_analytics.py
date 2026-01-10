@@ -9,6 +9,7 @@ Service layer for workflow analytics calculations including:
 - Deadline risk forecasting
 - Caching for expensive calculations
 """
+
 import logging
 import uuid
 from collections import defaultdict
@@ -20,7 +21,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from backend.models import ApplicationStage, Grant, GrantApplication, User
+from backend.models import ApplicationStage, GrantApplication
 from backend.models.workflow_analytics import (
     WorkflowAnalytics,
     WorkflowEvent,
@@ -38,13 +39,11 @@ from backend.schemas.workflow_analytics import (
     TimePerStageResponse,
     WorkflowAnalyticsResponse,
     WorkflowAnalyticsSummary,
-    WorkflowEventCreate,
     WorkflowEventResponse,
     WorkflowEventsListResponse,
 )
 from backend.schemas.common import PaginationInfo
 from backend.services.cache import (
-    cache_key,
     get_cached,
     invalidate_user_cache,
     make_user_cache_key,
@@ -171,9 +170,7 @@ async def get_application_events(
     """
     # Get total count
     count_result = await db.execute(
-        select(func.count(WorkflowEvent.id)).where(
-            WorkflowEvent.kanban_card_id == kanban_card_id
-        )
+        select(func.count(WorkflowEvent.id)).where(WorkflowEvent.kanban_card_id == kanban_card_id)
     )
     total = count_result.scalar() or 0
 
@@ -248,10 +245,12 @@ async def calculate_time_per_stage(
         .where(
             and_(
                 GrantApplication.user_id == user_id,
-                WorkflowEvent.event_type.in_([
-                    WorkflowEventType.STAGE_ENTER,
-                    WorkflowEventType.STAGE_EXIT,
-                ]),
+                WorkflowEvent.event_type.in_(
+                    [
+                        WorkflowEventType.STAGE_ENTER,
+                        WorkflowEventType.STAGE_EXIT,
+                    ]
+                ),
                 WorkflowEvent.occurred_at >= datetime.combine(start_date, datetime.min.time()),
                 WorkflowEvent.occurred_at <= datetime.combine(end_date, datetime.max.time()),
             )
@@ -293,7 +292,9 @@ async def calculate_time_per_stage(
     stages = []
     for stage in WorkflowStage.all_stages():
         times = stage_times.get(stage, [])
-        currently_in = current_stage_counts.get(ApplicationStage(stage), 0) if stage in [s.value for s in ApplicationStage] else 0
+        currently_in = (
+            current_stage_counts.get(ApplicationStage(stage), 0) if stage in [s.value for s in ApplicationStage] else 0
+        )
 
         if times:
             stages.append(
@@ -361,10 +362,7 @@ async def calculate_time_per_stage_cached(
         Time metrics for each stage (from cache if available)
     """
     # Build cache key
-    cache_key_str = make_user_cache_key(
-        str(user_id),
-        f"time_per_stage:{start_date}:{end_date}"
-    )
+    cache_key_str = make_user_cache_key(str(user_id), f"time_per_stage:{start_date}:{end_date}")
 
     # Check cache
     cached_result = get_cached(cache_key_str, CACHE_TTL_TIME_PER_STAGE)
@@ -413,11 +411,13 @@ async def identify_bottlenecks(
         .where(
             and_(
                 GrantApplication.user_id == user_id,
-                GrantApplication.stage.in_([
-                    ApplicationStage.RESEARCHING,
-                    ApplicationStage.WRITING,
-                    ApplicationStage.SUBMITTED,
-                ]),
+                GrantApplication.stage.in_(
+                    [
+                        ApplicationStage.RESEARCHING,
+                        ApplicationStage.WRITING,
+                        ApplicationStage.SUBMITTED,
+                    ]
+                ),
             )
         )
     )
@@ -711,10 +711,7 @@ async def calculate_completion_rates_cached(
         Completion rate metrics by period (from cache if available)
     """
     # Build cache key
-    cache_key_str = make_user_cache_key(
-        str(user_id),
-        f"completion_rates:{period_type}:{periods}"
-    )
+    cache_key_str = make_user_cache_key(str(user_id), f"completion_rates:{period_type}:{periods}")
 
     # Check cache
     cached_result = get_cached(cache_key_str, CACHE_TTL_COMPLETION_RATES)
@@ -759,11 +756,13 @@ async def forecast_deadline_risks(
         .where(
             and_(
                 GrantApplication.user_id == user_id,
-                GrantApplication.stage.in_([
-                    ApplicationStage.RESEARCHING,
-                    ApplicationStage.WRITING,
-                    ApplicationStage.SUBMITTED,
-                ]),
+                GrantApplication.stage.in_(
+                    [
+                        ApplicationStage.RESEARCHING,
+                        ApplicationStage.WRITING,
+                        ApplicationStage.SUBMITTED,
+                    ]
+                ),
             )
         )
     )
@@ -903,12 +902,12 @@ async def get_workflow_analytics_summary(
 
     total_applications = sum(stage_counts.values())
     active_applications = sum(
-        count for stage, count in stage_counts.items()
+        count
+        for stage, count in stage_counts.items()
         if stage in [ApplicationStage.RESEARCHING, ApplicationStage.WRITING, ApplicationStage.SUBMITTED]
     )
     completed_applications = sum(
-        count for stage, count in stage_counts.items()
-        if stage in [ApplicationStage.AWARDED, ApplicationStage.REJECTED]
+        count for stage, count in stage_counts.items() if stage in [ApplicationStage.AWARDED, ApplicationStage.REJECTED]
     )
 
     # Build summary
@@ -916,7 +915,9 @@ async def get_workflow_analytics_summary(
         total_applications=total_applications,
         active_applications=active_applications,
         completed_applications=completed_applications,
-        avg_completion_time_days=time_per_stage.total_avg_time_hours / 24 if time_per_stage.total_avg_time_hours else None,
+        avg_completion_time_days=time_per_stage.total_avg_time_hours / 24
+        if time_per_stage.total_avg_time_hours
+        else None,
         submission_rate=completion_rates.overall_submission_rate,
         success_rate=completion_rates.overall_success_rate,
         current_bottleneck=bottlenecks.bottlenecks[0].stage if bottlenecks.bottlenecks else None,

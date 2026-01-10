@@ -13,8 +13,6 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
-from sqlalchemy.dialects.postgresql import UUID
 
 # Revision identifiers
 revision: str = "004"

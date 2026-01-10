@@ -13,16 +13,15 @@ Options:
     --dry-run       Print what would be seeded without making changes
     --verbose       Enable verbose output
 """
+
 import argparse
 import asyncio
 import logging
 import sys
-import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from passlib.context import CryptContext
-from sqlalchemy import select, delete, and_, or_
+from sqlalchemy import select, and_
 
 # Configure logging
 logging.basicConfig(
@@ -74,7 +73,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "nonprofit"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -100,7 +99,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute"],
             "career_stages": ["mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident", "no_restriction"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident", "no_restriction"],
@@ -127,7 +126,7 @@ SAMPLE_GRANTS = [
             "career_stages": ["early_career"],
             "citizenship": ["us_citizen", "permanent_resident"],
             "pi_eligible": True,
-            "requirements": "Must be Early Stage Investigator (within 10 years of terminal degree)"
+            "requirements": "Must be Early Stage Investigator (within 10 years of terminal degree)",
         },
         "eligible_career_stages": ["early_career"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -153,7 +152,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "hospital"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["no_restriction"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["no_restriction"],
@@ -165,7 +164,6 @@ SAMPLE_GRANTS = [
         "is_limited_submission": False,
         "indirect_cost_policy": "full_rate",
     },
-
     # NSF Grants - Engineering & Science
     {
         "source": "nsf",
@@ -182,7 +180,7 @@ SAMPLE_GRANTS = [
             "career_stages": ["early_career"],
             "citizenship": ["us_citizen", "permanent_resident"],
             "pi_eligible": True,
-            "requirements": "Must hold tenure-track (or equivalent) position"
+            "requirements": "Must hold tenure-track (or equivalent) position",
         },
         "eligible_career_stages": ["early_career"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -208,7 +206,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -234,7 +232,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -260,7 +258,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -272,7 +270,6 @@ SAMPLE_GRANTS = [
         "is_limited_submission": True,
         "indirect_cost_policy": "full_rate",
     },
-
     # DOE Grants - Energy
     {
         "source": "doe",
@@ -288,7 +285,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "industry"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -314,7 +311,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "national_lab"],
             "career_stages": ["mid_career", "senior"],
             "citizenship": ["us_citizen"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["mid_career", "senior"],
         "citizenship_requirements": ["us_citizen"],
@@ -340,7 +337,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "industry", "nonprofit"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -352,7 +349,6 @@ SAMPLE_GRANTS = [
         "is_limited_submission": False,
         "indirect_cost_policy": "full_rate",
     },
-
     # Foundation Grants
     {
         "source": "foundation",
@@ -368,7 +364,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "nonprofit", "government"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["no_restriction"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["no_restriction"],
@@ -395,7 +391,7 @@ SAMPLE_GRANTS = [
             "career_stages": ["early_career"],
             "citizenship": ["us_citizen", "permanent_resident"],
             "pi_eligible": True,
-            "requirements": "Faculty position for 2-7 years, exceptional scientific track record"
+            "requirements": "Faculty position for 2-7 years, exceptional scientific track record",
         },
         "eligible_career_stages": ["early_career"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -422,7 +418,7 @@ SAMPLE_GRANTS = [
             "career_stages": ["early_career"],
             "citizenship": ["us_citizen", "permanent_resident", "visa_holder"],
             "pi_eligible": True,
-            "requirements": "Tenure-track position, within 6 years of Ph.D."
+            "requirements": "Tenure-track position, within 6 years of Ph.D.",
         },
         "eligible_career_stages": ["early_career"],
         "citizenship_requirements": ["us_citizen", "permanent_resident", "visa_holder"],
@@ -448,7 +444,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["no_restriction"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["no_restriction"],
@@ -460,7 +456,6 @@ SAMPLE_GRANTS = [
         "is_limited_submission": False,
         "indirect_cost_policy": "not_allowed",
     },
-
     # State Grants
     {
         "source": "state",
@@ -477,7 +472,7 @@ SAMPLE_GRANTS = [
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["no_restriction"],
             "pi_eligible": True,
-            "requirements": "Research must benefit California"
+            "requirements": "Research must benefit California",
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["no_restriction"],
@@ -505,7 +500,7 @@ SAMPLE_GRANTS = [
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["no_restriction"],
             "pi_eligible": True,
-            "requirements": "Institution must be in New York State"
+            "requirements": "Institution must be in New York State",
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["no_restriction"],
@@ -518,7 +513,6 @@ SAMPLE_GRANTS = [
         "is_limited_submission": False,
         "indirect_cost_policy": "capped",
     },
-
     # Social Sciences
     {
         "source": "foundation",
@@ -534,7 +528,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute", "nonprofit"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["no_restriction"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["no_restriction"],
@@ -560,7 +554,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university", "research_institute"],
             "career_stages": ["early_career", "mid_career", "senior"],
             "citizenship": ["us_citizen", "permanent_resident"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "mid_career", "senior"],
         "citizenship_requirements": ["us_citizen", "permanent_resident"],
@@ -572,7 +566,6 @@ SAMPLE_GRANTS = [
         "is_limited_submission": False,
         "indirect_cost_policy": "full_rate",
     },
-
     # Small/Pilot Grants
     {
         "source": "foundation",
@@ -588,7 +581,7 @@ SAMPLE_GRANTS = [
             "institution_types": ["university"],
             "career_stages": ["early_career", "postdoc"],
             "citizenship": ["no_restriction"],
-            "pi_eligible": True
+            "pi_eligible": True,
         },
         "eligible_career_stages": ["early_career", "postdoc"],
         "citizenship_requirements": ["no_restriction"],
@@ -625,7 +618,7 @@ DEMO_USERS = [
             "institution": "Stanford University",
             "department": "Bioengineering",
             "keywords": ["nanomedicine", "targeted therapy", "cancer treatment"],
-        }
+        },
     },
     {
         "email": "researcher@example.com",
@@ -644,7 +637,7 @@ DEMO_USERS = [
             "institution": "MIT",
             "department": "Computer Science and Artificial Intelligence Laboratory",
             "keywords": ["AI diagnostics", "radiology AI", "neural networks"],
-        }
+        },
     },
     {
         "email": "team_lead@university.edu",
@@ -663,7 +656,7 @@ DEMO_USERS = [
             "institution": "UC Berkeley",
             "department": "Environmental Science, Policy, and Management",
             "keywords": ["climate change", "carbon sequestration", "ecosystem services"],
-        }
+        },
     },
 ]
 
@@ -672,12 +665,10 @@ DEMO_USERS = [
 # Seeding Functions
 # =============================================================================
 
+
 async def clean_demo_data(session, dry_run: bool = False) -> dict:
     """Remove all demo data from the database."""
-    from backend.models import (
-        User, Grant, GrantApplication, Match, LabProfile,
-        LabMember, TeamActivityLog, Notification, ApplicationActivity
-    )
+    from backend.models import User, Grant
 
     counts = {
         "users": 0,
@@ -697,18 +688,14 @@ async def clean_demo_data(session, dry_run: bool = False) -> dict:
             if result.scalar_one_or_none():
                 counts["users"] += 1
 
-        result = await session.execute(
-            select(Grant).where(Grant.external_id.startswith(DEMO_GRANT_PREFIX))
-        )
+        result = await session.execute(select(Grant).where(Grant.external_id.startswith(DEMO_GRANT_PREFIX)))
         counts["grants"] = len(result.scalars().all())
 
         logger.info(f"[DRY RUN] Would delete: {counts}")
         return counts
 
     # Delete demo grants (cascades to matches, applications)
-    result = await session.execute(
-        select(Grant).where(Grant.external_id.startswith(DEMO_GRANT_PREFIX))
-    )
+    result = await session.execute(select(Grant).where(Grant.external_id.startswith(DEMO_GRANT_PREFIX)))
     demo_grants = result.scalars().all()
     counts["grants"] = len(demo_grants)
     for grant in demo_grants:
@@ -735,9 +722,7 @@ async def seed_demo_users(session, dry_run: bool = False) -> list:
 
     for user_data in DEMO_USERS:
         # Check if user already exists
-        result = await session.execute(
-            select(User).where(User.email == user_data["email"])
-        )
+        result = await session.execute(select(User).where(User.email == user_data["email"]))
         existing = result.scalar_one_or_none()
 
         if existing:
@@ -799,9 +784,7 @@ async def seed_demo_grants(session, dry_run: bool = False) -> list:
 
     for grant_data in SAMPLE_GRANTS:
         # Check if grant already exists
-        result = await session.execute(
-            select(Grant).where(Grant.external_id == grant_data["external_id"])
-        )
+        result = await session.execute(select(Grant).where(Grant.external_id == grant_data["external_id"]))
         existing = result.scalar_one_or_none()
 
         if existing:
@@ -868,7 +851,7 @@ async def seed_demo_applications(session, users: list, grants: list, dry_run: bo
         return []
 
     created_apps = []
-    now = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
 
     # Application configurations for each user
     app_configs = [
@@ -877,15 +860,25 @@ async def seed_demo_applications(session, users: list, grants: list, dry_run: bo
         {"user_idx": 0, "grant_idx": 1, "stage": ApplicationStage.WRITING, "priority": "high", "match_score": 0.85},
         {"user_idx": 0, "grant_idx": 2, "stage": ApplicationStage.SUBMITTED, "priority": "medium", "match_score": 0.78},
         {"user_idx": 0, "grant_idx": 3, "stage": ApplicationStage.AWARDED, "priority": "high", "match_score": 0.88},
-
         # User 2 (researcher) - focused on AI grants
         {"user_idx": 1, "grant_idx": 5, "stage": ApplicationStage.RESEARCHING, "priority": "high", "match_score": 0.95},
         {"user_idx": 1, "grant_idx": 7, "stage": ApplicationStage.WRITING, "priority": "high", "match_score": 0.82},
-        {"user_idx": 1, "grant_idx": 0, "stage": ApplicationStage.RESEARCHING, "priority": "medium", "match_score": 0.75},
-
+        {
+            "user_idx": 1,
+            "grant_idx": 0,
+            "stage": ApplicationStage.RESEARCHING,
+            "priority": "medium",
+            "match_score": 0.75,
+        },
         # User 3 (team lead) - climate/environment focused
         {"user_idx": 2, "grant_idx": 16, "stage": ApplicationStage.WRITING, "priority": "high", "match_score": 0.90},
-        {"user_idx": 2, "grant_idx": 8, "stage": ApplicationStage.RESEARCHING, "priority": "medium", "match_score": 0.72},
+        {
+            "user_idx": 2,
+            "grant_idx": 8,
+            "stage": ApplicationStage.RESEARCHING,
+            "priority": "medium",
+            "match_score": 0.72,
+        },
         {"user_idx": 2, "grant_idx": 10, "stage": ApplicationStage.SUBMITTED, "priority": "high", "match_score": 0.80},
     ]
 
@@ -902,10 +895,7 @@ async def seed_demo_applications(session, users: list, grants: list, dry_run: bo
         # Check if application already exists
         result = await session.execute(
             select(GrantApplication).where(
-                and_(
-                    GrantApplication.user_id == user.id,
-                    GrantApplication.grant_id == grant.id
-                )
+                and_(GrantApplication.user_id == user.id, GrantApplication.grant_id == grant.id)
             )
         )
         if result.scalar_one_or_none():
@@ -995,10 +985,7 @@ async def seed_demo_team(session, users: list, dry_run: bool = False) -> dict:
         # Check if already a member
         result_check = await session.execute(
             select(LabMember).where(
-                and_(
-                    LabMember.lab_owner_id == team_lead.id,
-                    LabMember.member_email == member_user.email
-                )
+                and_(LabMember.lab_owner_id == team_lead.id, LabMember.member_email == member_user.email)
             )
         )
         if result_check.scalar_one_or_none():
@@ -1018,7 +1005,7 @@ async def seed_demo_team(session, users: list, dry_run: bool = False) -> dict:
                 "can_create": config["role"] == "admin",
                 "can_delete": False,
                 "can_invite": config["role"] == "admin",
-            }
+            },
         )
         session.add(member)
         result["members"].append(member)
@@ -1030,7 +1017,7 @@ async def seed_demo_team(session, users: list, dry_run: bool = False) -> dict:
             action_type="member_joined",
             entity_type="member",
             entity_name=member_user.name,
-            metadata_={"role": config["role"], "email": member_user.email}
+            metadata_={"role": config["role"], "email": member_user.email},
         )
         session.add(activity)
         result["activities"].append(activity)
@@ -1137,6 +1124,7 @@ async def seed_demo_notifications(session, users: list, dry_run: bool = False) -
 # Main Execution
 # =============================================================================
 
+
 async def run_seed(clean: bool = False, dry_run: bool = False, verbose: bool = False):
     """Run the complete seed process."""
     from backend.database import get_async_session
@@ -1207,23 +1195,13 @@ Examples:
   python -m backend.scripts.seed_data              # Seed demo data
   python -m backend.scripts.seed_data --clean      # Wipe and re-seed
   python -m backend.scripts.seed_data --dry-run    # Preview what would be seeded
-        """
+        """,
     )
+    parser.add_argument("--clean", "-c", action="store_true", help="Wipe existing demo data before seeding")
     parser.add_argument(
-        "--clean", "-c",
-        action="store_true",
-        help="Wipe existing demo data before seeding"
+        "--dry-run", "-n", action="store_true", help="Print what would be seeded without making changes"
     )
-    parser.add_argument(
-        "--dry-run", "-n",
-        action="store_true",
-        help="Print what would be seeded without making changes"
-    )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
     args = parser.parse_args()
 
@@ -1231,17 +1209,14 @@ Examples:
         logging.getLogger().setLevel(logging.DEBUG)
 
     try:
-        asyncio.run(run_seed(
-            clean=args.clean,
-            dry_run=args.dry_run,
-            verbose=args.verbose
-        ))
+        asyncio.run(run_seed(clean=args.clean, dry_run=args.dry_run, verbose=args.verbose))
     except KeyboardInterrupt:
         print("\n\nSeeding interrupted by user.")
         sys.exit(1)
     except Exception as e:
         logger.error(f"Seeding failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

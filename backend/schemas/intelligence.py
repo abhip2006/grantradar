@@ -1,6 +1,7 @@
 """
 Intelligence Graph schemas for API responses.
 """
+
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
@@ -16,9 +17,7 @@ class MechanismSummary(BaseModel):
     name: str = Field(..., description="Full mechanism name")
     funding_agency: Optional[str] = Field(None, description="Funding agency")
     category: Optional[str] = Field(None, description="Category (research, career, etc.)")
-    success_rate_overall: Optional[float] = Field(
-        None, description="Overall success rate (0.0 to 1.0)"
-    )
+    success_rate_overall: Optional[float] = Field(None, description="Overall success rate (0.0 to 1.0)")
     competition_level: Optional[str] = Field(None, description="Competition level")
 
 
@@ -37,16 +36,10 @@ class MechanismDetail(BaseModel):
     success_rate_overall: Optional[float] = Field(None, description="Overall success rate")
     success_rate_new: Optional[float] = Field(None, description="New application success rate")
     success_rate_renewal: Optional[float] = Field(None, description="Renewal success rate")
-    success_rate_resubmission: Optional[float] = Field(
-        None, description="Resubmission success rate"
-    )
-    avg_review_score_funded: Optional[float] = Field(
-        None, description="Average review score for funded"
-    )
+    success_rate_resubmission: Optional[float] = Field(None, description="Resubmission success rate")
+    avg_review_score_funded: Optional[float] = Field(None, description="Average review score for funded")
     competition_level: Optional[str] = Field(None, description="Competition level")
-    estimated_applicants_per_cycle: Optional[int] = Field(
-        None, description="Estimated applicants per cycle"
-    )
+    estimated_applicants_per_cycle: Optional[int] = Field(None, description="Estimated applicants per cycle")
     review_criteria: Optional[dict[str, Any]] = Field(None, description="Review criteria")
     eligibility_notes: Optional[str] = Field(None, description="Eligibility notes")
     tips: Optional[list[str]] = Field(None, description="Tips for applicants")
@@ -60,9 +53,7 @@ class MechanismDetail(BaseModel):
 class MechanismListResponse(BaseModel):
     """Response for mechanism list endpoint."""
 
-    mechanisms: list[MechanismSummary] = Field(
-        ..., description="List of mechanisms"
-    )
+    mechanisms: list[MechanismSummary] = Field(..., description="List of mechanisms")
     total: int = Field(..., description="Total number of mechanisms")
 
 
@@ -103,26 +94,14 @@ class CompetitionData(BaseModel):
     competition_score: Optional[float] = Field(
         None, description="Competition score (0.0 to 1.0, higher = more competitive)"
     )
-    estimated_applicants: Optional[int] = Field(
-        None, description="Estimated number of applicants"
-    )
-    similar_grants_count: Optional[int] = Field(
-        None, description="Number of similar open grants"
-    )
-    success_rate: Optional[float] = Field(
-        None, description="Historical success rate for this mechanism"
-    )
-    competition_level: Optional[str] = Field(
-        None, description="Competition level (low, medium, high, very_high)"
-    )
-    factors: list[str] = Field(
-        default_factory=list, description="Factors affecting competition"
-    )
+    estimated_applicants: Optional[int] = Field(None, description="Estimated number of applicants")
+    similar_grants_count: Optional[int] = Field(None, description="Number of similar open grants")
+    success_rate: Optional[float] = Field(None, description="Historical success rate for this mechanism")
+    competition_level: Optional[str] = Field(None, description="Competition level (low, medium, high, very_high)")
+    factors: list[str] = Field(default_factory=list, description="Factors affecting competition")
 
     # Mechanism details if available
-    mechanism: Optional[MechanismSummary] = Field(
-        None, description="Mechanism details if available"
-    )
+    mechanism: Optional[MechanismSummary] = Field(None, description="Mechanism details if available")
 
 
 class CompetitionSnapshotResponse(BaseModel):

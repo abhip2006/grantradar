@@ -1,12 +1,12 @@
 """Institution service layer for institutional dashboard business logic."""
+
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_, text, case
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from backend.core.exceptions import NotFoundError, ValidationError, ConflictError, AuthorizationError
 from backend.schemas.institution import (
@@ -15,7 +15,6 @@ from backend.schemas.institution import (
     InstitutionMemberCreate,
     InstitutionMemberUpdate,
     InstitutionMemberRole,
-    InstitutionSettings,
     InstitutionMemberPermissions,
     GrantTrackedSummary,
     PortfolioAggregation,
@@ -78,18 +77,21 @@ class InstitutionService:
             RETURNING id, name, type, domain, description, logo_url, website, address, settings, created_by, created_at, updated_at
         """)
 
-        result = await self.db.execute(insert_query, {
-            "id": institution_id,
-            "name": data.name,
-            "type": data.type.value,
-            "domain": data.domain.lower() if data.domain else None,
-            "description": data.description,
-            "logo_url": data.logo_url,
-            "website": data.website,
-            "address": data.address,
-            "settings": settings_json,
-            "created_by": created_by,
-        })
+        result = await self.db.execute(
+            insert_query,
+            {
+                "id": institution_id,
+                "name": data.name,
+                "type": data.type.value,
+                "domain": data.domain.lower() if data.domain else None,
+                "description": data.description,
+                "logo_url": data.logo_url,
+                "website": data.website,
+                "address": data.address,
+                "settings": settings_json,
+                "created_by": created_by,
+            },
+        )
         institution = result.fetchone()
 
         # Add creator as admin member
@@ -107,14 +109,17 @@ class InstitutionService:
             VALUES (:id, :institution_id, :user_id, :role, :permissions, NOW(), :added_by, NOW())
         """)
 
-        await self.db.execute(member_query, {
-            "id": member_id,
-            "institution_id": institution_id,
-            "user_id": created_by,
-            "role": InstitutionMemberRole.ADMIN.value,
-            "permissions": admin_permissions.model_dump(),
-            "added_by": created_by,
-        })
+        await self.db.execute(
+            member_query,
+            {
+                "id": member_id,
+                "institution_id": institution_id,
+                "user_id": created_by,
+                "role": InstitutionMemberRole.ADMIN.value,
+                "permissions": admin_permissions.model_dump(),
+                "added_by": created_by,
+            },
+        )
 
         await self.db.commit()
 
@@ -321,10 +326,13 @@ class InstitutionService:
             SELECT id FROM institution_members
             WHERE institution_id = :institution_id AND user_id = :user_id
         """)
-        result = await self.db.execute(check_query, {
-            "institution_id": institution_id,
-            "user_id": user_id,
-        })
+        result = await self.db.execute(
+            check_query,
+            {
+                "institution_id": institution_id,
+                "user_id": user_id,
+            },
+        )
         if result.fetchone():
             raise ConflictError("User is already a member of this institution")
 
@@ -339,16 +347,19 @@ class InstitutionService:
             RETURNING id, institution_id, user_id, role, department, title, permissions, added_at, added_by, updated_at
         """)
 
-        result = await self.db.execute(insert_query, {
-            "id": member_id,
-            "institution_id": institution_id,
-            "user_id": user_id,
-            "role": data.role.value,
-            "department": data.department,
-            "title": data.title,
-            "permissions": permissions_json,
-            "added_by": added_by,
-        })
+        result = await self.db.execute(
+            insert_query,
+            {
+                "id": member_id,
+                "institution_id": institution_id,
+                "user_id": user_id,
+                "role": data.role.value,
+                "department": data.department,
+                "title": data.title,
+                "permissions": permissions_json,
+                "added_by": added_by,
+            },
+        )
         member = result.fetchone()
         await self.db.commit()
 
@@ -426,20 +437,22 @@ class InstitutionService:
 
         members = []
         for row in rows:
-            members.append({
-                "id": row.id,
-                "institution_id": row.institution_id,
-                "user_id": row.user_id,
-                "role": row.role,
-                "department": row.department,
-                "title": row.title,
-                "permissions": row.permissions,
-                "added_at": row.added_at,
-                "added_by": row.added_by,
-                "updated_at": row.updated_at,
-                "user_name": row.user_name,
-                "user_email": row.user_email,
-            })
+            members.append(
+                {
+                    "id": row.id,
+                    "institution_id": row.institution_id,
+                    "user_id": row.user_id,
+                    "role": row.role,
+                    "department": row.department,
+                    "title": row.title,
+                    "permissions": row.permissions,
+                    "added_at": row.added_at,
+                    "added_by": row.added_by,
+                    "updated_at": row.updated_at,
+                    "user_name": row.user_name,
+                    "user_email": row.user_email,
+                }
+            )
 
         # Get counts by department and role
         count_query = text("""
@@ -560,10 +573,13 @@ class InstitutionService:
             SELECT role FROM institution_members
             WHERE institution_id = :institution_id AND user_id = :user_id
         """)
-        result = await self.db.execute(member_query, {
-            "institution_id": institution_id,
-            "user_id": user_id,
-        })
+        result = await self.db.execute(
+            member_query,
+            {
+                "institution_id": institution_id,
+                "user_id": user_id,
+            },
+        )
         member = result.fetchone()
 
         if not member:
@@ -577,10 +593,13 @@ class InstitutionService:
             DELETE FROM institution_members
             WHERE institution_id = :institution_id AND user_id = :user_id
         """)
-        await self.db.execute(delete_query, {
-            "institution_id": institution_id,
-            "user_id": user_id,
-        })
+        await self.db.execute(
+            delete_query,
+            {
+                "institution_id": institution_id,
+                "user_id": user_id,
+            },
+        )
         await self.db.commit()
 
     # =========================================================================
@@ -784,7 +803,9 @@ class InstitutionService:
             GROUP BY stage
         """)
         result = await self.db.execute(stage_query)
-        stage_counts = {row.stage if isinstance(row.stage, str) else row.stage.value: row.count for row in result.fetchall()}
+        stage_counts = {
+            row.stage if isinstance(row.stage, str) else row.stage.value: row.count for row in result.fetchall()
+        }
 
         total_tracked = sum(stage_counts.values())
         total_submitted = stage_counts.get("submitted", 0)
@@ -838,12 +859,14 @@ class InstitutionService:
             result = await self.db.execute(potential_query, {"stage": stage})
             potential = result.scalar() or 0
 
-            pipeline_metrics.append(FundingPipelineMetric(
-                stage=stage,
-                count=count,
-                total_potential=potential,
-                avg_time_in_stage_days=None,  # Would require tracking stage changes
-            ))
+            pipeline_metrics.append(
+                FundingPipelineMetric(
+                    stage=stage,
+                    count=count,
+                    total_potential=potential,
+                    avg_time_in_stage_days=None,  # Would require tracking stage changes
+                )
+            )
 
         # Monthly submissions and awards (last 12 months)
         twelve_months_ago = datetime.now(timezone.utc) - timedelta(days=365)
@@ -955,15 +978,17 @@ class InstitutionService:
             decided = (stats.awarded or 0) + (stats.rejected or 0)
             success_rate = round((stats.awarded or 0) / decided * 100, 1) if decided > 0 else None
 
-            departments.append(DepartmentStats(
-                department=dept_row.department,
-                member_count=dept_row.member_count,
-                grants_tracked=stats.total or 0,
-                grants_submitted=stats.submitted or 0,
-                grants_awarded=stats.awarded or 0,
-                success_rate=success_rate,
-                total_funding_received=total_funding,
-            ))
+            departments.append(
+                DepartmentStats(
+                    department=dept_row.department,
+                    member_count=dept_row.member_count,
+                    grants_tracked=stats.total or 0,
+                    grants_submitted=stats.submitted or 0,
+                    grants_awarded=stats.awarded or 0,
+                    success_rate=success_rate,
+                    total_funding_received=total_funding,
+                )
+            )
 
         return departments, len(departments)
 
@@ -1106,15 +1131,18 @@ class InstitutionService:
         result = await self.db.execute(query, {"user_id": user_id})
         rows = result.fetchall()
 
-        return [{
-            "id": row.id,
-            "name": row.name,
-            "type": row.type,
-            "domain": row.domain,
-            "logo_url": row.logo_url,
-            "user_role": row.role,
-            "user_department": row.department,
-        } for row in rows]
+        return [
+            {
+                "id": row.id,
+                "name": row.name,
+                "type": row.type,
+                "domain": row.domain,
+                "logo_url": row.logo_url,
+                "user_role": row.role,
+                "user_department": row.department,
+            }
+            for row in rows
+        ]
 
     # =========================================================================
     # Helper Methods
@@ -1126,10 +1154,13 @@ class InstitutionService:
             SELECT role FROM institution_members
             WHERE institution_id = :institution_id AND user_id = :user_id
         """)
-        result = await self.db.execute(query, {
-            "institution_id": institution_id,
-            "user_id": user_id,
-        })
+        result = await self.db.execute(
+            query,
+            {
+                "institution_id": institution_id,
+                "user_id": user_id,
+            },
+        )
         row = result.fetchone()
 
         if not row:
@@ -1143,10 +1174,13 @@ class InstitutionService:
             SELECT role, department, permissions FROM institution_members
             WHERE institution_id = :institution_id AND user_id = :user_id
         """)
-        result = await self.db.execute(query, {
-            "institution_id": institution_id,
-            "user_id": user_id,
-        })
+        result = await self.db.execute(
+            query,
+            {
+                "institution_id": institution_id,
+                "user_id": user_id,
+            },
+        )
         row = result.fetchone()
 
         if not row:
@@ -1180,10 +1214,13 @@ class InstitutionService:
             JOIN users u ON u.id = im.user_id
             WHERE im.id = :id AND im.institution_id = :institution_id
         """)
-        result = await self.db.execute(query, {
-            "id": member_id,
-            "institution_id": institution_id,
-        })
+        result = await self.db.execute(
+            query,
+            {
+                "id": member_id,
+                "institution_id": institution_id,
+            },
+        )
         row = result.fetchone()
 
         if not row:

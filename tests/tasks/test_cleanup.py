@@ -2,11 +2,8 @@
 Tests for cleanup Celery tasks.
 Tests data cleanup, archival, and resource management.
 """
-import uuid
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
 
-import pytest
+from datetime import datetime, timedelta
 
 
 class TestCleanupThresholds:
@@ -193,7 +190,6 @@ class TestRedisKeyCleanup:
 
     def test_session_key_pattern(self):
         """Test session key pattern matching."""
-        session_pattern = "session:*"
 
         # Sample session keys
         keys = ["session:abc123", "session:def456", "user:123"]

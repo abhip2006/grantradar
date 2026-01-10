@@ -2,9 +2,9 @@
 Tests for core event models.
 Tests all event types used in the Redis Streams event system.
 """
+
 import uuid
 from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError

@@ -8,9 +8,9 @@ This service handles:
 - Salary caps and distribution rules
 - Budget validation rules
 """
+
 import logging
 from dataclasses import dataclass
-from decimal import Decimal
 from enum import Enum
 from typing import Any, Optional
 
@@ -21,8 +21,10 @@ logger = logging.getLogger(__name__)
 # Budget Categories
 # =============================================================================
 
+
 class BudgetCategory(str, Enum):
     """Standard budget categories for grant proposals."""
+
     PERSONNEL = "personnel"
     EQUIPMENT = "equipment"
     TRAVEL = "travel"
@@ -35,6 +37,7 @@ class BudgetCategory(str, Enum):
 @dataclass
 class CategoryDefinition:
     """Definition for a budget category."""
+
     code: str
     name: str
     description: str
@@ -107,9 +110,11 @@ BUDGET_CATEGORIES = {
 # Salary Caps and Rates
 # =============================================================================
 
+
 @dataclass
 class SalaryCapInfo:
     """Salary cap information for a fiscal year."""
+
     fiscal_year: int
     cap_amount: int
     agency: str
@@ -160,9 +165,11 @@ DEFAULT_FRINGE_RATES = {
 # Mechanism Budget Templates
 # =============================================================================
 
+
 @dataclass
 class MechanismBudgetTemplate:
     """Budget template for a specific grant mechanism."""
+
     mechanism_code: str
     mechanism_name: str
     agency: str
@@ -204,8 +211,16 @@ NIH_BUDGET_TEMPLATES = {
             "Equipment needs strong justification",
         ],
         validation_rules=[
-            {"rule": "max_annual_direct_costs", "value": 500000, "message": "Annual direct costs should not exceed $500K for standard R01"},
-            {"rule": "personnel_minimum", "value": 40.0, "message": "Personnel costs are typically at least 40% of direct costs"},
+            {
+                "rule": "max_annual_direct_costs",
+                "value": 500000,
+                "message": "Annual direct costs should not exceed $500K for standard R01",
+            },
+            {
+                "rule": "personnel_minimum",
+                "value": 40.0,
+                "message": "Personnel costs are typically at least 40% of direct costs",
+            },
         ],
     ),
     "R21": MechanismBudgetTemplate(
@@ -233,7 +248,11 @@ NIH_BUDGET_TEMPLATES = {
             "Cannot request renewal of R21",
         ],
         validation_rules=[
-            {"rule": "max_total_direct_costs", "value": 275000, "message": "Total direct costs cannot exceed $275K over 2 years"},
+            {
+                "rule": "max_total_direct_costs",
+                "value": 275000,
+                "message": "Total direct costs cannot exceed $275K over 2 years",
+            },
             {"rule": "max_duration_years", "value": 2, "message": "R21 maximum duration is 2 years"},
         ],
     ),
@@ -262,7 +281,11 @@ NIH_BUDGET_TEMPLATES = {
         ],
         validation_rules=[
             {"rule": "max_annual_direct_costs", "value": 50000, "message": "Annual direct costs cannot exceed $50K"},
-            {"rule": "max_total_direct_costs", "value": 100000, "message": "Total direct costs cannot exceed $100K over 2 years"},
+            {
+                "rule": "max_total_direct_costs",
+                "value": 100000,
+                "message": "Total direct costs cannot exceed $100K over 2 years",
+            },
         ],
     ),
     "K01": MechanismBudgetTemplate(
@@ -290,7 +313,11 @@ NIH_BUDGET_TEMPLATES = {
             "Cannot hold R01 simultaneously",
         ],
         validation_rules=[
-            {"rule": "max_research_costs", "value": 50000, "message": "Research costs capped at $50K/year for K awards"},
+            {
+                "rule": "max_research_costs",
+                "value": 50000,
+                "message": "Research costs capped at $50K/year for K awards",
+            },
             {"rule": "min_effort", "value": 75.0, "message": "K awards require minimum 75% effort"},
         ],
     ),
@@ -485,7 +512,11 @@ NSF_BUDGET_TEMPLATES = {
         ],
         validation_rules=[
             {"rule": "min_duration_years", "value": 5, "message": "CAREER awards require minimum 5-year duration"},
-            {"rule": "requires_education", "value": True, "message": "CAREER awards require education/outreach component"},
+            {
+                "rule": "requires_education",
+                "value": True,
+                "message": "CAREER awards require education/outreach component",
+            },
         ],
     ),
     "STANDARD": MechanismBudgetTemplate(
@@ -583,6 +614,7 @@ ALL_BUDGET_TEMPLATES = {**NIH_BUDGET_TEMPLATES, **NSF_BUDGET_TEMPLATES}
 # Budget Generation Service
 # =============================================================================
 
+
 class BudgetTemplateService:
     """Service for generating and validating budget templates."""
 
@@ -603,9 +635,7 @@ class BudgetTemplateService:
     def get_templates_by_agency(self, agency: str) -> dict[str, MechanismBudgetTemplate]:
         """Get templates filtered by agency."""
         return {
-            code: template
-            for code, template in self.templates.items()
-            if template.agency.upper() == agency.upper()
+            code: template for code, template in self.templates.items() if template.agency.upper() == agency.upper()
         }
 
     def get_salary_cap(self, fiscal_year: int = 2024, agency: str = "NIH") -> Optional[SalaryCapInfo]:
@@ -647,8 +677,7 @@ class BudgetTemplateService:
 
         # Use custom allocations or template defaults
         allocations = custom_allocations or {
-            cat: data["typical"]
-            for cat, data in template.category_allocations.items()
+            cat: data["typical"] for cat, data in template.category_allocations.items()
         }
 
         # Normalize allocations to 100%
@@ -783,78 +812,91 @@ class BudgetTemplateService:
                 message = rule.get("message", "")
 
                 if rule_type == "max_annual_direct_costs" and annual_direct > value:
-                    errors.append({
-                        "rule": rule_type,
-                        "message": message,
-                        "expected": value,
-                        "actual": annual_direct,
-                    })
-                elif rule_type == "max_total_direct_costs" and total_direct > value:
-                    errors.append({
-                        "rule": rule_type,
-                        "message": message,
-                        "expected": value,
-                        "actual": total_direct,
-                    })
-                elif rule_type == "max_duration_years" and duration_years > value:
-                    errors.append({
-                        "rule": rule_type,
-                        "message": message,
-                        "expected": value,
-                        "actual": duration_years,
-                    })
-                elif rule_type == "personnel_minimum":
-                    personnel_pct = categories.get("personnel", {}).get("percentage", 0)
-                    if personnel_pct < value:
-                        warnings.append({
+                    errors.append(
+                        {
                             "rule": rule_type,
                             "message": message,
                             "expected": value,
-                            "actual": personnel_pct,
-                        })
+                            "actual": annual_direct,
+                        }
+                    )
+                elif rule_type == "max_total_direct_costs" and total_direct > value:
+                    errors.append(
+                        {
+                            "rule": rule_type,
+                            "message": message,
+                            "expected": value,
+                            "actual": total_direct,
+                        }
+                    )
+                elif rule_type == "max_duration_years" and duration_years > value:
+                    errors.append(
+                        {
+                            "rule": rule_type,
+                            "message": message,
+                            "expected": value,
+                            "actual": duration_years,
+                        }
+                    )
+                elif rule_type == "personnel_minimum":
+                    personnel_pct = categories.get("personnel", {}).get("percentage", 0)
+                    if personnel_pct < value:
+                        warnings.append(
+                            {
+                                "rule": rule_type,
+                                "message": message,
+                                "expected": value,
+                                "actual": personnel_pct,
+                            }
+                        )
 
             # Check category allocations against typical ranges
             for category, alloc_data in template.category_allocations.items():
                 if category in categories:
                     actual_pct = categories[category].get("percentage", 0)
                     if actual_pct < alloc_data.get("min", 0):
-                        warnings.append({
-                            "category": category,
-                            "message": f"{category.title()} allocation ({actual_pct}%) is below typical minimum ({alloc_data['min']}%)",
-                            "expected_min": alloc_data["min"],
-                            "actual": actual_pct,
-                        })
+                        warnings.append(
+                            {
+                                "category": category,
+                                "message": f"{category.title()} allocation ({actual_pct}%) is below typical minimum ({alloc_data['min']}%)",
+                                "expected_min": alloc_data["min"],
+                                "actual": actual_pct,
+                            }
+                        )
                     elif actual_pct > alloc_data.get("max", 100):
-                        warnings.append({
-                            "category": category,
-                            "message": f"{category.title()} allocation ({actual_pct}%) exceeds typical maximum ({alloc_data['max']}%)",
-                            "expected_max": alloc_data["max"],
-                            "actual": actual_pct,
-                        })
+                        warnings.append(
+                            {
+                                "category": category,
+                                "message": f"{category.title()} allocation ({actual_pct}%) exceeds typical maximum ({alloc_data['max']}%)",
+                                "expected_max": alloc_data["max"],
+                                "actual": actual_pct,
+                            }
+                        )
 
         # General validations
-        total_percentage = sum(
-            cat_data.get("percentage", 0)
-            for cat_data in categories.values()
-        )
+        total_percentage = sum(cat_data.get("percentage", 0) for cat_data in categories.values())
         if abs(total_percentage - 100.0) > 0.5:
-            errors.append({
-                "rule": "total_percentage",
-                "message": f"Category percentages should sum to 100% (currently {total_percentage:.1f}%)",
-                "expected": 100.0,
-                "actual": total_percentage,
-            })
+            errors.append(
+                {
+                    "rule": "total_percentage",
+                    "message": f"Category percentages should sum to 100% (currently {total_percentage:.1f}%)",
+                    "expected": 100.0,
+                    "actual": total_percentage,
+                }
+            )
 
         # Check salary cap
         salary_cap = self.get_salary_cap()
         if salary_cap:
             personnel_amount = categories.get("personnel", {}).get("annual_amount", 0)
             if personnel_amount > salary_cap.cap_amount * 1.5:  # Rough check for reasonableness
-                warnings.append({
-                    "rule": "salary_cap",
-                    "message": f"Personnel costs may exceed salary cap limits (NIH cap: ${salary_cap.cap_amount:,})",
-                    "salary_cap": salary_cap.cap_amount,
-                })
+                warnings.append(
+                    {
+                        "rule": "salary_cap",
+                        "message": f"Personnel costs may exceed salary cap limits (NIH cap: ${salary_cap.cap_amount:,})",
+                        "salary_cap": salary_cap.cap_amount,
+                    }
+                )
 
         return {
             "is_valid": len(errors) == 0,

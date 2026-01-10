@@ -1,4 +1,5 @@
 """Notification schemas for API request/response validation."""
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, List
@@ -33,16 +34,10 @@ class NotificationResponse(BaseModel):
     type: str = Field(..., description="Notification type")
     title: str = Field(..., description="Notification title")
     message: str = Field(..., description="Notification message content")
-    metadata: Optional[dict[str, Any]] = Field(
-        None, description="Additional context data"
-    )
+    metadata: Optional[dict[str, Any]] = Field(None, description="Additional context data")
     read: bool = Field(..., description="Whether the notification has been read")
-    read_at: Optional[datetime] = Field(
-        None, description="When the notification was marked as read"
-    )
-    action_url: Optional[str] = Field(
-        None, description="URL to navigate to when notification is clicked"
-    )
+    read_at: Optional[datetime] = Field(None, description="When the notification was marked as read")
+    action_url: Optional[str] = Field(None, description="URL to navigate to when notification is clicked")
     created_at: datetime = Field(..., description="When the notification was created")
 
     class Config:
@@ -52,9 +47,7 @@ class NotificationResponse(BaseModel):
 class NotificationListResponse(BaseModel):
     """Response schema for listing notifications."""
 
-    notifications: List[NotificationResponse] = Field(
-        ..., description="List of notifications"
-    )
+    notifications: List[NotificationResponse] = Field(..., description="List of notifications")
     total: int = Field(..., description="Total number of notifications")
     unread_count: int = Field(..., description="Number of unread notifications")
     has_more: bool = Field(..., description="Whether more notifications exist")
@@ -74,9 +67,7 @@ class MarkReadResponse(BaseModel):
     notification: Optional[NotificationResponse] = Field(
         None, description="Updated notification (for single mark read)"
     )
-    updated_count: Optional[int] = Field(
-        None, description="Number of notifications updated (for mark all read)"
-    )
+    updated_count: Optional[int] = Field(None, description="Number of notifications updated (for mark all read)")
 
 
 class DeleteNotificationResponse(BaseModel):

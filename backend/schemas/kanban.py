@@ -1,4 +1,5 @@
 """Kanban board schemas for grant application management."""
+
 from datetime import datetime
 from typing import Optional, List, Any
 from uuid import UUID

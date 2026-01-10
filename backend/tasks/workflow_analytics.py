@@ -8,6 +8,7 @@ Tasks:
     - compute_user_workflow_analytics: Compute analytics for a specific user
     - cleanup_old_workflow_events: Archive or delete old events
 """
+
 import json
 import logging
 from datetime import date, datetime, timedelta
@@ -100,9 +101,7 @@ def aggregate_workflow_analytics(self) -> dict[str, Any]:
     try:
         # Get all users with applications
         users_result = db.execute(
-            select(User.id).distinct().join(
-                GrantApplication, User.id == GrantApplication.user_id
-            )
+            select(User.id).distinct().join(GrantApplication, User.id == GrantApplication.user_id)
         )
         user_ids = [row[0] for row in users_result.all()]
 
@@ -145,10 +144,12 @@ def aggregate_workflow_analytics(self) -> dict[str, Any]:
             except Exception as e:
                 logger.error(f"Failed to compute analytics for user {user_id}: {e}")
                 results["users_failed"] += 1
-                results["errors"].append({
-                    "user_id": str(user_id),
-                    "error": str(e),
-                })
+                results["errors"].append(
+                    {
+                        "user_id": str(user_id),
+                        "error": str(e),
+                    }
+                )
 
             results["users_processed"] += 1
 
@@ -265,11 +266,7 @@ def cleanup_old_workflow_events(
         cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
 
         # Count events to delete
-        count_result = db.execute(
-            select(func.count(WorkflowEvent.id)).where(
-                WorkflowEvent.occurred_at < cutoff_date
-            )
-        )
+        count_result = db.execute(select(func.count(WorkflowEvent.id)).where(WorkflowEvent.occurred_at < cutoff_date))
         events_to_delete = count_result.scalar() or 0
 
         if events_to_delete > 0:
@@ -280,9 +277,7 @@ def cleanup_old_workflow_events(
             while deleted_total < events_to_delete:
                 # Get batch of IDs to delete
                 ids_result = db.execute(
-                    select(WorkflowEvent.id)
-                    .where(WorkflowEvent.occurred_at < cutoff_date)
-                    .limit(batch_size)
+                    select(WorkflowEvent.id).where(WorkflowEvent.occurred_at < cutoff_date).limit(batch_size)
                 )
                 ids_to_delete = [row[0] for row in ids_result.all()]
 
@@ -290,11 +285,7 @@ def cleanup_old_workflow_events(
                     break
 
                 # Delete batch
-                db.execute(
-                    WorkflowEvent.__table__.delete().where(
-                        WorkflowEvent.id.in_(ids_to_delete)
-                    )
-                )
+                db.execute(WorkflowEvent.__table__.delete().where(WorkflowEvent.id.in_(ids_to_delete)))
                 db.commit()
 
                 deleted_total += len(ids_to_delete)
@@ -346,11 +337,10 @@ def precalculate_analytics(self) -> dict[str, Any]:
         # Get users who have been active recently (have applications modified in last 7 days)
         cutoff_date = datetime.utcnow() - timedelta(days=7)
         users_result = db.execute(
-            select(User.id).distinct().join(
-                GrantApplication, User.id == GrantApplication.user_id
-            ).where(
-                GrantApplication.updated_at >= cutoff_date
-            )
+            select(User.id)
+            .distinct()
+            .join(GrantApplication, User.id == GrantApplication.user_id)
+            .where(GrantApplication.updated_at >= cutoff_date)
         )
         active_user_ids = [row[0] for row in users_result.all()]
 
@@ -385,10 +375,14 @@ def precalculate_analytics(self) -> dict[str, Any]:
 
                 # Completion rates (30 minutes TTL in in-memory, 4 hours in Redis)
                 completion_rates_key = _cache_key("completion_rates", str(user_id))
-                _store_in_cache(completion_rates_key, {
-                    "submission_rate": metrics.get("summary", {}).get("submission_rate", 0),
-                    "success_rate": metrics.get("summary", {}).get("success_rate", 0),
-                }, 4 * 60 * 60)
+                _store_in_cache(
+                    completion_rates_key,
+                    {
+                        "submission_rate": metrics.get("summary", {}).get("submission_rate", 0),
+                        "success_rate": metrics.get("summary", {}).get("success_rate", 0),
+                    },
+                    4 * 60 * 60,
+                )
 
                 # Full summary
                 summary_key = _cache_key("user", str(user_id))
@@ -400,10 +394,12 @@ def precalculate_analytics(self) -> dict[str, Any]:
             except Exception as e:
                 logger.error(f"Failed to pre-calculate analytics for user {user_id}: {e}")
                 results["users_failed"] += 1
-                results["errors"].append({
-                    "user_id": str(user_id),
-                    "error": str(e),
-                })
+                results["errors"].append(
+                    {
+                        "user_id": str(user_id),
+                        "error": str(e),
+                    }
+                )
 
         logger.info(
             f"Analytics pre-calculation completed. "
@@ -460,10 +456,14 @@ def warm_analytics_cache(
         _store_in_cache(bottlenecks_key, metrics.get("bottlenecks", []), 2 * 60 * 60)
 
         completion_rates_key = _cache_key("completion_rates", user_id)
-        _store_in_cache(completion_rates_key, {
-            "submission_rate": metrics.get("summary", {}).get("submission_rate", 0),
-            "success_rate": metrics.get("summary", {}).get("success_rate", 0),
-        }, 4 * 60 * 60)
+        _store_in_cache(
+            completion_rates_key,
+            {
+                "submission_rate": metrics.get("summary", {}).get("submission_rate", 0),
+                "success_rate": metrics.get("summary", {}).get("success_rate", 0),
+            },
+            4 * 60 * 60,
+        )
 
         summary_key = _cache_key("user", user_id)
         _store_in_cache(summary_key, metrics, CACHE_TTL_WORKFLOW_ANALYTICS)
@@ -574,9 +574,7 @@ def _compute_user_metrics_sync(
     from statistics import mean, median
 
     # Get applications for this user
-    apps_result = db.execute(
-        select(GrantApplication).where(GrantApplication.user_id == user_id)
-    )
+    apps_result = db.execute(select(GrantApplication).where(GrantApplication.user_id == user_id))
     applications = apps_result.scalars().all()
 
     if not applications:
@@ -676,12 +674,14 @@ def _compute_user_metrics_sync(
                 stuck_count += 1
 
         if stuck_count > 0:
-            bottlenecks.append({
-                "stage": stage,
-                "stuck_count": stuck_count,
-                "total_in_stage": len(stage_apps),
-                "pct_stuck": round(stuck_count / len(stage_apps) * 100, 1),
-            })
+            bottlenecks.append(
+                {
+                    "stage": stage,
+                    "stuck_count": stuck_count,
+                    "total_in_stage": len(stage_apps),
+                    "pct_stuck": round(stuck_count / len(stage_apps) * 100, 1),
+                }
+            )
 
     # Compile metrics
     metrics = {
@@ -692,7 +692,9 @@ def _compute_user_metrics_sync(
         },
         "summary": {
             "total_applications": total,
-            "active_applications": stage_counts.get("researching", 0) + stage_counts.get("writing", 0) + stage_counts.get("submitted", 0),
+            "active_applications": stage_counts.get("researching", 0)
+            + stage_counts.get("writing", 0)
+            + stage_counts.get("submitted", 0),
             "completed_applications": awarded + rejected,
             "submission_rate": submission_rate,
             "success_rate": success_rate,

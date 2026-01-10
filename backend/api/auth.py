@@ -2,6 +2,7 @@
 Authentication API Endpoints
 User registration, login, token refresh, user info, and password reset.
 """
+
 import logging
 import secrets
 from datetime import timedelta
@@ -46,6 +47,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 class RefreshTokenRequest(BaseModel):
     """Request body for token refresh."""
+
     refresh_token: str
 
 
@@ -54,7 +56,7 @@ class RefreshTokenRequest(BaseModel):
     response_model=Token,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
-    description="Create a new user account with email and password."
+    description="Create a new user account with email and password.",
 )
 async def register(
     user_data: UserCreate,
@@ -70,16 +72,11 @@ async def register(
     - **institution**: Optional research institution
     """
     # Check if email already exists
-    result = await db.execute(
-        select(User).where(User.email == user_data.email)
-    )
+    result = await db.execute(select(User).where(User.email == user_data.email))
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
     # Create new user
     hashed_password = get_password_hash(user_data.password)
@@ -98,30 +95,26 @@ async def register(
 
     # Generate and send verification email
     from backend.api.verification import generate_and_send_verification_email
+
     await generate_and_send_verification_email(new_user, db)
 
     # Generate tokens
     access_token = create_access_token(
         data={"sub": str(new_user.id), "email": new_user.email},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    refresh_token = create_refresh_token(
-        data={"sub": str(new_user.id), "email": new_user.email}
-    )
+    refresh_token = create_refresh_token(data={"sub": str(new_user.id), "email": new_user.email})
 
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 
 @router.post(
-    "/login",
-    response_model=Token,
-    summary="Login user",
-    description="Authenticate user and return JWT tokens."
+    "/login", response_model=Token, summary="Login user", description="Authenticate user and return JWT tokens."
 )
 async def login(
     credentials: UserLogin,
@@ -134,9 +127,7 @@ async def login(
     Returns access and refresh tokens on success.
     """
     # Find user by email
-    result = await db.execute(
-        select(User).where(User.email == credentials.email)
-    )
+    result = await db.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(credentials.password, user.password_hash):
@@ -148,18 +139,15 @@ async def login(
 
     # Generate tokens
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        data={"sub": str(user.id), "email": user.email}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    refresh_token = create_refresh_token(
-        data={"sub": str(user.id), "email": user.email}
-    )
+    refresh_token = create_refresh_token(data={"sub": str(user.id), "email": user.email})
 
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 
@@ -167,7 +155,7 @@ async def login(
     "/refresh",
     response_model=Token,
     summary="Refresh access token",
-    description="Get a new access token using a refresh token."
+    description="Get a new access token using a refresh token.",
 )
 async def refresh_token(
     request: RefreshTokenRequest,
@@ -188,9 +176,7 @@ async def refresh_token(
         )
 
     # Verify user still exists
-    result = await db.execute(
-        select(User).where(User.id == token_data.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == token_data.user_id))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -202,18 +188,15 @@ async def refresh_token(
 
     # Generate new tokens
     access_token = create_access_token(
-        data={"sub": str(user.id), "email": user.email},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        data={"sub": str(user.id), "email": user.email}, expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    new_refresh_token = create_refresh_token(
-        data={"sub": str(user.id), "email": user.email}
-    )
+    new_refresh_token = create_refresh_token(data={"sub": str(user.id), "email": user.email})
 
     return Token(
         access_token=access_token,
         refresh_token=new_refresh_token,
         token_type="bearer",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 
@@ -221,7 +204,7 @@ async def refresh_token(
     "/me",
     response_model=UserResponse,
     summary="Get current user",
-    description="Get the currently authenticated user's information."
+    description="Get the currently authenticated user's information.",
 )
 async def get_me(
     current_user: CurrentUser,
@@ -233,9 +216,7 @@ async def get_me(
     Requires authentication.
     """
     # Check if user has a profile
-    result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = result.scalar_one_or_none()
 
     return UserResponse(
@@ -268,7 +249,7 @@ async def _get_redis_client() -> aioredis.Redis:
     "/forgot-password",
     response_model=ForgotPasswordResponse,
     summary="Request password reset",
-    description="Request a password reset email. Returns success even if email doesn't exist (security)."
+    description="Request a password reset email. Returns success even if email doesn't exist (security).",
 )
 async def forgot_password(
     request: ForgotPasswordRequest,
@@ -284,9 +265,7 @@ async def forgot_password(
     - Always returns success (prevents email enumeration)
     """
     # Find user by email
-    result = await db.execute(
-        select(User).where(User.email == request.email)
-    )
+    result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
 
     # Always return success to prevent email enumeration
@@ -331,7 +310,7 @@ async def forgot_password(
     "/reset-password",
     response_model=ResetPasswordResponse,
     summary="Reset password",
-    description="Reset password using a valid reset token."
+    description="Reset password using a valid reset token.",
 )
 async def reset_password(
     request: ResetPasswordRequest,
@@ -352,24 +331,16 @@ async def reset_password(
         user_id = await redis_client.get(redis_key)
 
         if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
         # Find user
-        result = await db.execute(
-            select(User).where(User.id == user_id)
-        )
+        result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
 
         if not user:
             # Token exists but user doesn't - clean up and error
             await redis_client.delete(redis_key)
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
         # Update password
         user.password_hash = get_password_hash(request.new_password)
@@ -380,18 +351,14 @@ async def reset_password(
 
         logger.info(f"Password reset completed for user {user.id}")
 
-        return ResetPasswordResponse(
-            message="Password has been reset successfully",
-            success=True
-        )
+        return ResetPasswordResponse(message="Password has been reset successfully", success=True)
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error resetting password: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while resetting password"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while resetting password"
         )
     finally:
         await redis_client.aclose()

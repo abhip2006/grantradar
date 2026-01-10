@@ -93,9 +93,7 @@ def run_compliance_scan_async(
     try:
         # Get the scan record
         scan_uuid = UUID(scan_id)
-        result = db.execute(
-            select(ComplianceScan).where(ComplianceScan.id == scan_uuid)
-        )
+        result = db.execute(select(ComplianceScan).where(ComplianceScan.id == scan_uuid))
         scan = result.scalar_one_or_none()
 
         if not scan:
@@ -105,9 +103,7 @@ def run_compliance_scan_async(
 
         # Get the rule set
         rule_set_uuid = UUID(rule_set_id)
-        result = db.execute(
-            select(ComplianceRule).where(ComplianceRule.id == rule_set_uuid)
-        )
+        result = db.execute(select(ComplianceRule).where(ComplianceRule.id == rule_set_uuid))
         rule_set = result.scalar_one_or_none()
 
         if not rule_set:
@@ -125,6 +121,7 @@ def run_compliance_scan_async(
         # Validate document content
         try:
             from backend.schemas.compliance import DocumentType as DocType
+
             doc_type_enum = DocType(document_type)
             scanner.validate_document_content(
                 content=file_content,
@@ -150,14 +147,8 @@ def run_compliance_scan_async(
 
         # Count results
         passed_count = sum(1 for r in scan_results if r["passed"])
-        failed_count = sum(
-            1 for r in scan_results
-            if not r["passed"] and r.get("severity") == "error"
-        )
-        warning_count = sum(
-            1 for r in scan_results
-            if not r["passed"] and r.get("severity") == "warning"
-        )
+        failed_count = sum(1 for r in scan_results if not r["passed"] and r.get("severity") == "error")
+        warning_count = sum(1 for r in scan_results if not r["passed"] and r.get("severity") == "warning")
 
         # Determine overall status
         if failed_count > 0:
@@ -187,8 +178,7 @@ def run_compliance_scan_async(
         duration = (end_time - start_time).total_seconds()
 
         logger.info(
-            f"Completed async compliance scan for scan_id={scan_id}, "
-            f"status={overall_status}, duration={duration:.2f}s"
+            f"Completed async compliance scan for scan_id={scan_id}, status={overall_status}, duration={duration:.2f}s"
         )
 
         return {
@@ -207,9 +197,7 @@ def run_compliance_scan_async(
 
         # Try to update scan to failed status
         try:
-            result = db.execute(
-                select(ComplianceScan).where(ComplianceScan.id == UUID(scan_id))
-            )
+            result = db.execute(select(ComplianceScan).where(ComplianceScan.id == UUID(scan_id)))
             scan = result.scalar_one_or_none()
             if scan:
                 scan.overall_status = "failed"
@@ -227,9 +215,7 @@ def run_compliance_scan_async(
 
         # Try to update scan to failed status
         try:
-            result = db.execute(
-                select(ComplianceScan).where(ComplianceScan.id == UUID(scan_id))
-            )
+            result = db.execute(select(ComplianceScan).where(ComplianceScan.id == UUID(scan_id)))
             scan = result.scalar_one_or_none()
             if scan:
                 scan.overall_status = "failed"
@@ -306,9 +292,7 @@ def cleanup_old_scans(days: int = 90) -> Dict[str, Any]:
             stats["by_status"][status] = count
 
         # Delete old scans
-        delete_query = delete(ComplianceScan).where(
-            ComplianceScan.scanned_at < cutoff_date
-        )
+        delete_query = delete(ComplianceScan).where(ComplianceScan.scanned_at < cutoff_date)
         result = db.execute(delete_query)
         stats["scans_deleted"] = result.rowcount
 

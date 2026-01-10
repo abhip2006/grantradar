@@ -2,6 +2,7 @@
 FastAPI Dependencies
 Shared dependencies for authentication and database access.
 """
+
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
@@ -51,10 +52,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 security = HTTPBearer(auto_error=False)
 
 
-def create_access_token(
-    data: dict,
-    expires_delta: Optional[timedelta] = None
-) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     if expires_delta:
@@ -86,11 +84,7 @@ def decode_token(token: str) -> TokenData:
         if user_id is None:
             raise JWTError("Token missing subject")
 
-        return TokenData(
-            user_id=UUID(user_id),
-            email=email,
-            exp=exp
-        )
+        return TokenData(user_id=UUID(user_id), email=email, exp=exp)
     except JWTError:
         raise
 
@@ -118,6 +112,7 @@ AsyncSessionDep = Annotated[AsyncSession, Depends(get_db)]
 # Authentication Dependencies
 # =============================================================================
 
+
 async def get_current_user(
     credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(security)],
     db: AsyncSessionDep,
@@ -135,6 +130,7 @@ async def get_current_user(
             return user
         # If no users exist, create a dev user
         from uuid import uuid4
+
         dev_user = User(
             id=uuid4(),
             email="dev@grantradar.com",
@@ -171,9 +167,7 @@ async def get_current_user(
         )
 
     # Fetch user from database
-    result = await db.execute(
-        select(User).where(User.id == token_data.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == token_data.user_id))
     user = result.scalar_one_or_none()
 
     if user is None:
@@ -204,9 +198,7 @@ async def get_current_user_optional(
         return None
 
     # Fetch user from database
-    result = await db.execute(
-        select(User).where(User.id == token_data.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == token_data.user_id))
     return result.scalar_one_or_none()
 
 

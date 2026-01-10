@@ -2,6 +2,7 @@
 GrantRadar Alert Delivery Channels
 Channel implementations for SendGrid, Twilio, and Slack.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Optional
@@ -14,7 +15,6 @@ from sendgrid.helpers.mail import (
     Email,
     To,
     Content,
-    Attachment,
     TrackingSettings,
     ClickTracking,
     OpenTracking,
@@ -109,9 +109,7 @@ class SendGridChannel(BaseChannel):
 
         # Enable tracking
         tracking_settings = TrackingSettings()
-        tracking_settings.click_tracking = ClickTracking(
-            enable=True, enable_text=True
-        )
+        tracking_settings.click_tracking = ClickTracking(enable=True, enable_text=True)
         tracking_settings.open_tracking = OpenTracking(enable=True)
         message.tracking_settings = tracking_settings
 
@@ -315,7 +313,7 @@ class SendGridChannel(BaseChannel):
 
         # Determine execution context and run appropriately
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
             # No running loop, we can use asyncio.run directly
             return asyncio.run(self.send(content))
@@ -452,7 +450,7 @@ class SendGridChannel(BaseChannel):
         event_type = event_data.get("event")
         message_id = event_data.get("sg_message_id")
         email = event_data.get("email")
-        timestamp = event_data.get("timestamp")
+        event_data.get("timestamp")
 
         log.info(
             "sendgrid_event_received",
@@ -488,18 +486,12 @@ class TwilioChannel(BaseChannel):
         if self._client is None:
             if not settings.twilio_account_sid or not settings.twilio_auth_token:
                 raise ValueError("Twilio credentials not configured")
-            self._client = TwilioClient(
-                settings.twilio_account_sid, settings.twilio_auth_token
-            )
+            self._client = TwilioClient(settings.twilio_account_sid, settings.twilio_auth_token)
         return self._client
 
     def is_configured(self) -> bool:
         """Check if Twilio is configured."""
-        return bool(
-            settings.twilio_account_sid
-            and settings.twilio_auth_token
-            and settings.twilio_phone_number
-        )
+        return bool(settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_phone_number)
 
     async def send(self, content: SMSContent) -> DeliveryStatus:
         """
@@ -557,9 +549,7 @@ class TwilioChannel(BaseChannel):
 
         return status
 
-    def send_sms(
-        self, phone_number: str, message: str, match_id: Optional[UUID] = None
-    ) -> DeliveryStatus:
+    def send_sms(self, phone_number: str, message: str, match_id: Optional[UUID] = None) -> DeliveryStatus:
         """
         Synchronous helper to send SMS.
 

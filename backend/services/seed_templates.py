@@ -2,6 +2,7 @@
 Seed initial template categories and system templates.
 Run this once during initial setup.
 """
+
 import asyncio
 import logging
 from uuid import uuid4
@@ -270,9 +271,7 @@ async def seed_templates():
 
     async with get_async_session() as session:
         # Check if categories already exist
-        result = await session.execute(
-            select(TemplateCategory).limit(1)
-        )
+        result = await session.execute(select(TemplateCategory).limit(1))
         existing_category = result.scalar_one_or_none()
 
         if existing_category:
@@ -298,9 +297,7 @@ async def seed_templates():
             logger.info(f"Created {len(CATEGORIES)} template categories")
 
         # Check if system templates already exist
-        result = await session.execute(
-            select(Template).where(Template.is_system == True).limit(1)
-        )
+        result = await session.execute(select(Template).where(Template.is_system).limit(1))
         existing_template = result.scalar_one_or_none()
 
         if existing_template:

@@ -15,7 +15,6 @@ import zipfile
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from pathlib import Path
 
 import httpx
 import redis.asyncio as aioredis
@@ -96,6 +95,7 @@ class DiscoveredGrant(BaseModel):
     def to_stream_dict(self) -> dict:
         """Convert to dictionary suitable for Redis stream."""
         import json
+
         data = self.model_dump(mode="json", exclude_none=True)
         if "eligible_applicants" in data:
             data["eligible_applicants"] = json.dumps(data["eligible_applicants"])
@@ -214,7 +214,7 @@ class GrantsGovXMLAgent:
 
         with zipfile.ZipFile(io.BytesIO(zip_content)) as zf:
             # Find the XML file in the archive
-            xml_files = [f for f in zf.namelist() if f.endswith('.xml')]
+            xml_files = [f for f in zf.namelist() if f.endswith(".xml")]
             if not xml_files:
                 self.logger.error("no_xml_file_in_archive")
                 return []
@@ -225,13 +225,12 @@ class GrantsGovXMLAgent:
             with zf.open(xml_filename) as xml_file:
                 # Parse XML incrementally to handle large files
                 # Handle namespace in Grants.gov XML
-                ns = {'g': 'http://apply.grants.gov/system/OpportunityDetail-V1.0'}
-                context = ET.iterparse(xml_file, events=('end',))
+                context = ET.iterparse(xml_file, events=("end",))
 
                 for event, elem in context:
                     # Match with or without namespace
-                    tag_name = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-                    if tag_name == 'OpportunitySynopsisDetail_1_0':
+                    tag_name = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                    if tag_name == "OpportunitySynopsisDetail_1_0":
                         try:
                             opp = self._parse_opportunity_element(elem)
                             if opp:
@@ -256,17 +255,17 @@ class GrantsGovXMLAgent:
     def _parse_opportunity_element(self, elem: ET.Element) -> Optional[GrantsGovOpportunity]:
         """Parse a single opportunity XML element."""
         # Namespace for Grants.gov XML
-        ns = {'g': 'http://apply.grants.gov/system/OpportunityDetail-V1.0'}
+        ns = {"g": "http://apply.grants.gov/system/OpportunityDetail-V1.0"}
 
         def get_text(tag: str) -> Optional[str]:
             # Try with namespace first, then without
-            child = elem.find(f'g:{tag}', ns)
+            child = elem.find(f"g:{tag}", ns)
             if child is None:
                 child = elem.find(tag)
             # Also try with full namespace in tag
             if child is None:
                 for c in elem:
-                    if c.tag.endswith(f'}}{tag}') or c.tag == tag:
+                    if c.tag.endswith(f"}}{tag}") or c.tag == tag:
                         child = c
                         break
             return child.text.strip() if child is not None and child.text else None
@@ -275,7 +274,7 @@ class GrantsGovXMLAgent:
             text = get_text(tag)
             if text:
                 try:
-                    return float(text.replace(',', ''))
+                    return float(text.replace(",", ""))
                 except ValueError:
                     return None
             return None
@@ -283,25 +282,25 @@ class GrantsGovXMLAgent:
         def get_date(tag: str) -> Optional[datetime]:
             text = get_text(tag)
             if text:
-                for fmt in ('%m%d%Y', '%Y-%m-%d', '%m/%d/%Y'):
+                for fmt in ("%m%d%Y", "%Y-%m-%d", "%m/%d/%Y"):
                     try:
                         return datetime.strptime(text, fmt)
                     except ValueError:
                         continue
             return None
 
-        opportunity_id = get_text('OpportunityID')
-        title = get_text('OpportunityTitle')
+        opportunity_id = get_text("OpportunityID")
+        title = get_text("OpportunityTitle")
 
         if not opportunity_id or not title:
             return None
 
         # Parse CFDA numbers - they can be in CFDANumbers element or directly
         cfda_numbers = []
-        cfda_text = get_text('CFDANumbers')
+        cfda_text = get_text("CFDANumbers")
         if cfda_text:
             # CFDANumbers is often a semicolon or comma separated list
-            for cfda in cfda_text.replace(';', ',').split(','):
+            for cfda in cfda_text.replace(";", ",").split(","):
                 cfda = cfda.strip()
                 if cfda:
                     cfda_numbers.append(cfda)
@@ -309,28 +308,28 @@ class GrantsGovXMLAgent:
         # Parse eligible applicants - they are codes
         eligible = []
         for child in elem:
-            tag_name = child.tag.split('}')[-1] if '}' in child.tag else child.tag
-            if tag_name == 'EligibleApplicants' and child.text:
+            tag_name = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+            if tag_name == "EligibleApplicants" and child.text:
                 eligible.append(child.text.strip())
 
         return GrantsGovOpportunity(
             opportunity_id=opportunity_id,
-            opportunity_number=get_text('OpportunityNumber'),
+            opportunity_number=get_text("OpportunityNumber"),
             title=title,
-            agency_code=get_text('AgencyCode'),
-            agency_name=get_text('AgencyName'),
-            opportunity_status=get_text('OpportunityStatus'),
-            posted_date=get_date('PostDate'),
-            close_date=get_date('CloseDate'),
-            description=get_text('Description') or get_text('Synopsis'),
+            agency_code=get_text("AgencyCode"),
+            agency_name=get_text("AgencyName"),
+            opportunity_status=get_text("OpportunityStatus"),
+            posted_date=get_date("PostDate"),
+            close_date=get_date("CloseDate"),
+            description=get_text("Description") or get_text("Synopsis"),
             cfda_numbers=cfda_numbers,
             eligible_applicants=eligible,
-            funding_instrument_type=get_text('FundingInstrumentType'),
-            category=get_text('CategoryOfFundingActivity'),
-            award_ceiling=get_float('AwardCeiling'),
-            award_floor=get_float('AwardFloor'),
-            estimated_funding=get_float('EstimatedTotalProgramFunding'),
-            cost_sharing=get_text('CostSharingOrMatchingRequirement') == 'Yes',
+            funding_instrument_type=get_text("FundingInstrumentType"),
+            category=get_text("CategoryOfFundingActivity"),
+            award_ceiling=get_float("AwardCeiling"),
+            award_floor=get_float("AwardFloor"),
+            estimated_funding=get_float("EstimatedTotalProgramFunding"),
+            cost_sharing=get_text("CostSharingOrMatchingRequirement") == "Yes",
             url=f"https://www.grants.gov/search-results-detail/{opportunity_id}",
         )
 
@@ -368,6 +367,7 @@ class GrantsGovXMLAgent:
     async def publish_grant(self, grant: DiscoveredGrant) -> str:
         """Publish a discovered grant to the Redis stream."""
         import json as json_lib
+
         redis = await self._get_redis()
         # Wrap in "data" key as JSON string - format expected by validator
         stream_data = {"data": json_lib.dumps(grant.to_stream_dict())}
@@ -428,8 +428,9 @@ class GrantsGovXMLAgent:
 
             # Filter to only active/posted opportunities
             active_opps = [
-                opp for opp in opportunities
-                if opp.opportunity_status in (None, 'Posted', 'Forecasted', 'posted', 'forecasted')
+                opp
+                for opp in opportunities
+                if opp.opportunity_status in (None, "Posted", "Forecasted", "posted", "forecasted")
             ]
 
             self.logger.info(

@@ -3,6 +3,7 @@
 Provides type-safe definitions for JSONB fields used in SQLAlchemy models
 to enable better type checking and validation of JSON data structures.
 """
+
 from typing import TypedDict, Optional, List
 
 

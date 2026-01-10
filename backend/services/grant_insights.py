@@ -3,6 +3,7 @@ AI-powered grant insights service with streaming support.
 Generates eligibility analysis and writing tips for grant applications.
 Uses Anthropic Claude for AI-powered analysis.
 """
+
 import json
 from typing import AsyncGenerator, Optional, Literal
 from uuid import UUID
@@ -49,7 +50,12 @@ class GrantInsightsService:
         """
         # Check if API client is configured
         if not self.client:
-            yield {"event": "error", "data": {"message": "AI insights are not available. Please configure your ANTHROPIC_API_KEY in the .env file."}}
+            yield {
+                "event": "error",
+                "data": {
+                    "message": "AI insights are not available. Please configure your ANTHROPIC_API_KEY in the .env file."
+                },
+            }
             return
 
         # Fetch grant details
@@ -59,18 +65,11 @@ class GrantInsightsService:
             return
 
         # Fetch user's lab profile
-        profile_result = await db.execute(
-            select(LabProfile).where(LabProfile.user_id == user.id)
-        )
+        profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
         profile = profile_result.scalar_one_or_none()
 
         # Fetch match info if available
-        match_result = await db.execute(
-            select(Match).where(
-                Match.grant_id == grant_id,
-                Match.user_id == user.id
-            )
-        )
+        match_result = await db.execute(select(Match).where(Match.grant_id == grant_id, Match.user_id == user.id))
         match = match_result.scalar_one_or_none()
 
         # Build context strings
@@ -81,9 +80,7 @@ class GrantInsightsService:
         if insight_type in ("eligibility", "both"):
             yield {"event": "eligibility_start", "data": {}}
             try:
-                async for chunk in self._stream_eligibility_analysis(
-                    researcher_context, grant_context, grant
-                ):
+                async for chunk in self._stream_eligibility_analysis(researcher_context, grant_context, grant):
                     yield {"event": "eligibility_chunk", "data": {"content": chunk}}
                 yield {"event": "eligibility_end", "data": {}}
             except Exception as e:
@@ -94,9 +91,7 @@ class GrantInsightsService:
         if insight_type in ("writing_tips", "both"):
             yield {"event": "writing_start", "data": {}}
             try:
-                async for chunk in self._stream_writing_tips(
-                    researcher_context, grant_context, grant
-                ):
+                async for chunk in self._stream_writing_tips(researcher_context, grant_context, grant):
                     yield {"event": "writing_chunk", "data": {"content": chunk}}
                 yield {"event": "writing_end", "data": {}}
             except Exception as e:
@@ -207,17 +202,15 @@ Make all suggestions specific to this grant and researcher combination. Use mark
             for text in stream.text_stream:
                 yield text
 
-    def _build_researcher_context(
-        self, user: User, profile: Optional[LabProfile]
-    ) -> str:
+    def _build_researcher_context(self, user: User, profile: Optional[LabProfile]) -> str:
         """Build context string about the researcher."""
         parts = [f"Name: {user.name or user.email}"]
 
         # Check for optional user attributes that may not exist
-        organization_type = getattr(user, 'organization_type', None)
+        organization_type = getattr(user, "organization_type", None)
         if organization_type:
             parts.append(f"Organization Type: {organization_type}")
-        focus_areas = getattr(user, 'focus_areas', None)
+        focus_areas = getattr(user, "focus_areas", None)
         if focus_areas:
             parts.append(f"Focus Areas: {', '.join(focus_areas)}")
 

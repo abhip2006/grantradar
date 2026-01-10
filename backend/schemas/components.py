@@ -2,6 +2,7 @@
 Document Component Library Schemas
 Pydantic models for component library API.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -9,12 +10,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from backend.schemas.common import PaginatedResponse, PaginationInfo
-from backend.schemas.jsonb_types import ComponentMetadataDict
+from backend.schemas.common import PaginationInfo
 
 
 class ComponentCategory(str, Enum):
     """Categories for document components."""
+
     FACILITIES = "facilities"
     EQUIPMENT = "equipment"
     BIOSKETCH = "biosketch"
@@ -27,8 +28,10 @@ class ComponentCategory(str, Enum):
 # Document Component Schemas
 # =============================================================================
 
+
 class ComponentBase(BaseModel):
     """Base schema for document components."""
+
     category: ComponentCategory
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
@@ -41,23 +44,12 @@ class ComponentBase(BaseModel):
 
     @field_validator("metadata")
     @classmethod
-    def validate_metadata_structure(
-        cls, v: Optional[Dict[str, Any]]
-    ) -> Optional[Dict[str, Any]]:
+    def validate_metadata_structure(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         """Validate that metadata conforms to ComponentMetadataDict structure."""
         if v is None:
             return v
 
         # Optional: Validate known metadata fields if present
-        allowed_keys = {
-            "author",
-            "institution",
-            "last_used",
-            "use_count",
-            "source",
-            "keywords",
-            "version_note",
-        }
         # Allow additional keys for flexibility but this documents expected structure
 
         return v
@@ -65,11 +57,13 @@ class ComponentBase(BaseModel):
 
 class ComponentCreate(ComponentBase):
     """Create a new document component."""
+
     pass
 
 
 class ComponentUpdate(BaseModel):
     """Update a document component."""
+
     category: Optional[ComponentCategory] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
@@ -80,6 +74,7 @@ class ComponentUpdate(BaseModel):
 
 class ComponentResponse(BaseModel):
     """Document component response."""
+
     id: UUID
     user_id: UUID
     category: str
@@ -102,6 +97,7 @@ class ComponentResponse(BaseModel):
 
 class ComponentListResponse(BaseModel):
     """Paginated component list (standard paginated format)."""
+
     data: List[ComponentResponse] = Field(..., description="List of components")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -119,6 +115,7 @@ class ComponentListResponse(BaseModel):
 
 class ComponentVersionResponse(BaseModel):
     """Component version history item."""
+
     id: UUID
     version: int
     name: str
@@ -133,13 +130,16 @@ class ComponentVersionResponse(BaseModel):
 # Component Usage Schemas
 # =============================================================================
 
+
 class ComponentUsageCreate(BaseModel):
     """Record component usage in an application."""
+
     section: Optional[str] = Field(None, max_length=100)
 
 
 class ComponentUsageResponse(BaseModel):
     """Component usage record response."""
+
     id: UUID
     component_id: UUID
     kanban_card_id: UUID
@@ -155,6 +155,7 @@ class ComponentUsageResponse(BaseModel):
 
 class ComponentUsageListResponse(BaseModel):
     """List of component usages (standard paginated format)."""
+
     data: List[ComponentUsageResponse] = Field(..., description="List of component usages")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -174,8 +175,10 @@ class ComponentUsageListResponse(BaseModel):
 # Document Version Schemas
 # =============================================================================
 
+
 class VersionCreate(BaseModel):
     """Create a new document version snapshot."""
+
     section: Optional[str] = Field(None, max_length=100)
     content: str = Field(..., min_length=1)
     snapshot_name: Optional[str] = Field(None, max_length=255)
@@ -184,6 +187,7 @@ class VersionCreate(BaseModel):
 
 class VersionResponse(BaseModel):
     """Document version response."""
+
     id: UUID
     kanban_card_id: UUID
     section: Optional[str] = None
@@ -204,6 +208,7 @@ class VersionResponse(BaseModel):
 
 class VersionListResponse(BaseModel):
     """Paginated version list (standard paginated format)."""
+
     data: List[VersionResponse] = Field(..., description="List of versions")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -221,6 +226,7 @@ class VersionListResponse(BaseModel):
 
 class VersionCompareResponse(BaseModel):
     """Response for comparing two versions."""
+
     version_a: VersionResponse
     version_b: VersionResponse
     # Diff information could be computed and added here
@@ -230,8 +236,10 @@ class VersionCompareResponse(BaseModel):
 # Category Schemas
 # =============================================================================
 
+
 class CategoryCount(BaseModel):
     """Category with component count."""
+
     category: str
     count: int
     description: Optional[str] = None
@@ -239,6 +247,7 @@ class CategoryCount(BaseModel):
 
 class CategoryListResponse(BaseModel):
     """List of categories with counts."""
+
     categories: List[CategoryCount]
 
 
@@ -246,8 +255,10 @@ class CategoryListResponse(BaseModel):
 # Summary/Stats Schemas
 # =============================================================================
 
+
 class ComponentStats(BaseModel):
     """Statistics about user's component library."""
+
     total_components: int
     by_category: Dict[str, int]
     total_usages: int

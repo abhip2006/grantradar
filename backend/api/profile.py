@@ -2,6 +2,7 @@
 Profile API Endpoints
 Manage user lab profiles and onboarding.
 """
+
 from typing import Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
@@ -20,10 +21,7 @@ router = APIRouter(prefix="/api/profile", tags=["Profile"])
 
 
 @router.get(
-    "",
-    response_model=LabProfileResponse,
-    summary="Get user profile",
-    description="Get the current user's lab profile."
+    "", response_model=LabProfileResponse, summary="Get user profile", description="Get the current user's lab profile."
 )
 async def get_profile(
     db: AsyncSessionDep,
@@ -34,15 +32,12 @@ async def get_profile(
 
     Returns 404 if no profile exists yet.
     """
-    result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = result.scalar_one_or_none()
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile not found. Complete onboarding to create a profile."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found. Complete onboarding to create a profile."
         )
 
     return LabProfileResponse(
@@ -66,7 +61,7 @@ async def get_profile(
     "",
     response_model=LabProfileResponse,
     summary="Update user profile",
-    description="Update the current user's lab profile. Triggers re-embedding."
+    description="Update the current user's lab profile. Triggers re-embedding.",
 )
 async def update_profile(
     profile_data: LabProfileUpdate,
@@ -79,20 +74,17 @@ async def update_profile(
     Changes to research areas, methods, or publications will trigger
     re-computation of the profile embedding.
     """
-    result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = result.scalar_one_or_none()
 
     if not profile:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Profile not found. Complete onboarding to create a profile."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found. Complete onboarding to create a profile."
         )
 
     # Track if embedding-relevant fields changed
     needs_reembedding = False
-    embedding_fields = ['research_areas', 'methods', 'publications']
+    embedding_fields = ["research_areas", "methods", "publications"]
 
     # Update profile fields
     update_data = profile_data.model_dump(exclude_unset=True)
@@ -110,6 +102,7 @@ async def update_profile(
         profile.profile_embedding = None
         # Trigger async task to re-compute embedding
         from backend.tasks.embeddings import compute_profile_embedding
+
         compute_profile_embedding.delay(str(profile.id))
 
     await db.flush()
@@ -137,7 +130,7 @@ async def update_profile(
     response_model=LabProfileResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Complete onboarding",
-    description="Submit onboarding data to create user profile."
+    description="Submit onboarding data to create user profile.",
 )
 async def complete_onboarding(
     onboarding_data: OnboardingData,
@@ -150,15 +143,12 @@ async def complete_onboarding(
     Creates a lab profile and optionally updates user information.
     """
     # Check if profile already exists
-    result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     existing_profile = result.scalar_one_or_none()
 
     if existing_profile:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Profile already exists. Use PUT /api/profile to update."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Profile already exists. Use PUT /api/profile to update."
         )
 
     # Update user info if provided
@@ -189,6 +179,7 @@ async def complete_onboarding(
 
     # Trigger async task to compute profile embedding
     from backend.tasks.embeddings import compute_profile_embedding
+
     compute_profile_embedding.delay(str(profile.id))
 
     return LabProfileResponse(
@@ -215,14 +206,15 @@ async def complete_onboarding(
 
 class ORCIDImportRequest(BaseModel):
     """Request schema for ORCID import."""
+
     orcid: str = Field(
-        ...,
-        description="ORCID identifier (e.g., 0000-0002-1825-0097 or https://orcid.org/0000-0002-1825-0097)"
+        ..., description="ORCID identifier (e.g., 0000-0002-1825-0097 or https://orcid.org/0000-0002-1825-0097)"
     )
 
 
 class ImportPreviewResponse(BaseModel):
     """Response schema for import preview."""
+
     name: Optional[str] = Field(None, description="Extracted name")
     institution: Optional[str] = Field(None, description="Extracted institution")
     research_areas: list[str] = Field(default_factory=list, description="Extracted research areas")
@@ -239,7 +231,7 @@ class ImportPreviewResponse(BaseModel):
     "/import/orcid",
     response_model=ImportPreviewResponse,
     summary="Import profile from ORCID",
-    description="Fetch and parse researcher data from ORCID public API."
+    description="Fetch and parse researcher data from ORCID public API.",
 )
 async def import_from_orcid(
     request: ORCIDImportRequest,
@@ -264,7 +256,7 @@ async def import_from_orcid(
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Could not fetch ORCID profile. Check the ORCID ID and ensure the profile is public."
+            detail="Could not fetch ORCID profile. Check the ORCID ID and ensure the profile is public.",
         )
 
     return ImportPreviewResponse(
@@ -285,7 +277,7 @@ async def import_from_orcid(
     "/import/cv",
     response_model=ImportPreviewResponse,
     summary="Import profile from CV",
-    description="Upload and parse CV/resume PDF to extract profile data."
+    description="Upload and parse CV/resume PDF to extract profile data.",
 )
 async def import_from_cv(
     current_user: CurrentUser,
@@ -315,18 +307,12 @@ async def import_from_cv(
 
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are supported"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are supported")
 
     # Check file size (max 10MB)
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File too large. Maximum size is 10MB."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File too large. Maximum size is 10MB.")
 
     from backend.services.cv_parser import parse_cv
 
@@ -335,7 +321,7 @@ async def import_from_cv(
     if not result:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Could not parse CV. Ensure the PDF contains extractable text."
+            detail="Could not parse CV. Ensure the PDF contains extractable text.",
         )
 
     # Save CV file if requested
@@ -361,6 +347,7 @@ async def import_from_cv(
     # Trigger profile analysis workflow if requested
     if trigger_analysis:
         from backend.tasks.profile_analysis import analyze_user_profile
+
         analyze_user_profile.delay(str(current_user.id))
 
     return ImportPreviewResponse(
@@ -379,6 +366,7 @@ async def import_from_cv(
 
 class ProfileAnalysisStatus(BaseModel):
     """Status of profile analysis."""
+
     status: str = Field(..., description="Status: pending, in_progress, completed, failed")
     started_at: Optional[str] = Field(None, description="When analysis started")
     completed_at: Optional[str] = Field(None, description="When analysis completed")
@@ -391,16 +379,14 @@ class ProfileAnalysisStatus(BaseModel):
     "/analysis/status",
     response_model=ProfileAnalysisStatus,
     summary="Get profile analysis status",
-    description="Check the status of the user's profile analysis."
+    description="Check the status of the user's profile analysis.",
 )
 async def get_analysis_status(
     current_user: CurrentUser,
     db: AsyncSessionDep,
 ) -> ProfileAnalysisStatus:
     """Get the status of the user's profile analysis workflow."""
-    result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = result.scalar_one_or_none()
 
     if not profile:
@@ -419,7 +405,7 @@ async def get_analysis_status(
 @router.post(
     "/analysis/trigger",
     summary="Trigger profile analysis",
-    description="Manually trigger profile analysis for the current user."
+    description="Manually trigger profile analysis for the current user.",
 )
 async def trigger_analysis(
     current_user: CurrentUser,
@@ -435,9 +421,7 @@ async def trigger_analysis(
     - Research focus areas
     """
     # Get or create profile
-    result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == current_user.id)
-    )
+    result = await db.execute(select(LabProfile).where(LabProfile.user_id == current_user.id))
     profile = result.scalar_one_or_none()
 
     if not profile:
@@ -454,10 +438,7 @@ async def trigger_analysis(
 
     # Trigger Celery task
     from backend.tasks.profile_analysis import analyze_user_profile
+
     task = analyze_user_profile.delay(str(current_user.id))
 
-    return {
-        "message": "Profile analysis started",
-        "task_id": task.id,
-        "status": "pending"
-    }
+    return {"message": "Profile analysis started", "task_id": task.id, "status": "pending"}

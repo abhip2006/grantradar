@@ -2,6 +2,7 @@
 Forecast API Endpoints
 Predict upcoming grant opportunities based on historical patterns.
 """
+
 from datetime import date, datetime
 from typing import Optional
 
@@ -51,9 +52,7 @@ router = APIRouter(prefix="/api/forecast", tags=["Forecast"])
 async def get_upcoming(
     db: AsyncSessionDep,
     user: OptionalUser,
-    lookahead_months: int = Query(
-        default=6, ge=1, le=12, description="Months to look ahead"
-    ),
+    lookahead_months: int = Query(default=6, ge=1, le=12, description="Months to look ahead"),
     limit: int = Query(default=20, ge=1, le=50, description="Maximum results"),
 ) -> ForecastUpcomingResponse:
     """
@@ -130,9 +129,7 @@ async def get_seasonal(
         from sqlalchemy import select
         from backend.models import LabProfile
 
-        profile_result = await db.execute(
-            select(LabProfile.research_areas).where(LabProfile.user_id == user.id)
-        )
+        profile_result = await db.execute(select(LabProfile.research_areas).where(LabProfile.user_id == user.id))
         profile_row = profile_result.first()
         if profile_row and profile_row.research_areas:
             user_focus_areas = profile_row.research_areas
@@ -192,9 +189,7 @@ async def get_recommendation_list(
     from backend.models import LabProfile
 
     # Check if user has profile
-    profile_result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == user.id)
-    )
+    profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
     profile = profile_result.scalar_one_or_none()
     profile_complete = profile is not None and bool(profile.research_areas)
 
@@ -417,9 +412,7 @@ async def get_ml_prediction(
     description="Get current federal fiscal year and quarter information.",
 )
 async def get_fiscal_calendar(
-    for_date: Optional[date] = Query(
-        None, description="Date to get fiscal info for (defaults to today)"
-    ),
+    for_date: Optional[date] = Query(None, description="Date to get fiscal info for (defaults to today)"),
 ) -> FiscalCalendarResponse:
     """
     Get federal fiscal calendar information.

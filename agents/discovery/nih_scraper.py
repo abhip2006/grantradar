@@ -2,6 +2,7 @@
 NIH Grant Discovery Agent
 Scrapes NIH funding opportunities with intelligent change detection.
 """
+
 import asyncio
 import hashlib
 import json
@@ -226,6 +227,7 @@ HTML Content:
 
 class ClaudeExtractionError(Exception):
     """Raised when Claude API extraction fails."""
+
     pass
 
 
@@ -259,9 +261,7 @@ async def extract_opportunities_with_claude(html: str) -> list[NIHFundingOpportu
         message = client.messages.create(
             model=settings.llm_model,
             max_tokens=settings.llm_max_tokens,
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "user", "content": prompt}],
         )
 
         response_text = message.content[0].text.strip()
@@ -328,11 +328,7 @@ def extract_opportunities_with_beautifulsoup(html: str) -> list[NIHFundingOpport
             text = " ".join(cell.get_text(strip=True) for cell in cells)
 
             # Look for FOA number patterns
-            foa_match = re.search(
-                r"((?:PAR|RFA|PA|NOT|OTA)-\d{2}-\d{3,4})",
-                text,
-                re.IGNORECASE
-            )
+            foa_match = re.search(r"((?:PAR|RFA|PA|NOT|OTA)-\d{2}-\d{3,4})", text, re.IGNORECASE)
 
             if foa_match:
                 foa_number = foa_match.group(1).upper()
@@ -361,11 +357,7 @@ def extract_opportunities_with_beautifulsoup(html: str) -> list[NIHFundingOpport
         text = link.get_text(strip=True)
         href = link["href"]
 
-        foa_match = re.search(
-            r"((?:PAR|RFA|PA|NOT|OTA)-\d{2}-\d{3,4})",
-            text + " " + href,
-            re.IGNORECASE
-        )
+        foa_match = re.search(r"((?:PAR|RFA|PA|NOT|OTA)-\d{2}-\d{3,4})", text + " " + href, re.IGNORECASE)
 
         if foa_match:
             foa_number = foa_match.group(1).upper()
@@ -534,6 +526,7 @@ async def run_nih_scraper() -> dict[str, Any]:
 
             # Wrap in "data" key as JSON string - format expected by validator
             import json as json_lib
+
             redis_client.xadd(
                 REDIS_STREAM_KEY,
                 {"data": json_lib.dumps(discovered_grant.to_stream_dict())},

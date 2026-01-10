@@ -21,6 +21,7 @@ Covers:
 - GET /api/reviews/pending - Get pending reviews
 - GET /api/reviews/stats - Get review statistics
 """
+
 import pytest
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -90,16 +91,12 @@ class TestListWorkflows:
 
     async def test_list_workflows_empty(self, async_session, db_user):
         """Test listing workflows when none exist."""
-        result = await async_session.execute(
-            select(ReviewWorkflow).where(ReviewWorkflow.user_id == db_user.id)
-        )
+        result = await async_session.execute(select(ReviewWorkflow).where(ReviewWorkflow.user_id == db_user.id))
         workflows = result.scalars().all()
 
         assert workflows == []
 
-    async def test_list_workflows_returns_user_workflows(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_list_workflows_returns_user_workflows(self, async_session, db_user, sample_workflow_stages):
         """Test listing returns only user's workflows."""
         # Create workflows for user
         workflow1 = ReviewWorkflowFactory.create(
@@ -119,16 +116,14 @@ class TestListWorkflows:
         result = await async_session.execute(
             select(ReviewWorkflow).where(
                 ReviewWorkflow.user_id == db_user.id,
-                ReviewWorkflow.is_active == True,
+                ReviewWorkflow.is_active,
             )
         )
         workflows = result.scalars().all()
 
         assert len(workflows) == 2
 
-    async def test_list_workflows_excludes_other_users(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_list_workflows_excludes_other_users(self, async_session, db_user, sample_workflow_stages):
         """Test that other users' workflows are not visible."""
         # Create another user
         other_user = User(
@@ -149,16 +144,12 @@ class TestListWorkflows:
         await async_session.commit()
 
         # Query for db_user's workflows
-        result = await async_session.execute(
-            select(ReviewWorkflow).where(ReviewWorkflow.user_id == db_user.id)
-        )
+        result = await async_session.execute(select(ReviewWorkflow).where(ReviewWorkflow.user_id == db_user.id))
         workflows = result.scalars().all()
 
         assert not any(w.name == "Other User's Workflow" for w in workflows)
 
-    async def test_list_workflows_excludes_inactive_by_default(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_list_workflows_excludes_inactive_by_default(self, async_session, db_user, sample_workflow_stages):
         """Test that inactive workflows are excluded by default."""
         # Create active and inactive workflows
         active = ReviewWorkflowFactory.create(
@@ -181,7 +172,7 @@ class TestListWorkflows:
         result = await async_session.execute(
             select(ReviewWorkflow).where(
                 ReviewWorkflow.user_id == db_user.id,
-                ReviewWorkflow.is_active == True,
+                ReviewWorkflow.is_active,
             )
         )
         workflows = result.scalars().all()
@@ -189,9 +180,7 @@ class TestListWorkflows:
         assert len(workflows) == 1
         assert workflows[0].name == "Active Workflow"
 
-    async def test_list_workflows_include_inactive(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_list_workflows_include_inactive(self, async_session, db_user, sample_workflow_stages):
         """Test including inactive workflows when requested."""
         active = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -210,9 +199,7 @@ class TestListWorkflows:
         await async_session.commit()
 
         # Query all (including inactive)
-        result = await async_session.execute(
-            select(ReviewWorkflow).where(ReviewWorkflow.user_id == db_user.id)
-        )
+        result = await async_session.execute(select(ReviewWorkflow).where(ReviewWorkflow.user_id == db_user.id))
         workflows = result.scalars().all()
 
         assert len(workflows) == 2
@@ -226,9 +213,7 @@ class TestListWorkflows:
 class TestGetWorkflow:
     """Tests for GET /api/workflows/{workflow_id}."""
 
-    async def test_get_workflow_by_id(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_get_workflow_by_id(self, async_session, db_user, sample_workflow_stages):
         """Test getting a specific workflow by ID."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -265,9 +250,7 @@ class TestGetWorkflow:
 
         assert found is None
 
-    async def test_get_workflow_denied_for_other_user(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_get_workflow_denied_for_other_user(self, async_session, db_user, sample_workflow_stages):
         """Test that users cannot access other users' workflows."""
         other_user = User(
             email="other_wf@university.edu",
@@ -305,9 +288,7 @@ class TestGetWorkflow:
 class TestCreateWorkflow:
     """Tests for POST /api/workflows."""
 
-    async def test_create_workflow(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_create_workflow(self, async_session, db_user, sample_workflow_stages):
         """Test creating a new workflow."""
         workflow = ReviewWorkflow(
             user_id=db_user.id,
@@ -326,9 +307,7 @@ class TestCreateWorkflow:
         assert workflow.user_id == db_user.id
         assert len(workflow.stages) == 3
 
-    async def test_create_workflow_as_default(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_create_workflow_as_default(self, async_session, db_user, sample_workflow_stages):
         """Test creating a workflow as default."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -342,9 +321,7 @@ class TestCreateWorkflow:
 
         assert workflow.is_default is True
 
-    async def test_create_workflow_unsets_previous_default(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_create_workflow_unsets_previous_default(self, async_session, db_user, sample_workflow_stages):
         """Test that setting a new default unsets previous default."""
         # Create initial default
         first_default = ReviewWorkflowFactory.create_default(
@@ -372,7 +349,7 @@ class TestCreateWorkflow:
         result = await async_session.execute(
             select(ReviewWorkflow).where(
                 ReviewWorkflow.user_id == db_user.id,
-                ReviewWorkflow.is_default == True,
+                ReviewWorkflow.is_default,
             )
         )
         defaults = result.scalars().all()
@@ -380,9 +357,7 @@ class TestCreateWorkflow:
         assert len(defaults) == 1
         assert defaults[0].name == "Second Default"
 
-    async def test_create_workflow_with_sla(
-        self, async_session, db_user
-    ):
+    async def test_create_workflow_with_sla(self, async_session, db_user):
         """Test creating workflow with SLA hours."""
         stages = [
             {
@@ -415,9 +390,7 @@ class TestCreateWorkflow:
 class TestUpdateWorkflow:
     """Tests for PATCH /api/workflows/{workflow_id}."""
 
-    async def test_update_workflow_name(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_update_workflow_name(self, async_session, db_user, sample_workflow_stages):
         """Test updating workflow name."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -433,9 +406,7 @@ class TestUpdateWorkflow:
 
         assert workflow.name == "Updated Name"
 
-    async def test_update_workflow_stages(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_update_workflow_stages(self, async_session, db_user, sample_workflow_stages):
         """Test updating workflow stages."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -455,9 +426,7 @@ class TestUpdateWorkflow:
 
         assert len(workflow.stages) == 2
 
-    async def test_update_workflow_to_default(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_update_workflow_to_default(self, async_session, db_user, sample_workflow_stages):
         """Test setting workflow as default."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -473,9 +442,7 @@ class TestUpdateWorkflow:
 
         assert workflow.is_default is True
 
-    async def test_update_workflow_deactivate(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_update_workflow_deactivate(self, async_session, db_user, sample_workflow_stages):
         """Test deactivating a workflow."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -500,9 +467,7 @@ class TestUpdateWorkflow:
 class TestDeleteWorkflow:
     """Tests for DELETE /api/workflows/{workflow_id}."""
 
-    async def test_delete_workflow(
-        self, async_session, db_user, sample_workflow_stages
-    ):
+    async def test_delete_workflow(self, async_session, db_user, sample_workflow_stages):
         """Test soft-deleting a workflow (marking inactive)."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -568,9 +533,7 @@ class TestDeleteWorkflow:
 class TestStartReview:
     """Tests for POST /api/kanban/{card_id}/review."""
 
-    async def test_start_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_start_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test starting a review process."""
         # Create workflow
         workflow = ReviewWorkflowFactory.create_default(
@@ -609,9 +572,7 @@ class TestStartReview:
         assert review.current_stage == 0
         assert review.workflow_id == workflow.id
 
-    async def test_start_review_with_specific_workflow(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_start_review_with_specific_workflow(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test starting review with a specific workflow."""
         # Create multiple workflows
         default_wf = ReviewWorkflowFactory.create_default(
@@ -650,9 +611,7 @@ class TestStartReview:
 
         assert review.workflow_id == quick_wf.id
 
-    async def test_start_review_already_exists_fails(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_start_review_already_exists_fails(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test error when active review already exists."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -698,9 +657,7 @@ class TestStartReview:
 class TestGetReview:
     """Tests for GET /api/kanban/{card_id}/review."""
 
-    async def test_get_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_get_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test getting the current review for an application."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -728,18 +685,14 @@ class TestGetReview:
 
         # Query review
         result = await async_session.execute(
-            select(ApplicationReview).where(
-                ApplicationReview.kanban_card_id == application.id
-            )
+            select(ApplicationReview).where(ApplicationReview.kanban_card_id == application.id)
         )
         found = result.scalar_one_or_none()
 
         assert found is not None
         assert found.status == "in_review"
 
-    async def test_get_review_none_exists(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_get_review_none_exists(self, async_session, db_user, db_grant):
         """Test getting review when none exists returns None."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -751,9 +704,7 @@ class TestGetReview:
         await async_session.commit()
 
         result = await async_session.execute(
-            select(ApplicationReview).where(
-                ApplicationReview.kanban_card_id == application.id
-            )
+            select(ApplicationReview).where(ApplicationReview.kanban_card_id == application.id)
         )
         review = result.scalar_one_or_none()
 
@@ -768,9 +719,7 @@ class TestGetReview:
 class TestSubmitReviewAction:
     """Tests for POST /api/kanban/{card_id}/review/action."""
 
-    async def test_approve_advances_stage(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_approve_advances_stage(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that approving advances to next stage."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -813,9 +762,7 @@ class TestSubmitReviewAction:
 
         assert review.current_stage == 1
 
-    async def test_approve_final_stage_completes_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_approve_final_stage_completes_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that approving final stage completes the review."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -860,9 +807,7 @@ class TestSubmitReviewAction:
         assert review.status == "approved"
         assert review.completed_at is not None
 
-    async def test_reject_ends_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_reject_ends_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that rejecting ends the review."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -902,9 +847,7 @@ class TestSubmitReviewAction:
         assert review.status == "rejected"
         assert review.completed_at is not None
 
-    async def test_return_stays_at_stage(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_return_stays_at_stage(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that returning keeps review at current stage."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -947,9 +890,7 @@ class TestSubmitReviewAction:
         assert review.current_stage == 1  # Still at stage 1
         assert review.status == "in_review"
 
-    async def test_comment_no_state_change(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_comment_no_state_change(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that commenting doesn't change review state."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1003,9 +944,7 @@ class TestSubmitReviewAction:
 class TestReviewHistory:
     """Tests for GET /api/kanban/{card_id}/review/history."""
 
-    async def test_get_review_history(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_get_review_history(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test getting full review history."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1065,9 +1004,7 @@ class TestReviewHistory:
 class TestCancelReview:
     """Tests for DELETE /api/kanban/{card_id}/review."""
 
-    async def test_cancel_active_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_cancel_active_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test canceling an active review."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1099,16 +1036,12 @@ class TestCancelReview:
         await async_session.commit()
 
         # Verify deleted
-        result = await async_session.execute(
-            select(ApplicationReview).where(ApplicationReview.id == review_id)
-        )
+        result = await async_session.execute(select(ApplicationReview).where(ApplicationReview.id == review_id))
         deleted = result.scalar_one_or_none()
 
         assert deleted is None
 
-    async def test_cannot_cancel_completed_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_cannot_cancel_completed_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that completed reviews cannot be canceled."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1147,9 +1080,7 @@ class TestCancelReview:
 class TestTeamMembers:
     """Tests for team member management endpoints."""
 
-    async def test_get_team_members_empty(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_get_team_members_empty(self, async_session, db_user, db_grant):
         """Test getting team members when none exist."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1161,17 +1092,13 @@ class TestTeamMembers:
         await async_session.commit()
 
         result = await async_session.execute(
-            select(ApplicationTeamMember).where(
-                ApplicationTeamMember.kanban_card_id == application.id
-            )
+            select(ApplicationTeamMember).where(ApplicationTeamMember.kanban_card_id == application.id)
         )
         members = result.scalars().all()
 
         assert members == []
 
-    async def test_add_team_member(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_add_team_member(self, async_session, db_user, db_grant):
         """Test adding a team member to an application."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1206,9 +1133,7 @@ class TestTeamMembers:
         assert member.user_id == team_member_user.id
         assert member.added_by == db_user.id
 
-    async def test_add_team_member_different_roles(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_add_team_member_different_roles(self, async_session, db_user, db_grant):
         """Test adding team members with different roles."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1244,9 +1169,7 @@ class TestTeamMembers:
 
         # Query all members
         result = await async_session.execute(
-            select(ApplicationTeamMember).where(
-                ApplicationTeamMember.kanban_card_id == application.id
-            )
+            select(ApplicationTeamMember).where(ApplicationTeamMember.kanban_card_id == application.id)
         )
         members = result.scalars().all()
 
@@ -1254,9 +1177,7 @@ class TestTeamMembers:
         roles = {m.role for m in members}
         assert roles == {"pi", "co_i", "grant_writer", "reviewer", "admin"}
 
-    async def test_add_duplicate_team_member_fails(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_add_duplicate_team_member_fails(self, async_session, db_user, db_grant):
         """Test that adding same user twice fails."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1295,9 +1216,7 @@ class TestTeamMembers:
 
         assert existing is not None  # Already exists - would fail
 
-    async def test_update_team_member_role(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_update_team_member_role(self, async_session, db_user, db_grant):
         """Test updating a team member's role."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1331,9 +1250,7 @@ class TestTeamMembers:
 
         assert member.role == "co_i"
 
-    async def test_update_team_member_permissions(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_update_team_member_permissions(self, async_session, db_user, db_grant):
         """Test updating a team member's permissions."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1368,9 +1285,7 @@ class TestTeamMembers:
 
         assert member.permissions["can_edit"] is True
 
-    async def test_remove_team_member(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_remove_team_member(self, async_session, db_user, db_grant):
         """Test removing a team member."""
         application = GrantApplication(
             user_id=db_user.id,
@@ -1403,9 +1318,7 @@ class TestTeamMembers:
         await async_session.commit()
 
         # Verify removed
-        result = await async_session.execute(
-            select(ApplicationTeamMember).where(ApplicationTeamMember.id == member_id)
-        )
+        result = await async_session.execute(select(ApplicationTeamMember).where(ApplicationTeamMember.id == member_id))
         deleted = result.scalar_one_or_none()
 
         assert deleted is None
@@ -1419,9 +1332,7 @@ class TestTeamMembers:
 class TestPendingReviews:
     """Tests for GET /api/reviews/pending."""
 
-    async def test_get_pending_reviews(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_get_pending_reviews(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test getting all pending reviews."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1472,9 +1383,7 @@ class TestPendingReviews:
 
         assert len(pending) == 3
 
-    async def test_get_pending_reviews_filter_by_status(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_get_pending_reviews_filter_by_status(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test filtering pending reviews by status."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1523,9 +1432,7 @@ class TestPendingReviews:
 class TestReviewStats:
     """Tests for GET /api/reviews/stats."""
 
-    async def test_get_review_stats(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_get_review_stats(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test getting review statistics."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1601,9 +1508,7 @@ class TestReviewStats:
 class TestSLATracking:
     """Tests for SLA deadline tracking."""
 
-    async def test_sla_hours_tracked(
-        self, async_session, db_user, db_grant
-    ):
+    async def test_sla_hours_tracked(self, async_session, db_user, db_grant):
         """Test that SLA hours are tracked in workflow stages."""
         stages = [
             {
@@ -1625,9 +1530,7 @@ class TestSLATracking:
         assert workflow.stages[0]["sla_hours"] == 24
         assert workflow.stages[0]["auto_escalate"] is True
 
-    async def test_stage_started_at_tracked(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_stage_started_at_tracked(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that stage start time is tracked for SLA."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1663,9 +1566,7 @@ class TestSLATracking:
         assert review.stage_started_at is not None
         assert review.escalation_sent is False
 
-    async def test_escalation_flag_updated(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_escalation_flag_updated(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that escalation flag is updated."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1707,9 +1608,7 @@ class TestSLATracking:
 class TestReviewAuthorization:
     """Tests for authorization and access control."""
 
-    async def test_user_can_only_see_own_reviews(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_user_can_only_see_own_reviews(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that users can only see their own application reviews."""
         # Create another user with their own application and review
         other_user = User(
@@ -1754,9 +1653,7 @@ class TestReviewAuthorization:
         # Should not see other user's review
         assert not any(r.kanban_card_id == other_app.id for r in reviews)
 
-    async def test_team_member_can_access_review(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_team_member_can_access_review(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that team members can access application reviews."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1809,9 +1706,7 @@ class TestReviewAuthorization:
 
         assert membership is not None  # Team member has access
 
-    async def test_review_deleted_with_application(
-        self, async_session, db_user, db_grant, sample_workflow_stages
-    ):
+    async def test_review_deleted_with_application(self, async_session, db_user, db_grant, sample_workflow_stages):
         """Test that reviews can be deleted with application or exist after app delete."""
         workflow = ReviewWorkflowFactory.create(
             user_id=db_user.id,
@@ -1840,9 +1735,7 @@ class TestReviewAuthorization:
         review_id = review.id
 
         # Verify review exists before application deletion
-        result = await async_session.execute(
-            select(ApplicationReview).where(ApplicationReview.id == review_id)
-        )
+        result = await async_session.execute(select(ApplicationReview).where(ApplicationReview.id == review_id))
         existing = result.scalar_one_or_none()
         assert existing is not None
         assert existing.kanban_card_id == app_id
@@ -1857,9 +1750,7 @@ class TestReviewAuthorization:
         # In PostgreSQL, CASCADE would delete the review
         # In SQLite without FK enforcement, review may still exist
         # Either behavior is acceptable for this test
-        result = await async_session.execute(
-            select(ApplicationReview).where(ApplicationReview.id == review_id)
-        )
+        result = await async_session.execute(select(ApplicationReview).where(ApplicationReview.id == review_id))
         review = result.scalar_one_or_none()
         # Test passes if either deleted OR still exists (SQLite behavior)
         assert review is None or review is not None

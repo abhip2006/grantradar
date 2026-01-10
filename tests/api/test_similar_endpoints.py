@@ -2,9 +2,9 @@
 Tests for Similar Grants API endpoints.
 Tests finding grants similar to a given grant.
 """
+
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -273,7 +273,6 @@ class TestSimilarGrantsAPIEndpoint:
     async def test_empty_results(self, async_session, source_grant):
         """Test endpoint returns empty list when no similar grants."""
         # When find_similar_grants returns empty list
-        results = []
 
         response = {
             "similar_grants": [],

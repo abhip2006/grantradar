@@ -8,11 +8,12 @@ API endpoints for workflow analytics including:
 - GET /api/kanban/{card_id}/events - Get events for an application
 - POST /api/analytics/workflow/refresh - Force cache refresh
 """
-from datetime import date, timedelta
+
+from datetime import date
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Response
 from sqlalchemy import select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser

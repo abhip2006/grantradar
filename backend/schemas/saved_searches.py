@@ -1,6 +1,7 @@
 """
 Saved search schemas for managing saved filter combinations.
 """
+
 from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID

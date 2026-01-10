@@ -2,13 +2,12 @@
 Tests for forecast API endpoints.
 Tests all forecast-related API endpoints including predictions and fiscal calendar.
 """
+
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models import Grant, GrantDeadlineHistory, LabProfile, User
@@ -29,7 +28,7 @@ requires_postgres = pytest.mark.skip(
 async def sample_grants_for_api(async_session: AsyncSession):
     """Create sample grants for API testing."""
     grants = []
-    base_date = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
 
     # NSF grants with March pattern
     for year in range(2021, 2026):
@@ -133,12 +132,9 @@ class TestUpcomingEndpoint:
     """Tests for /api/forecast/upcoming endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_upcoming_returns_forecasts(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_get_upcoming_returns_forecasts(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that upcoming endpoint returns forecast list."""
         from backend.api.forecast import get_upcoming
-        from backend.api.deps import get_current_user_optional
 
         # Mock the dependencies
         mock_user = None
@@ -158,9 +154,7 @@ class TestUpcomingEndpoint:
         assert response.lookahead_months == 6
 
     @pytest.mark.asyncio
-    async def test_get_upcoming_respects_limit(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_get_upcoming_respects_limit(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that upcoming endpoint respects limit parameter."""
         from backend.api.forecast import get_upcoming
 
@@ -174,9 +168,7 @@ class TestUpcomingEndpoint:
         assert len(response.forecasts) <= 2
 
     @pytest.mark.asyncio
-    async def test_get_upcoming_includes_fiscal_info(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_get_upcoming_includes_fiscal_info(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that forecasts include fiscal calendar information."""
         from backend.api.forecast import get_upcoming
 
@@ -203,9 +195,7 @@ class TestSeasonalEndpoint:
     """Tests for /api/forecast/seasonal endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_seasonal_returns_trends(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_get_seasonal_returns_trends(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that seasonal endpoint returns trend data."""
         from backend.api.forecast import get_seasonal
 
@@ -221,9 +211,7 @@ class TestSeasonalEndpoint:
         assert hasattr(response, "peak_months")
 
     @pytest.mark.asyncio
-    async def test_seasonal_months_in_order(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_seasonal_months_in_order(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that seasonal months are returned in order."""
         from backend.api.forecast import get_seasonal
 
@@ -236,9 +224,7 @@ class TestSeasonalEndpoint:
         assert months == list(range(1, 13))
 
     @pytest.mark.asyncio
-    async def test_seasonal_includes_month_names(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_seasonal_includes_month_names(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that seasonal data includes month names."""
         from backend.api.forecast import get_seasonal
 
@@ -248,8 +234,18 @@ class TestSeasonalEndpoint:
         )
 
         expected_names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ]
 
         for i, trend in enumerate(response.trends):
@@ -265,9 +261,7 @@ class TestHistoryStatsEndpoint:
     """Tests for /api/forecast/history/stats endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_history_stats(
-        self, async_session: AsyncSession, sample_deadline_history_for_api
-    ):
+    async def test_get_history_stats(self, async_session: AsyncSession, sample_deadline_history_for_api):
         """Test that history stats endpoint returns statistics."""
         from backend.api.forecast import get_history_stats
 
@@ -279,9 +273,7 @@ class TestHistoryStatsEndpoint:
         assert hasattr(response, "generated_at")
 
     @pytest.mark.asyncio
-    async def test_history_stats_with_empty_database(
-        self, async_session: AsyncSession
-    ):
+    async def test_history_stats_with_empty_database(self, async_session: AsyncSession):
         """Test stats endpoint with no history records."""
         from backend.api.forecast import get_history_stats
 
@@ -318,9 +310,7 @@ class TestFunderHistoryEndpoint:
         assert len(response.records) == 5
 
     @pytest.mark.asyncio
-    async def test_get_funder_history_unknown_funder(
-        self, async_session: AsyncSession
-    ):
+    async def test_get_funder_history_unknown_funder(self, async_session: AsyncSession):
         """Test funder history with unknown funder returns empty."""
         from backend.api.forecast import get_funder_history
 
@@ -360,9 +350,7 @@ class TestFunderPredictionEndpoint:
         assert hasattr(response.prediction, "confidence")
 
     @pytest.mark.asyncio
-    async def test_get_funder_prediction_unknown_funder_raises(
-        self, async_session: AsyncSession
-    ):
+    async def test_get_funder_prediction_unknown_funder_raises(self, async_session: AsyncSession):
         """Test that prediction for unknown funder raises 404."""
         from fastapi import HTTPException
         from backend.api.forecast import get_funder_prediction
@@ -385,9 +373,7 @@ class TestMLPredictionEndpoint:
     """Tests for /api/forecast/ml/{funder_name} endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_ml_prediction_returns_result(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_get_ml_prediction_returns_result(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that ML prediction endpoint returns a result."""
         from backend.api.forecast import get_ml_prediction
 
@@ -404,9 +390,7 @@ class TestMLPredictionEndpoint:
         assert response.prediction.method in ["ml", "rule_based"]
 
     @pytest.mark.asyncio
-    async def test_ml_prediction_includes_uncertainty(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_ml_prediction_includes_uncertainty(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that ML prediction includes uncertainty information."""
         from backend.api.forecast import get_ml_prediction
 
@@ -522,9 +506,7 @@ class TestFederalFunderEndpoint:
         """Test federal funder check with full agency name."""
         from backend.api.forecast import check_federal_funder
 
-        response = await check_federal_funder(
-            funder_name="National Science Foundation"
-        )
+        response = await check_federal_funder(funder_name="National Science Foundation")
 
         assert response["is_federal"] is True
 
@@ -658,9 +640,7 @@ class TestForecastAPIIntegration:
         assert fiscal.fiscal_info.current_fiscal_year >= 2024
 
     @pytest.mark.asyncio
-    async def test_forecast_data_consistency(
-        self, async_session: AsyncSession, sample_grants_for_api
-    ):
+    async def test_forecast_data_consistency(self, async_session: AsyncSession, sample_grants_for_api):
         """Test that forecast data is internally consistent."""
         from backend.api.forecast import get_upcoming
 

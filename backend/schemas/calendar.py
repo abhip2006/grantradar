@@ -1,6 +1,7 @@
 """
 Calendar schemas for deadline calendar view.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -11,15 +12,17 @@ from pydantic import BaseModel, Field
 
 class CalendarEventType(str, Enum):
     """Type of calendar event based on source."""
+
     SAVED = "saved"
     PIPELINE = "pipeline"
 
 
 class UrgencyLevel(str, Enum):
     """Urgency level based on days until deadline."""
+
     CRITICAL = "critical"  # < 7 days
-    WARNING = "warning"    # < 14 days
-    NORMAL = "normal"      # >= 14 days
+    WARNING = "warning"  # < 14 days
+    NORMAL = "normal"  # >= 14 days
 
 
 class CalendarEvent(BaseModel):
@@ -90,10 +93,7 @@ class UpcomingDeadline(BaseModel):
 class UpcomingDeadlinesResponse(BaseModel):
     """Schema for upcoming deadlines response."""
 
-    deadlines: list[UpcomingDeadline] = Field(
-        default_factory=list,
-        description="Upcoming deadlines sorted by date"
-    )
+    deadlines: list[UpcomingDeadline] = Field(default_factory=list, description="Upcoming deadlines sorted by date")
     total: int = Field(..., description="Total count")
     critical_count: int = Field(..., description="Count of critical (< 7 days) deadlines")
     warning_count: int = Field(..., description="Count of warning (< 14 days) deadlines")

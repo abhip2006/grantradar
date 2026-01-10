@@ -2,13 +2,13 @@
 Audit Logging API Endpoints
 Admin endpoints for viewing and exporting audit logs.
 """
+
 import logging
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.models import User
@@ -306,9 +306,7 @@ async def get_audit_log(
     from sqlalchemy import select
     from backend.models.audit import AuditLog
 
-    result = await db.execute(
-        select(AuditLog).where(AuditLog.id == log_id)
-    )
+    result = await db.execute(select(AuditLog).where(AuditLog.id == log_id))
     log = result.scalar_one_or_none()
 
     if not log:

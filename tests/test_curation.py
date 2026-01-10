@@ -2,10 +2,11 @@
 Curation Agent Tests
 Tests for grant validation, quality scoring, categorization, and embedding generation.
 """
+
 import json
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -23,6 +24,7 @@ class TestQualityScoring:
     @pytest.fixture
     def quality_scorer(self):
         """Create a mock quality scorer."""
+
         class QualityScorer:
             def __init__(self, min_title_length: int = 10, min_description_length: int = 50):
                 self.min_title_length = min_title_length
@@ -135,6 +137,7 @@ class TestCategorization:
     @pytest.fixture
     def categorizer(self):
         """Create a mock categorizer."""
+
         class Categorizer:
             KEYWORD_CATEGORIES = {
                 "healthcare": ["health", "medical", "clinical", "patient", "disease", "treatment"],
@@ -221,6 +224,7 @@ class TestDeduplication:
     @pytest.fixture
     def deduplicator(self):
         """Create a mock deduplicator."""
+
         class Deduplicator:
             def __init__(self):
                 self.seen_hashes = set()
@@ -228,6 +232,7 @@ class TestDeduplication:
             def compute_hash(self, grant_data: dict) -> str:
                 """Compute a hash for deduplication."""
                 import hashlib
+
                 # Use title + source + external_id for uniqueness
                 key_parts = [
                     grant_data.get("source", ""),
@@ -323,6 +328,7 @@ class TestLLMValidation:
     @pytest.fixture
     def mock_llm_validator(self, mock_anthropic):
         """Create a mock LLM validator."""
+
         class LLMValidator:
             def __init__(self, client):
                 self.client = client
@@ -336,9 +342,9 @@ class TestLLMValidation:
                 4. Category suggestions
 
                 Grant:
-                Title: {grant_data.get('title', '')}
-                Description: {grant_data.get('description', '')}
-                Agency: {grant_data.get('agency', '')}
+                Title: {grant_data.get("title", "")}
+                Description: {grant_data.get("description", "")}
+                Agency: {grant_data.get("agency", "")}
 
                 Return as JSON."""
 
@@ -356,12 +362,14 @@ class TestLLMValidation:
     async def test_llm_validation_success(self, mock_llm_validator, mock_anthropic, sample_grant_data):
         """Test successful LLM validation."""
         # Setup mock response
-        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps({
-            "quality_score": 85,
-            "is_legitimate": True,
-            "keywords": ["machine learning", "healthcare", "research"],
-            "categories": ["ai_ml", "healthcare"],
-        })
+        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps(
+            {
+                "quality_score": 85,
+                "is_legitimate": True,
+                "keywords": ["machine learning", "healthcare", "research"],
+                "categories": ["ai_ml", "healthcare"],
+            }
+        )
 
         result = await mock_llm_validator.validate_grant(sample_grant_data)
 
@@ -372,12 +380,14 @@ class TestLLMValidation:
     @pytest.mark.asyncio
     async def test_llm_validation_low_quality(self, mock_llm_validator, mock_anthropic):
         """Test LLM validation for low-quality grant."""
-        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps({
-            "quality_score": 25,
-            "is_legitimate": False,
-            "keywords": [],
-            "categories": [],
-        })
+        mock_anthropic.return_value.messages.create.return_value.content[0].text = json.dumps(
+            {
+                "quality_score": 25,
+                "is_legitimate": False,
+                "keywords": [],
+                "categories": [],
+            }
+        )
 
         grant_data = {
             "title": "Free Money",
@@ -401,6 +411,7 @@ class TestEmbeddingGeneration:
     @pytest.fixture
     def mock_embedding_generator(self, mock_openai):
         """Create a mock embedding generator."""
+
         class EmbeddingGenerator:
             def __init__(self, client, model: str = "text-embedding-3-small"):
                 self.client = client
@@ -468,6 +479,7 @@ class TestCurationPipeline:
     @pytest.fixture
     def curation_pipeline(self, mock_anthropic, mock_openai):
         """Create a mock curation pipeline."""
+
         class CurationPipeline:
             def __init__(self):
                 self.quality_threshold = 0.5

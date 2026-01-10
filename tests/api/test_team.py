@@ -2,6 +2,7 @@
 Tests for Team Collaboration API endpoints.
 Tests member management, invitations, and activity tracking.
 """
+
 import pytest
 import pytest_asyncio
 import secrets
@@ -61,9 +62,7 @@ async def db_pending_invitation(async_session: AsyncSession, db_user: User) -> L
 
 
 @pytest_asyncio.fixture
-async def db_accepted_member(
-    async_session: AsyncSession, db_user: User, db_second_user: User
-) -> LabMember:
+async def db_accepted_member(async_session: AsyncSession, db_user: User, db_second_user: User) -> LabMember:
     """Create an accepted team member."""
     member = LabMember(
         lab_owner_id=db_user.id,
@@ -87,9 +86,7 @@ async def db_accepted_member(
 
 
 @pytest_asyncio.fixture
-async def db_admin_member(
-    async_session: AsyncSession, db_user: User, db_second_user: User
-) -> LabMember:
+async def db_admin_member(async_session: AsyncSession, db_user: User, db_second_user: User) -> LabMember:
     """Create an admin team member."""
     member = LabMember(
         lab_owner_id=db_user.id,
@@ -146,7 +143,13 @@ async def db_expired_invitation(async_session: AsyncSession, db_user: User) -> L
         invitation_status="pending",
         invitation_token=token,
         invitation_expires_at=datetime.now(timezone.utc) - timedelta(days=1),
-        permissions={"can_view": True, "can_edit": False, "can_create": False, "can_delete": False, "can_invite": False},
+        permissions={
+            "can_view": True,
+            "can_edit": False,
+            "can_create": False,
+            "can_delete": False,
+            "can_invite": False,
+        },
     )
     async_session.add(member)
     await async_session.commit()
@@ -169,7 +172,13 @@ async def db_multiple_members(async_session: AsyncSession, db_user: User):
             invitation_status="pending",
             invitation_token=token,
             invitation_expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-            permissions={"can_view": True, "can_edit": True, "can_create": True, "can_delete": False, "can_invite": False},
+            permissions={
+                "can_view": True,
+                "can_edit": True,
+                "can_create": True,
+                "can_delete": False,
+                "can_invite": False,
+            },
         )
         async_session.add(member)
         members.append(member)
@@ -182,7 +191,13 @@ async def db_multiple_members(async_session: AsyncSession, db_user: User):
             role="member" if i == 0 else "admin",
             invitation_status="accepted",
             accepted_at=datetime.now(timezone.utc),
-            permissions={"can_view": True, "can_edit": True, "can_create": True, "can_delete": i == 1, "can_invite": i == 1},
+            permissions={
+                "can_view": True,
+                "can_edit": True,
+                "can_create": True,
+                "can_delete": i == 1,
+                "can_invite": i == 1,
+            },
         )
         async_session.add(member)
         members.append(member)
@@ -194,7 +209,13 @@ async def db_multiple_members(async_session: AsyncSession, db_user: User):
         role="member",
         invitation_status="declined",
         declined_at=datetime.now(timezone.utc),
-        permissions={"can_view": True, "can_edit": False, "can_create": False, "can_delete": False, "can_invite": False},
+        permissions={
+            "can_view": True,
+            "can_edit": False,
+            "can_create": False,
+            "can_delete": False,
+            "can_invite": False,
+        },
     )
     async_session.add(member)
     members.append(member)
@@ -266,9 +287,7 @@ class TestListTeamMembers:
     @pytest.mark.asyncio
     async def test_list_members_empty(self, async_session: AsyncSession, db_user: User):
         """Test listing members when team is empty."""
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.lab_owner_id == db_user.id)
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.lab_owner_id == db_user.id))
         members = result.scalars().all()
         assert len(members) == 0
 
@@ -280,9 +299,7 @@ class TestListTeamMembers:
         db_pending_invitation: LabMember,
     ):
         """Test listing members includes pending invitations."""
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.lab_owner_id == db_user.id)
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.lab_owner_id == db_user.id))
         members = result.scalars().all()
         assert len(members) == 1
         assert members[0].invitation_status == "pending"
@@ -315,9 +332,7 @@ class TestListTeamMembers:
         """Test member count aggregation."""
         # Get counts
         total_result = await async_session.execute(
-            select(func.count(LabMember.id)).where(
-                LabMember.lab_owner_id == db_user.id
-            )
+            select(func.count(LabMember.id)).where(LabMember.lab_owner_id == db_user.id)
         )
         total = total_result.scalar()
 
@@ -351,9 +366,7 @@ class TestSendInvitation:
     """Tests for POST /api/team/invite endpoint."""
 
     @pytest.mark.asyncio
-    async def test_create_invitation_success(
-        self, async_session: AsyncSession, db_user: User
-    ):
+    async def test_create_invitation_success(self, async_session: AsyncSession, db_user: User):
         """Test creating a new invitation."""
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
@@ -364,7 +377,13 @@ class TestSendInvitation:
             invitation_status="pending",
             invitation_token=token,
             invitation_expires_at=expires_at,
-            permissions={"can_view": True, "can_edit": True, "can_create": True, "can_delete": False, "can_invite": False},
+            permissions={
+                "can_view": True,
+                "can_edit": True,
+                "can_create": True,
+                "can_delete": False,
+                "can_invite": False,
+            },
         )
         async_session.add(member)
         await async_session.commit()
@@ -381,9 +400,7 @@ class TestSendInvitation:
         assert member_expires > now
 
     @pytest.mark.asyncio
-    async def test_create_invitation_as_admin(
-        self, async_session: AsyncSession, db_user: User
-    ):
+    async def test_create_invitation_as_admin(self, async_session: AsyncSession, db_user: User):
         """Test creating an admin invitation."""
         token = secrets.token_urlsafe(32)
         member = LabMember(
@@ -393,7 +410,13 @@ class TestSendInvitation:
             invitation_status="pending",
             invitation_token=token,
             invitation_expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-            permissions={"can_view": True, "can_edit": True, "can_create": True, "can_delete": True, "can_invite": True},
+            permissions={
+                "can_view": True,
+                "can_edit": True,
+                "can_create": True,
+                "can_delete": True,
+                "can_invite": True,
+            },
         )
         async_session.add(member)
         await async_session.commit()
@@ -404,9 +427,7 @@ class TestSendInvitation:
         assert member.permissions["can_invite"] is True
 
     @pytest.mark.asyncio
-    async def test_create_invitation_as_viewer(
-        self, async_session: AsyncSession, db_user: User
-    ):
+    async def test_create_invitation_as_viewer(self, async_session: AsyncSession, db_user: User):
         """Test creating a viewer invitation."""
         token = secrets.token_urlsafe(32)
         member = LabMember(
@@ -416,7 +437,13 @@ class TestSendInvitation:
             invitation_status="pending",
             invitation_token=token,
             invitation_expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-            permissions={"can_view": True, "can_edit": False, "can_create": False, "can_delete": False, "can_invite": False},
+            permissions={
+                "can_view": True,
+                "can_edit": False,
+                "can_create": False,
+                "can_delete": False,
+                "can_invite": False,
+            },
         )
         async_session.add(member)
         await async_session.commit()
@@ -601,9 +628,7 @@ class TestRemoveMember:
         await async_session.delete(db_accepted_member)
         await async_session.commit()
 
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.id == member_id)
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.id == member_id))
         assert result.scalar_one_or_none() is None
 
 
@@ -625,9 +650,7 @@ class TestTeamStats:
         """Test getting team statistics."""
         # Total members
         total_result = await async_session.execute(
-            select(func.count(LabMember.id)).where(
-                LabMember.lab_owner_id == db_user.id
-            )
+            select(func.count(LabMember.id)).where(LabMember.lab_owner_id == db_user.id)
         )
         total = total_result.scalar()
 
@@ -797,9 +820,7 @@ class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_invitation_token_uniqueness(
-        self, async_session: AsyncSession, db_user: User
-    ):
+    async def test_invitation_token_uniqueness(self, async_session: AsyncSession, db_user: User):
         """Test that invitation tokens are unique."""
         token1 = secrets.token_urlsafe(32)
         token2 = secrets.token_urlsafe(32)
@@ -830,9 +851,7 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_member_not_found(self, async_session: AsyncSession):
         """Test querying for non-existent member."""
-        result = await async_session.execute(
-            select(LabMember).where(LabMember.id == uuid4())
-        )
+        result = await async_session.execute(select(LabMember).where(LabMember.id == uuid4()))
         member = result.scalar_one_or_none()
         assert member is None
 
@@ -848,9 +867,7 @@ class TestEdgeCases:
         user_id = db_user.id
 
         # Verify activity exists before user deletion
-        result = await async_session.execute(
-            select(TeamActivityLog).where(TeamActivityLog.id == activity_id)
-        )
+        result = await async_session.execute(select(TeamActivityLog).where(TeamActivityLog.id == activity_id))
         activity = result.scalar_one_or_none()
         assert activity is not None
         assert activity.lab_owner_id == user_id
@@ -865,17 +882,13 @@ class TestEdgeCases:
         # In PostgreSQL, CASCADE would delete the activity
         # In SQLite without FK enforcement, activity may still exist
         # Either behavior is acceptable for this test
-        result = await async_session.execute(
-            select(TeamActivityLog).where(TeamActivityLog.id == activity_id)
-        )
+        result = await async_session.execute(select(TeamActivityLog).where(TeamActivityLog.id == activity_id))
         activity = result.scalar_one_or_none()
         # Test passes if either deleted OR still exists (SQLite behavior)
         assert activity is None or activity is not None  # Always passes
 
     @pytest.mark.asyncio
-    async def test_member_with_null_permissions(
-        self, async_session: AsyncSession, db_user: User
-    ):
+    async def test_member_with_null_permissions(self, async_session: AsyncSession, db_user: User):
         """Test member with null permissions field or default permissions."""
         member = LabMember(
             lab_owner_id=db_user.id,
@@ -896,9 +909,7 @@ class TestEdgeCases:
             assert member.permissions is None
 
     @pytest.mark.asyncio
-    async def test_activity_with_no_actor(
-        self, async_session: AsyncSession, db_user: User
-    ):
+    async def test_activity_with_no_actor(self, async_session: AsyncSession, db_user: User):
         """Test activity log entry with no actor (system action)."""
         activity = TeamActivityLog(
             lab_owner_id=db_user.id,

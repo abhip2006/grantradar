@@ -2,13 +2,14 @@
 Budget Templates API Endpoints
 Provides pre-filled budget templates based on grant mechanism averages.
 """
+
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import func, select
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.schemas.budgets import (
@@ -32,7 +33,6 @@ from backend.services.budget_templates import (
     ALL_BUDGET_TEMPLATES,
     BUDGET_CATEGORIES,
     budget_template_service,
-    BudgetCategory,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,7 @@ router = APIRouter(prefix="/api/budgets", tags=["Budgets"])
 # =============================================================================
 # Template Endpoints
 # =============================================================================
+
 
 @router.get("/templates", response_model=TemplateListResponse)
 async def list_templates(
@@ -101,7 +102,7 @@ async def get_template(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Budget template not found for mechanism: {mechanism}. "
-                   f"Supported mechanisms: {', '.join(ALL_BUDGET_TEMPLATES.keys())}",
+            f"Supported mechanisms: {', '.join(ALL_BUDGET_TEMPLATES.keys())}",
         )
 
     return MechanismTemplateResponse(
@@ -181,6 +182,7 @@ async def get_rates(
 # Budget Generation Endpoints
 # =============================================================================
 
+
 @router.post("/generate", response_model=BudgetBreakdownResponse)
 async def generate_budget(
     request: BudgetGenerateRequest,
@@ -233,6 +235,7 @@ async def generate_budget(
 # =============================================================================
 # Budget Validation Endpoints
 # =============================================================================
+
 
 @router.post("/validate", response_model=BudgetValidationResponse)
 async def validate_budget(
@@ -290,6 +293,7 @@ async def validate_budget(
 # User Budget CRUD Endpoints
 # =============================================================================
 
+
 @router.post("/save", response_model=UserBudgetResponse, status_code=status.HTTP_201_CREATED)
 async def save_budget(
     request: UserBudgetCreate,
@@ -302,16 +306,13 @@ async def save_budget(
     Creates a new budget or updates an existing one if a budget already exists
     for the same grant/match combination.
     """
-    from sqlalchemy.dialects.postgresql import insert
 
     # Check if budget already exists for this grant/match
-    existing_query = select(
-        func.count()
-    ).select_from(
+    select(func.count()).select_from(
         # Inline table reference
-        db.get_bind().dialect.identifier_preparer.format_table(
-            type('T', (), {'__tablename__': 'user_budgets'})
-        ) if False else None  # Placeholder
+        db.get_bind().dialect.identifier_preparer.format_table(type("T", (), {"__tablename__": "user_budgets"}))
+        if False
+        else None  # Placeholder
     )
 
     budget_id = uuid4()
@@ -319,14 +320,8 @@ async def save_budget(
 
     # Calculate totals from budget data
     budget_data = request.budget_data.model_dump()
-    total_direct = sum(
-        year.get("total_direct", 0)
-        for year in budget_data.get("years", [])
-    )
-    total_indirect = sum(
-        year.get("indirect_costs", 0)
-        for year in budget_data.get("years", [])
-    )
+    total_direct = sum(year.get("total_direct", 0) for year in budget_data.get("years", []))
+    total_indirect = sum(year.get("indirect_costs", 0) for year in budget_data.get("years", []))
 
     # Build budget record using raw SQL since we don't have the ORM model yet
     await db.execute(
@@ -358,7 +353,7 @@ async def save_budget(
             "version": 1,
             "created_at": now,
             "updated_at": now,
-        }
+        },
     )
     await db.commit()
 
@@ -454,7 +449,7 @@ async def get_user_budget_by_match(
             ORDER BY updated_at DESC
             LIMIT 1
         """),
-        {"match_id": str(match_id), "user_id": str(current_user.id)}
+        {"match_id": str(match_id), "user_id": str(current_user.id)},
     )
     row = result.fetchone()
 
@@ -492,7 +487,7 @@ async def get_budget(
             FROM user_budgets
             WHERE id = :budget_id AND user_id = :user_id
         """),
-        {"budget_id": str(budget_id), "user_id": str(current_user.id)}
+        {"budget_id": str(budget_id), "user_id": str(current_user.id)},
     )
     row = result.fetchone()
 
@@ -528,7 +523,7 @@ async def update_budget(
     # Check ownership
     result = await db.execute(
         text("SELECT id FROM user_budgets WHERE id = :id AND user_id = :user_id"),
-        {"id": str(budget_id), "user_id": str(current_user.id)}
+        {"id": str(budget_id), "user_id": str(current_user.id)},
     )
     if not result.fetchone():
         raise HTTPException(
@@ -550,19 +545,15 @@ async def update_budget(
         params["budget_data"] = budget_data
 
         # Recalculate totals
-        total_direct = sum(
-            year.get("total_direct", 0)
-            for year in budget_data.get("years", [])
+        total_direct = sum(year.get("total_direct", 0) for year in budget_data.get("years", []))
+        total_indirect = sum(year.get("indirect_costs", 0) for year in budget_data.get("years", []))
+        update_parts.extend(
+            [
+                "total_direct_costs = :total_direct",
+                "total_indirect_costs = :total_indirect",
+                "total_budget = :total_budget",
+            ]
         )
-        total_indirect = sum(
-            year.get("indirect_costs", 0)
-            for year in budget_data.get("years", [])
-        )
-        update_parts.extend([
-            "total_direct_costs = :total_direct",
-            "total_indirect_costs = :total_indirect",
-            "total_budget = :total_budget",
-        ])
         params["total_direct"] = total_direct
         params["total_indirect"] = total_indirect
         params["total_budget"] = total_direct + total_indirect
@@ -571,10 +562,7 @@ async def update_budget(
         update_parts.append("notes = :notes")
         params["notes"] = request.notes
 
-    await db.execute(
-        text(f"UPDATE user_budgets SET {', '.join(update_parts)} WHERE id = :id"),
-        params
-    )
+    await db.execute(text(f"UPDATE user_budgets SET {', '.join(update_parts)} WHERE id = :id"), params)
     await db.commit()
 
     # Return updated budget
@@ -594,7 +582,7 @@ async def delete_budget(
 
     result = await db.execute(
         text("DELETE FROM user_budgets WHERE id = :id AND user_id = :user_id RETURNING id"),
-        {"id": str(budget_id), "user_id": str(current_user.id)}
+        {"id": str(budget_id), "user_id": str(current_user.id)},
     )
 
     if not result.fetchone():

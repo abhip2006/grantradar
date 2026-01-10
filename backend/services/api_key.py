@@ -2,6 +2,7 @@
 API Key Service
 Functions for creating, validating, and managing API keys.
 """
+
 import hashlib
 import logging
 import secrets
@@ -134,7 +135,7 @@ async def validate_api_key(
         select(APIKey).where(
             and_(
                 APIKey.key_hash == key_hash,
-                APIKey.is_active == True,
+                APIKey.is_active,
             )
         )
     )
@@ -156,9 +157,7 @@ async def validate_api_key(
         required = set(required_scopes)
         if not required.issubset(key_scopes):
             missing = required - key_scopes
-            logger.debug(
-                f"API key {api_key_record.id} missing required scopes: {missing}"
-            )
+            logger.debug(f"API key {api_key_record.id} missing required scopes: {missing}")
             return None
 
     return api_key_record
@@ -243,7 +242,7 @@ async def list_user_keys(
     query = select(APIKey).where(APIKey.user_id == user_id)
 
     if not include_inactive:
-        query = query.where(APIKey.is_active == True)
+        query = query.where(APIKey.is_active)
 
     query = query.order_by(APIKey.created_at.desc())
 

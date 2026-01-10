@@ -2,6 +2,7 @@
 Forecast Service for GrantRadar
 Predict upcoming grant opportunities based on historical patterns.
 """
+
 import calendar
 from collections import defaultdict
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models import Grant, LabProfile, User
+from backend.models import Grant, LabProfile
 from backend.utils.fiscal_calendar import (
     FiscalCalendar,
     is_federal_funder,
@@ -20,8 +21,19 @@ from backend.utils.fiscal_calendar import (
 
 
 MONTH_NAMES = [
-    "", "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 
@@ -120,7 +132,7 @@ def calculate_confidence(grant_count: int, years_span: int, consistency: float) 
     years_factor = min(years_span / 3.0, 1.0)
 
     # Combine factors with weights
-    confidence = (count_factor * 0.4 + years_factor * 0.3 + consistency * 0.3)
+    confidence = count_factor * 0.4 + years_factor * 0.3 + consistency * 0.3
 
     return round(min(confidence, 1.0), 2)
 
@@ -163,7 +175,7 @@ def calculate_typical_day(
 
     # Calculate variance
     variance = sum((d - avg_day) ** 2 for d in month_days) / len(month_days)
-    std_dev = variance ** 0.5
+    std_dev = variance**0.5
 
     # Confidence based on consistency:
     # std_dev of 0 = perfect consistency = 1.0 confidence
@@ -203,7 +215,9 @@ def predict_next_opening(
         # No pattern - predict based on last deadline
         if last_deadline:
             # Assume annual recurrence, use the actual day from last deadline
-            next_year = today.year + 1 if date(today.year, last_deadline.month, last_deadline.day) <= today else today.year
+            next_year = (
+                today.year + 1 if date(today.year, last_deadline.month, last_deadline.day) <= today else today.year
+            )
             # Handle edge case for Feb 29
             day = min(last_deadline.day, calendar.monthrange(next_year, last_deadline.month)[1])
             next_date = date(next_year, last_deadline.month, day)
@@ -296,7 +310,7 @@ async def analyze_funder_patterns(
 
         # Extract actual deadline dates (filter out None values and convert to date)
         historical_dates = []
-        for d in (row.deadline_dates or []):
+        for d in row.deadline_dates or []:
             if d is not None:
                 if isinstance(d, datetime):
                     historical_dates.append(d.date())
@@ -423,20 +437,14 @@ async def get_seasonal_trends(
     base_query = select(
         extract("month", Grant.deadline).label("month"),
         func.count(Grant.id).label("grant_count"),
-        func.avg(
-            func.coalesce(Grant.amount_max, Grant.amount_min, 0)
-        ).label("avg_amount"),
+        func.avg(func.coalesce(Grant.amount_max, Grant.amount_min, 0)).label("avg_amount"),
         func.array_agg(Grant.categories).label("all_categories"),
         func.array_agg(Grant.agency).label("all_agencies"),
-    ).where(
-        Grant.deadline.isnot(None)
-    )
+    ).where(Grant.deadline.isnot(None))
 
     # Filter by focus areas if provided
     if user_focus_areas:
-        or_conditions = [
-            Grant.categories.overlap(user_focus_areas)
-        ]
+        or_conditions = [Grant.categories.overlap(user_focus_areas)]
         base_query = base_query.where(or_(*or_conditions))
 
     query = base_query.group_by(extract("month", Grant.deadline))
@@ -452,7 +460,7 @@ async def get_seasonal_trends(
 
         # Count categories
         cat_counts = defaultdict(int)
-        for cat_list in (row.all_categories or []):
+        for cat_list in row.all_categories or []:
             if cat_list:
                 for cat in cat_list:
                     cat_counts[cat] += 1
@@ -460,12 +468,10 @@ async def get_seasonal_trends(
 
         # Count agencies
         agency_counts = defaultdict(int)
-        for agency in (row.all_agencies or []):
+        for agency in row.all_agencies or []:
             if agency:
                 agency_counts[agency] += 1
-        top_agencies = sorted(
-            agency_counts.keys(), key=lambda x: agency_counts[x], reverse=True
-        )[:5]
+        top_agencies = sorted(agency_counts.keys(), key=lambda x: agency_counts[x], reverse=True)[:5]
 
         month_data[month] = SeasonalTrendResult(
             month=month,
@@ -510,9 +516,7 @@ async def get_recommendations(
         limit: Maximum number of recommendations
     """
     # Get user's lab profile
-    profile_result = await db.execute(
-        select(LabProfile).where(LabProfile.user_id == user_id)
-    )
+    profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user_id))
     profile = profile_result.scalar_one_or_none()
 
     if not profile:
@@ -534,7 +538,7 @@ async def get_recommendations(
     # Score each forecast against user profile
     recommendations = []
     user_areas = set(profile.research_areas or [])
-    user_methods = set(profile.methods or [])
+    set(profile.methods or [])
 
     for forecast in forecasts:
         forecast_areas = set(forecast.focus_areas)
@@ -544,9 +548,7 @@ async def get_recommendations(
         area_score = len(area_overlap) / max(len(user_areas), 1) if user_areas else 0
 
         # Boost for recent activity
-        recency_boost = 0.1 if forecast.last_seen_date and (
-            date.today() - forecast.last_seen_date
-        ).days < 365 else 0
+        recency_boost = 0.1 if forecast.last_seen_date and (date.today() - forecast.last_seen_date).days < 365 else 0
 
         # Boost for high confidence
         confidence_boost = forecast.confidence * 0.2

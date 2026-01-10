@@ -2,10 +2,11 @@
 Tests for Funding Alerts API endpoints.
 Tests preferences management, alert preview, and scheduled delivery.
 """
+
 import pytest
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from backend.models import User, Grant, Match, Deadline, FundingAlertPreference, LabProfile
 from backend.schemas.alerts import AlertFrequency
@@ -30,10 +31,14 @@ def sample_alert_preferences():
 def mock_anthropic_insights():
     """Mock Anthropic response for insights generation."""
     return MagicMock(
-        content=[MagicMock(text="""Based on your profile, here are key insights:
+        content=[
+            MagicMock(
+                text="""Based on your profile, here are key insights:
 1. The NIH R01 deadline in 2 weeks should be your top priority
 2. NSF has increased funding for computational biology
-3. Consider the new K99/R00 mechanism for career development""")]
+3. Consider the new K99/R00 mechanism for career development"""
+            )
+        ]
     )
 
 
@@ -48,7 +53,7 @@ class TestFundingAlertPreferences:
 
         assert prefs is not None
         assert prefs.user_id == db_user.id
-        assert prefs.enabled == True  # Default
+        assert prefs.enabled  # Default
         assert prefs.frequency == "weekly"  # Default
         assert prefs.min_match_score == 70  # Default
 
@@ -68,7 +73,7 @@ class TestFundingAlertPreferences:
         service = FundingAlertsService()
         prefs = await service.get_or_create_preferences(async_session, db_user.id)
 
-        assert prefs.enabled == False
+        assert not prefs.enabled
         assert prefs.frequency == "daily"
         assert prefs.min_match_score == 80
 
@@ -91,10 +96,10 @@ class TestFundingAlertPreferences:
             preferred_funders=["DOE", "DOD"],
         )
 
-        assert updated.enabled == False
+        assert not updated.enabled
         assert updated.frequency == "daily"
         assert updated.min_match_score == 90
-        assert updated.include_insights == False
+        assert not updated.include_insights
         assert updated.preferred_funders == ["DOE", "DOD"]
 
     @pytest.mark.asyncio
@@ -113,7 +118,7 @@ class TestFundingAlertPreferences:
         )
 
         assert updated.frequency == "monthly"
-        assert updated.enabled == True  # Unchanged
+        assert updated.enabled  # Unchanged
         assert updated.min_match_score == 70  # Unchanged
 
 
@@ -134,7 +139,7 @@ class TestAlertPreview:
         service = FundingAlertsService()
         preview = await service.preview_alert(async_session, db_user)
 
-        assert preview.would_send == False
+        assert not preview.would_send
         assert "disabled" in preview.reason.lower()
         assert len(preview.new_grants) == 0
         assert len(preview.upcoming_deadlines) == 0
@@ -145,7 +150,7 @@ class TestAlertPreview:
         service = FundingAlertsService()
         preview = await service.preview_alert(async_session, db_user)
 
-        assert preview.would_send == False
+        assert not preview.would_send
         assert "no" in preview.reason.lower()
 
     @pytest.mark.asyncio
@@ -162,7 +167,7 @@ class TestAlertPreview:
         async_session.add(match)
         await async_session.commit()
 
-        with patch('backend.services.funding_alerts.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = MagicMock(
                 content=[MagicMock(text="Focus on the high-scoring NIH grant.")]
             )
@@ -171,7 +176,7 @@ class TestAlertPreview:
             service.client = mock_client.return_value
             preview = await service.preview_alert(async_session, db_user)
 
-            assert preview.would_send == True
+            assert preview.would_send
             assert len(preview.new_grants) >= 1
             assert preview.new_grants[0].match_score >= 70
 
@@ -190,7 +195,7 @@ class TestAlertPreview:
         async_session.add(deadline)
         await async_session.commit()
 
-        with patch('backend.services.funding_alerts.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = MagicMock(
                 content=[MagicMock(text="Don't miss the R01 deadline!")]
             )
@@ -199,7 +204,7 @@ class TestAlertPreview:
             service.client = mock_client.return_value
             preview = await service.preview_alert(async_session, db_user)
 
-            assert preview.would_send == True
+            assert preview.would_send
             assert len(preview.upcoming_deadlines) >= 1
             assert preview.upcoming_deadlines[0].days_until <= 30
 
@@ -268,7 +273,7 @@ class TestAlertPreview:
             async_session.add(match)
         await async_session.commit()
 
-        with patch('backend.services.funding_alerts.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = MagicMock(
                 content=[MagicMock(text="Focus on NIH opportunities.")]
             )
@@ -287,7 +292,7 @@ class TestAlertEmailGeneration:
 
     def test_generate_email_html_with_grants(self):
         """Test email generation includes grant summaries."""
-        from backend.schemas.alerts import AlertGrantSummary, AlertDeadlineSummary, FundingAlertPreview
+        from backend.schemas.alerts import AlertGrantSummary, FundingAlertPreview
 
         user = MagicMock(spec=User)
         user.name = "Dr. Smith"
@@ -322,7 +327,7 @@ class TestAlertEmailGeneration:
 
     def test_generate_email_html_with_deadlines(self):
         """Test email generation includes deadline summaries."""
-        from backend.schemas.alerts import AlertGrantSummary, AlertDeadlineSummary, FundingAlertPreview
+        from backend.schemas.alerts import AlertDeadlineSummary, FundingAlertPreview
 
         user = MagicMock(spec=User)
         user.name = "Researcher"
@@ -376,9 +381,7 @@ class TestInsightsGeneration:
     """Tests for AI insights generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_insights_with_content(
-        self, async_session, db_user, mock_anthropic_insights
-    ):
+    async def test_generate_insights_with_content(self, async_session, db_user, mock_anthropic_insights):
         """Test insights generation with grants and deadlines."""
         from backend.schemas.alerts import AlertGrantSummary, AlertDeadlineSummary
 
@@ -405,15 +408,13 @@ class TestInsightsGeneration:
             )
         ]
 
-        with patch('backend.services.funding_alerts.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.return_value = mock_anthropic_insights
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
 
-            insights = await service._generate_insights(
-                async_session, db_user, grants, deadlines
-            )
+            insights = await service._generate_insights(async_session, db_user, grants, deadlines)
 
             assert insights is not None
             assert len(insights) > 0
@@ -436,15 +437,13 @@ class TestInsightsGeneration:
             )
         ]
 
-        with patch('backend.services.funding_alerts.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
             mock_client.return_value.messages.create.side_effect = Exception("API Error")
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
 
-            insights = await service._generate_insights(
-                async_session, db_user, grants, []
-            )
+            insights = await service._generate_insights(async_session, db_user, grants, [])
 
             # Should return None on error, not raise
             assert insights is None
@@ -470,9 +469,7 @@ class TestInsightsGeneration:
         service = FundingAlertsService()
         service.client = None  # No client configured
 
-        insights = await service._generate_insights(
-            async_session, db_user, grants, []
-        )
+        insights = await service._generate_insights(async_session, db_user, grants, [])
 
         # Should return None when no client configured
         assert insights is None
@@ -508,25 +505,21 @@ class TestPreferencesWithLabProfile:
             )
         ]
 
-        with patch('backend.services.funding_alerts.anthropic.Anthropic') as mock_client:
+        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
             # Check that the prompt includes profile information
             captured_prompt = None
 
             def capture_create(**kwargs):
                 nonlocal captured_prompt
-                captured_prompt = kwargs.get('messages', [{}])[0].get('content', '')
-                return MagicMock(
-                    content=[MagicMock(text="Based on your ML background, consider the K99.")]
-                )
+                captured_prompt = kwargs.get("messages", [{}])[0].get("content", "")
+                return MagicMock(content=[MagicMock(text="Based on your ML background, consider the K99.")])
 
             mock_client.return_value.messages.create.side_effect = capture_create
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
 
-            insights = await service._generate_insights(
-                async_session, db_user, grants, []
-            )
+            await service._generate_insights(async_session, db_user, grants, [])
 
             # Verify profile context was included in the prompt
             assert "Machine Learning" in captured_prompt or "early_career" in captured_prompt

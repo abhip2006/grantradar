@@ -7,6 +7,7 @@ Provides cross-process communication through Redis pub/sub, enabling:
 - Multiple WebSocket server instances to stay synchronized
 - Decoupled notification logic from event sources
 """
+
 import json
 import logging
 from datetime import datetime
@@ -15,7 +16,6 @@ from uuid import UUID
 
 import redis.asyncio as aioredis
 import redis as sync_redis
-from pydantic import BaseModel
 
 from backend.core.config import settings
 from backend.core.events import (
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Notification Service (Async)
 # =============================================================================
+
 
 class NotificationService:
     """
@@ -109,10 +110,7 @@ class NotificationService:
         message_str = json.dumps(message, default=str)
         subscribers = await redis_client.publish(channel, message_str)
 
-        logger.debug(
-            f"Published {event_type} to {channel}: "
-            f"subscribers={subscribers}, user_id={user_id}"
-        )
+        logger.debug(f"Published {event_type} to {channel}: subscribers={subscribers}, user_id={user_id}")
 
         return subscribers
 
@@ -323,6 +321,7 @@ class NotificationService:
 # Notification Service (Sync) - For Celery Workers
 # =============================================================================
 
+
 class SyncNotificationService:
     """
     Synchronous notification service for Celery workers.
@@ -398,10 +397,7 @@ class SyncNotificationService:
         message_str = json.dumps(message, default=str)
         subscribers = redis_client.publish(channel, message_str)
 
-        logger.debug(
-            f"Published {event_type} to {channel}: "
-            f"subscribers={subscribers}, user_id={user_id}"
-        )
+        logger.debug(f"Published {event_type} to {channel}: subscribers={subscribers}, user_id={user_id}")
 
         return subscribers
 

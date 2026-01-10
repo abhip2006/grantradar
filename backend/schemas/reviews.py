@@ -2,23 +2,20 @@
 Review workflow schemas for request/response models.
 Provides Pydantic models for internal review workflow API endpoints.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, computed_field, field_validator, model_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
-from backend.schemas.common import PaginatedResponse, PaginationInfo
-from backend.schemas.jsonb_types import (
-    WorkflowStageDict,
-    TeamMemberPermissionsDict,
-    ReviewActionMetadataDict,
-)
+from backend.schemas.common import PaginationInfo
 
 
 class ReviewStatus(str, Enum):
     """Status values for application reviews."""
+
     PENDING = "pending"
     IN_REVIEW = "in_review"
     APPROVED = "approved"
@@ -28,6 +25,7 @@ class ReviewStatus(str, Enum):
 
 class ReviewAction(str, Enum):
     """Actions that can be taken during a review."""
+
     APPROVED = "approved"
     REJECTED = "rejected"
     RETURNED = "returned"
@@ -36,6 +34,7 @@ class ReviewAction(str, Enum):
 
 class TeamMemberRole(str, Enum):
     """Roles for application team members."""
+
     PI = "pi"
     CO_I = "co_i"
     GRANT_WRITER = "grant_writer"
@@ -66,8 +65,10 @@ ROLE_CONFIG = {
 # Workflow Stage Schemas
 # ============================================================================
 
+
 class WorkflowStage(BaseModel):
     """Schema for a workflow stage configuration."""
+
     order: int = Field(..., ge=0, description="Stage order (0-indexed)")
     name: str = Field(..., min_length=1, max_length=100, description="Stage name")
     required_role: Optional[TeamMemberRole] = Field(None, description="Required role to approve this stage")
@@ -84,7 +85,9 @@ class WorkflowStageResponse(WorkflowStage):
     def role_config(self) -> Optional[dict]:
         """Get role display configuration."""
         if self.required_role:
-            return ROLE_CONFIG.get(self.required_role, {"label": self.required_role.value, "short": self.required_role.value})
+            return ROLE_CONFIG.get(
+                self.required_role, {"label": self.required_role.value, "short": self.required_role.value}
+            )
         return None
 
 
@@ -92,8 +95,10 @@ class WorkflowStageResponse(WorkflowStage):
 # Review Workflow Schemas
 # ============================================================================
 
+
 class ReviewWorkflowCreate(BaseModel):
     """Schema for creating a new review workflow."""
+
     name: str = Field(..., min_length=1, max_length=255, description="Workflow name")
     description: Optional[str] = Field(None, max_length=2000, description="Workflow description")
     stages: List[WorkflowStage] = Field(..., min_length=1, description="Workflow stages")
@@ -122,6 +127,7 @@ class ReviewWorkflowCreate(BaseModel):
 
 class ReviewWorkflowUpdate(BaseModel):
     """Schema for updating a review workflow."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=255, description="Workflow name")
     description: Optional[str] = Field(None, max_length=2000, description="Workflow description")
     stages: Optional[List[WorkflowStage]] = Field(None, min_length=1, description="Workflow stages")
@@ -154,6 +160,7 @@ class ReviewWorkflowUpdate(BaseModel):
 
 class ReviewWorkflowResponse(BaseModel):
     """Schema for review workflow response."""
+
     id: UUID = Field(..., description="Workflow ID")
     user_id: UUID = Field(..., description="Owner user ID")
     name: str = Field(..., description="Workflow name")
@@ -176,6 +183,7 @@ class ReviewWorkflowResponse(BaseModel):
 
 class ReviewWorkflowList(BaseModel):
     """Schema for list of review workflows (standard paginated format)."""
+
     data: List[ReviewWorkflowResponse] = Field(..., description="List of workflows")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -195,13 +203,16 @@ class ReviewWorkflowList(BaseModel):
 # Application Review Schemas
 # ============================================================================
 
+
 class StartReviewRequest(BaseModel):
     """Schema for starting a review process."""
+
     workflow_id: Optional[UUID] = Field(None, description="Workflow ID (uses default if not provided)")
 
 
 class ReviewActionRequest(BaseModel):
     """Schema for submitting a review action."""
+
     action: ReviewAction = Field(..., description="Action to take")
     comments: Optional[str] = Field(None, max_length=5000, description="Comments/feedback")
     metadata: Optional[dict[str, Any]] = Field(None, description="Additional action metadata")
@@ -209,6 +220,7 @@ class ReviewActionRequest(BaseModel):
 
 class ReviewStageActionResponse(BaseModel):
     """Schema for a review stage action response."""
+
     id: UUID = Field(..., description="Action ID")
     review_id: UUID = Field(..., description="Review ID")
     stage_order: int = Field(..., description="Stage index when action was taken")
@@ -239,6 +251,7 @@ class ReviewStageActionResponse(BaseModel):
 
 class ApplicationReviewResponse(BaseModel):
     """Schema for application review response."""
+
     id: UUID = Field(..., description="Review ID")
     kanban_card_id: UUID = Field(..., description="Application ID")
     workflow_id: Optional[UUID] = Field(None, description="Workflow ID")
@@ -278,6 +291,7 @@ class ApplicationReviewResponse(BaseModel):
 
 class ReviewHistoryResponse(BaseModel):
     """Schema for review history (all actions)."""
+
     review: ApplicationReviewResponse = Field(..., description="Review details")
     actions: List[ReviewStageActionResponse] = Field(..., description="All actions taken")
 
@@ -286,8 +300,10 @@ class ReviewHistoryResponse(BaseModel):
 # Team Member Schemas
 # ============================================================================
 
+
 class TeamMemberPermissions(BaseModel):
     """Schema for team member permissions."""
+
     can_edit: bool = Field(True, description="Can edit application content")
     can_approve: bool = Field(False, description="Can approve review stages")
     can_submit: bool = Field(False, description="Can submit the application")
@@ -296,6 +312,7 @@ class TeamMemberPermissions(BaseModel):
 
 class AddTeamMemberRequest(BaseModel):
     """Schema for adding a team member to an application."""
+
     user_id: Optional[UUID] = Field(None, description="User ID (if known)")
     email: Optional[str] = Field(None, description="User email (to invite)")
     role: TeamMemberRole = Field(..., description="Role in the application")
@@ -304,12 +321,14 @@ class AddTeamMemberRequest(BaseModel):
 
 class UpdateTeamMemberRequest(BaseModel):
     """Schema for updating a team member."""
+
     role: Optional[TeamMemberRole] = Field(None, description="New role")
     permissions: Optional[TeamMemberPermissions] = Field(None, description="Updated permissions")
 
 
 class TeamMemberResponse(BaseModel):
     """Schema for team member response."""
+
     id: UUID = Field(..., description="Team member record ID")
     kanban_card_id: UUID = Field(..., description="Application ID")
     user_id: UUID = Field(..., description="User ID")
@@ -345,6 +364,7 @@ class TeamMemberResponse(BaseModel):
 
 class TeamMemberList(BaseModel):
     """Schema for list of team members (standard paginated format)."""
+
     data: List[TeamMemberResponse] = Field(..., description="List of team members")
     pagination: PaginationInfo = Field(..., description="Pagination metadata")
 
@@ -369,10 +389,28 @@ DEFAULT_WORKFLOWS = {
         "name": "Standard Review",
         "description": "Standard internal review workflow for grant applications",
         "stages": [
-            {"order": 0, "name": "Draft Review", "required_role": "grant_writer", "sla_hours": 48, "auto_escalate": False},
+            {
+                "order": 0,
+                "name": "Draft Review",
+                "required_role": "grant_writer",
+                "sla_hours": 48,
+                "auto_escalate": False,
+            },
             {"order": 1, "name": "PI Review", "required_role": "pi", "sla_hours": 72, "auto_escalate": True},
-            {"order": 2, "name": "Department Approval", "required_role": "admin", "sla_hours": 96, "auto_escalate": True},
-            {"order": 3, "name": "Sponsored Programs", "required_role": "admin", "sla_hours": 120, "auto_escalate": True},
+            {
+                "order": 2,
+                "name": "Department Approval",
+                "required_role": "admin",
+                "sla_hours": 96,
+                "auto_escalate": True,
+            },
+            {
+                "order": 3,
+                "name": "Sponsored Programs",
+                "required_role": "admin",
+                "sla_hours": 120,
+                "auto_escalate": True,
+            },
         ],
     },
     "quick": {
@@ -387,12 +425,24 @@ DEFAULT_WORKFLOWS = {
         "name": "Comprehensive Review",
         "description": "Full review cycle for major grants",
         "stages": [
-            {"order": 0, "name": "Draft Review", "required_role": "grant_writer", "sla_hours": 48, "auto_escalate": False},
+            {
+                "order": 0,
+                "name": "Draft Review",
+                "required_role": "grant_writer",
+                "sla_hours": 48,
+                "auto_escalate": False,
+            },
             {"order": 1, "name": "Co-I Review", "required_role": "co_i", "sla_hours": 72, "auto_escalate": False},
             {"order": 2, "name": "PI Review", "required_role": "pi", "sla_hours": 72, "auto_escalate": True},
             {"order": 3, "name": "Department Chair", "required_role": "admin", "sla_hours": 96, "auto_escalate": True},
             {"order": 4, "name": "College Review", "required_role": "admin", "sla_hours": 96, "auto_escalate": True},
-            {"order": 5, "name": "Sponsored Programs", "required_role": "admin", "sla_hours": 120, "auto_escalate": True},
+            {
+                "order": 5,
+                "name": "Sponsored Programs",
+                "required_role": "admin",
+                "sla_hours": 120,
+                "auto_escalate": True,
+            },
         ],
     },
 }
@@ -400,6 +450,7 @@ DEFAULT_WORKFLOWS = {
 
 class DefaultWorkflowResponse(BaseModel):
     """Schema for default workflow template."""
+
     key: str = Field(..., description="Template key")
     name: str = Field(..., description="Template name")
     description: str = Field(..., description="Template description")

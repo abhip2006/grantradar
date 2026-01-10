@@ -1,4 +1,5 @@
 """Authorization utilities for API endpoints."""
+
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -24,9 +25,7 @@ async def verify_card_ownership(db: AsyncSession, card_id: UUID, user_id: UUID) 
         HTTPException 403 if user does not own the card
         HTTPException 404 if card does not exist
     """
-    result = await db.execute(
-        select(GrantApplication).where(GrantApplication.id == card_id)
-    )
+    result = await db.execute(select(GrantApplication).where(GrantApplication.id == card_id))
     card = result.scalar_one_or_none()
 
     if card is None:

@@ -9,25 +9,24 @@ The Orchestrator is the central nervous system of GrantRadar, responsible for:
 - Circuit breaker management for graceful degradation
 - Auto-scaling decisions for Celery workers
 """
+
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Callable, Optional
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import redis.asyncio as redis
 
 from backend.celery_app import (
     CircuitBreaker,
-    CircuitBreakerOpenError,
     celery_app,
     grants_gov_circuit,
     nih_circuit,
     nsf_circuit,
 )
 from backend.core.config import settings
-from backend.core.events import PriorityLevel
-from backend.events import EventBus, StreamNames, get_event_bus
+from backend.events import EventBus, get_event_bus
 
 from .health import HealthChecker, get_health_checker
 from .metrics import MetricsCollector, get_metrics_collector
@@ -36,11 +35,9 @@ from .models import (
     AgentType,
     CircuitBreakerState,
     CircuitState,
-    HealthStatus,
     OnCallAlert,
     PipelineStage,
     PipelineState,
-    SystemMetrics,
     WorkerScalingDecision,
 )
 
@@ -128,9 +125,7 @@ class LLMCircuitBreaker:
             failure_count=self._circuit._failure_count,
             failure_threshold=self._circuit.failure_threshold,
             last_failure_time=(
-                datetime.fromtimestamp(self._circuit._last_failure_time)
-                if self._circuit._last_failure_time
-                else None
+                datetime.fromtimestamp(self._circuit._last_failure_time) if self._circuit._last_failure_time else None
             ),
             recovery_timeout_seconds=self._circuit.recovery_timeout,
             fallback_service=f"llm_{self.fallback_provider}",
@@ -197,9 +192,7 @@ class PipelineTracker:
         )
 
         self._pipelines[str(grant_id)] = state
-        logger.info(
-            f"Pipeline started for grant {grant_id} with priority {priority}"
-        )
+        logger.info(f"Pipeline started for grant {grant_id} with priority {priority}")
 
         return state
 
@@ -241,10 +234,7 @@ class PipelineTracker:
             state.model_dump_json(),
         )
 
-        logger.info(
-            f"Pipeline {grant_id}: {from_stage.value} -> {to_stage.value} "
-            f"(latency: {latency:.2f}s)"
-        )
+        logger.info(f"Pipeline {grant_id}: {from_stage.value} -> {to_stage.value} (latency: {latency:.2f}s)")
 
         return state, latency
 
@@ -268,10 +258,7 @@ class PipelineTracker:
 
         # Log if exceeded target
         if total_latency > self.TOTAL_TARGET:
-            logger.warning(
-                f"Pipeline {grant_id} exceeded target latency: "
-                f"{total_latency:.2f}s > {self.TOTAL_TARGET}s"
-            )
+            logger.warning(f"Pipeline {grant_id} exceeded target latency: {total_latency:.2f}s > {self.TOTAL_TARGET}s")
 
         # Cleanup
         del self._pipelines[str(grant_id)]
@@ -319,9 +306,7 @@ class PipelineTracker:
         now = datetime.utcnow()
 
         for state in self._pipelines.values():
-            current_stage_time = state.stage_timestamps.get(
-                state.current_stage.value
-            )
+            current_stage_time = state.stage_timestamps.get(state.current_stage.value)
             if current_stage_time:
                 elapsed = (now - current_stage_time).total_seconds()
                 if elapsed > stall_threshold_seconds:
@@ -602,8 +587,7 @@ class Orchestrator:
                     severity="critical",
                     title=f"Agent {agent_name} is down",
                     message=(
-                        f"Agent {agent_name} has been unhealthy for "
-                        f"{agent_health.downtime_seconds():.0f} seconds"
+                        f"Agent {agent_name} has been unhealthy for {agent_health.downtime_seconds():.0f} seconds"
                     ),
                     agent_name=agent_name,
                     downtime=agent_health.downtime_seconds(),
@@ -618,10 +602,7 @@ class Orchestrator:
                 await self._trigger_on_call_alert(
                     severity="warning",
                     title=f"Endpoint {endpoint_name} is unhealthy",
-                    message=(
-                        f"Endpoint {endpoint_name} has failed "
-                        f"{failures} consecutive health checks"
-                    ),
+                    message=(f"Endpoint {endpoint_name} has failed {failures} consecutive health checks"),
                     endpoint_name=endpoint_name,
                 )
 
@@ -660,10 +641,7 @@ class Orchestrator:
         stalled = await self._pipeline_tracker.get_stalled_pipelines()
 
         for pipeline in stalled:
-            logger.warning(
-                f"Stalled pipeline detected: {pipeline.grant_id} "
-                f"at stage {pipeline.current_stage.value}"
-            )
+            logger.warning(f"Stalled pipeline detected: {pipeline.grant_id} at stage {pipeline.current_stage.value}")
 
             # Could implement retry logic here
             if pipeline.retry_count < 3:
@@ -765,10 +743,7 @@ class Orchestrator:
         if self._metrics_collector:
             await self._metrics_collector.record_agent_success(AgentType.DISCOVERY)
 
-        logger.info(
-            f"Grant discovered: {grant_id} from {source} "
-            f"with priority {priority}"
-        )
+        logger.info(f"Grant discovered: {grant_id} from {source} with priority {priority}")
 
         return priority
 
@@ -807,8 +782,7 @@ class Orchestrator:
         # Check if validation was fast enough
         if latency > PipelineTracker.VALIDATION_TARGET:
             logger.warning(
-                f"Validation latency ({latency:.2f}s) exceeded target "
-                f"({PipelineTracker.VALIDATION_TARGET}s)"
+                f"Validation latency ({latency:.2f}s) exceeded target ({PipelineTracker.VALIDATION_TARGET}s)"
             )
 
     async def handle_matches_computed(
@@ -848,10 +822,7 @@ class Orchestrator:
         # Upgrade priority if high match found
         if top_score >= 0.95 and state.priority != "critical":
             state.priority = "critical"
-            logger.info(
-                f"Upgraded pipeline {grant_id} to critical priority "
-                f"due to high match ({top_score:.2%})"
-            )
+            logger.info(f"Upgraded pipeline {grant_id} to critical priority due to high match ({top_score:.2%})")
 
     async def handle_alerts_sent(
         self,
@@ -901,10 +872,7 @@ class Orchestrator:
                 await self._metrics_collector.record_alert_sent("email")
                 await self._metrics_collector.record_alert_delivered("email")
 
-        logger.info(
-            f"Pipeline completed for {grant_id}: "
-            f"{alert_count} alerts sent in {total_latency:.2f}s"
-        )
+        logger.info(f"Pipeline completed for {grant_id}: {alert_count} alerts sent in {total_latency:.2f}s")
 
         return total_latency
 
@@ -1006,8 +974,7 @@ class Orchestrator:
 
         # Circuit breakers
         status["circuit_breakers"] = {
-            name: state.model_dump()
-            for name, state in self.get_circuit_breaker_states().items()
+            name: state.model_dump() for name, state in self.get_circuit_breaker_states().items()
         }
 
         return status

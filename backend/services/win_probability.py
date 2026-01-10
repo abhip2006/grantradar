@@ -2,6 +2,7 @@
 Win Probability Service
 Calculates estimated success probability for grant applications.
 """
+
 from typing import Optional
 from dataclasses import dataclass
 
@@ -15,23 +16,19 @@ NIH_SUCCESS_RATES = {
     "R15": 0.28,  # 28% - AREA grants
     "R35": 0.15,  # 15% - outstanding investigator
     "U01": 0.22,  # 22% - cooperative agreements
-
     # Career development
     "K01": 0.35,  # 35% - mentored research scientist
     "K08": 0.38,  # 38% - mentored clinical scientist
     "K23": 0.40,  # 40% - patient-oriented research
     "K99": 0.32,  # 32% - pathway to independence
-
     # Training
     "F31": 0.28,  # 28% - predoctoral fellowship
     "F32": 0.30,  # 30% - postdoctoral fellowship
     "T32": 0.25,  # 25% - training grants
-
     # Program/Center grants
     "P01": 0.18,  # 18% - research program project
     "P30": 0.20,  # 20% - center core grants
     "P50": 0.15,  # 15% - specialized centers
-
     # SBIR/STTR
     "R41": 0.22,  # SBIR Phase I
     "R42": 0.45,  # SBIR Phase II (higher if Phase I funded)
@@ -62,6 +59,7 @@ DEFAULT_RATES = {
 @dataclass
 class WinProbabilityEstimate:
     """Win probability estimate with confidence and factors."""
+
     probability: float  # 0-1
     confidence: str  # "high", "medium", "low"
     mechanism_rate: Optional[float]

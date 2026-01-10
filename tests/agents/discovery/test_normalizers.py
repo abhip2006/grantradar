@@ -1,7 +1,7 @@
 """
 Tests for grant data normalizers.
 """
-import pytest
+
 from decimal import Decimal
 
 from agents.discovery.normalizers import (
@@ -159,38 +159,29 @@ class TestGrantNormalizerCategoryExtraction:
 
     def test_extract_biomedical(self):
         """Test biomedical category extraction."""
-        categories = GrantNormalizer.extract_categories(
-            description="This health research addresses medical treatment"
-        )
+        categories = GrantNormalizer.extract_categories(description="This health research addresses medical treatment")
         assert "biomedical" in categories
 
     def test_extract_cancer(self):
         """Test cancer category extraction."""
-        categories = GrantNormalizer.extract_categories(
-            description="Novel approaches to tumor oncology research"
-        )
+        categories = GrantNormalizer.extract_categories(description="Novel approaches to tumor oncology research")
         assert "cancer" in categories
 
     def test_extract_ai_ml(self):
         """Test AI/ML category extraction."""
         categories = GrantNormalizer.extract_categories(
-            program_name="Machine Learning",
-            description="Deep learning and neural network methods"
+            program_name="Machine Learning", description="Deep learning and neural network methods"
         )
         assert "ai_ml" in categories
 
     def test_extract_multiple_categories(self):
         """Test extracting multiple categories."""
-        categories = GrantNormalizer.extract_categories(
-            description="Machine learning for cancer genomics research"
-        )
+        categories = GrantNormalizer.extract_categories(description="Machine learning for cancer genomics research")
         assert len(categories) >= 2
 
     def test_extract_from_keywords(self):
         """Test extraction from keywords."""
-        categories = GrantNormalizer.extract_categories(
-            keywords="climate, sustainability, environment"
-        )
+        categories = GrantNormalizer.extract_categories(keywords="climate, sustainability, environment")
         assert "climate" in categories
 
     def test_extract_empty(self):

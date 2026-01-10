@@ -2,6 +2,7 @@
 Tests for Digest Email Generation.
 Tests batching logic and digest email content generation.
 """
+
 import pytest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import MagicMock, AsyncMock, patch
@@ -12,10 +13,8 @@ from agents.delivery.models import (
     AlertPayload,
     AlertPriority,
     DeliveryChannel,
-    EmailContent,
     GrantInfo,
     MatchInfo,
-    UserInfo,
 )
 
 
@@ -23,9 +22,7 @@ class TestDigestEmailGeneration:
     """Tests for digest email generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_digest_email_single_alert(
-        self, sample_alert_payload, mock_anthropic_client
-    ):
+    async def test_generate_digest_email_single_alert(self, sample_alert_payload, mock_anthropic_client):
         """Test digest email generation with single alert."""
         agent = AlertDeliveryAgent()
         agent._anthropic_client = mock_anthropic_client
@@ -47,9 +44,7 @@ class TestDigestEmailGeneration:
         assert "88%" in content.body_html
 
     @pytest.mark.asyncio
-    async def test_generate_digest_email_multiple_alerts(
-        self, sample_alerts_for_digest, mock_anthropic_client
-    ):
+    async def test_generate_digest_email_multiple_alerts(self, sample_alerts_for_digest, mock_anthropic_client):
         """Test digest email generation with multiple alerts."""
         agent = AlertDeliveryAgent()
         agent._anthropic_client = mock_anthropic_client
@@ -72,9 +67,7 @@ class TestDigestEmailGeneration:
             assert alert.grant.title in content.body_html
 
     @pytest.mark.asyncio
-    async def test_generate_digest_email_sorts_by_score(
-        self, sample_alerts_for_digest, mock_anthropic_client
-    ):
+    async def test_generate_digest_email_sorts_by_score(self, sample_alerts_for_digest, mock_anthropic_client):
         """Test that digest sorts alerts by match score descending."""
         agent = AlertDeliveryAgent()
         agent._anthropic_client = mock_anthropic_client
@@ -96,20 +89,18 @@ class TestDigestEmailGeneration:
         assert first_grant_pos < second_grant_pos
 
     @pytest.mark.asyncio
-    async def test_generate_digest_email_limits_to_10_grants(
-        self, sample_user_info, mock_anthropic_client
-    ):
+    async def test_generate_digest_email_limits_to_10_grants(self, sample_user_info, mock_anthropic_client):
         """Test that digest limits to 10 grants."""
         # Create 15 alerts
         alerts = []
         for i in range(15):
             grant = GrantInfo(
                 grant_id=uuid4(),
-                title=f"Grant {i+1}",
-                description=f"Description {i+1}",
+                title=f"Grant {i + 1}",
+                description=f"Description {i + 1}",
                 funding_agency="NSF",
                 deadline=datetime.now(timezone.utc) + timedelta(days=30),
-                url=f"https://example.com/grant/{i+1}",
+                url=f"https://example.com/grant/{i + 1}",
             )
             match = MatchInfo(
                 match_id=uuid4(),
@@ -144,7 +135,7 @@ class TestDigestEmailGeneration:
         assert "Showing top 10" in content.body_html
         # Should contain first 10 grants
         for i in range(10):
-            assert f"Grant {i+1}" in content.body_html
+            assert f"Grant {i + 1}" in content.body_html
         # Should not contain grants 11-15
         assert "Grant 11" not in content.body_html
 
@@ -161,9 +152,7 @@ class TestDigestEmailGeneration:
         assert content is None
 
     @pytest.mark.asyncio
-    async def test_generate_digest_email_llm_failure_fallback(
-        self, sample_alert_payload
-    ):
+    async def test_generate_digest_email_llm_failure_fallback(self, sample_alert_payload):
         """Test fallback when LLM fails to generate intro."""
         agent = AlertDeliveryAgent()
         mock_client = MagicMock()
@@ -190,9 +179,7 @@ class TestSendDigestEmail:
     """Tests for sending digest emails."""
 
     @pytest.mark.asyncio
-    async def test_send_digest_email_success(
-        self, sample_alerts_for_digest, mock_anthropic_client
-    ):
+    async def test_send_digest_email_success(self, sample_alerts_for_digest, mock_anthropic_client):
         """Test successful digest email sending."""
         agent = AlertDeliveryAgent()
         agent._anthropic_client = mock_anthropic_client
@@ -224,15 +211,11 @@ class TestSendDigestEmail:
         assert status is None
 
     @pytest.mark.asyncio
-    async def test_send_digest_email_generation_failure(
-        self, sample_alerts_for_digest
-    ):
+    async def test_send_digest_email_generation_failure(self, sample_alerts_for_digest):
         """Test handling when digest generation fails."""
         agent = AlertDeliveryAgent()
 
-        with patch.object(
-            agent, "_generate_digest_email_content", new_callable=AsyncMock
-        ) as mock_gen:
+        with patch.object(agent, "_generate_digest_email_content", new_callable=AsyncMock) as mock_gen:
             mock_gen.return_value = None
 
             status = await agent._send_digest_email(sample_alerts_for_digest)
@@ -256,9 +239,7 @@ class TestProcessDigestBatch:
 
         assert result["alerts_processed"] == 0
 
-    def test_process_digest_batch_with_alerts(
-        self, mock_redis_client, sample_alert_payload
-    ):
+    def test_process_digest_batch_with_alerts(self, mock_redis_client, sample_alert_payload):
         """Test processing with batched alerts."""
         with patch("agents.delivery.alerter.AlertDeliveryAgent") as mock_agent_class:
             mock_agent = MagicMock()
@@ -266,9 +247,7 @@ class TestProcessDigestBatch:
             mock_agent.DIGEST_KEY_PREFIX = "digest:pending:"
 
             # Mock Redis returning alert data
-            mock_redis_client.lrange.return_value = [
-                sample_alert_payload.model_dump_json()
-            ]
+            mock_redis_client.lrange.return_value = [sample_alert_payload.model_dump_json()]
 
             # Mock the send method
             mock_status = MagicMock()
@@ -290,9 +269,7 @@ class TestDigestPlainText:
     """Tests for plain text digest generation."""
 
     @pytest.mark.asyncio
-    async def test_plain_text_includes_all_grants(
-        self, sample_alerts_for_digest, mock_anthropic_client
-    ):
+    async def test_plain_text_includes_all_grants(self, sample_alerts_for_digest, mock_anthropic_client):
         """Test that plain text includes all grant info."""
         agent = AlertDeliveryAgent()
         agent._anthropic_client = mock_anthropic_client
@@ -317,9 +294,7 @@ class TestDigestPlainText:
             assert alert.grant.url in content.body_text
 
     @pytest.mark.asyncio
-    async def test_plain_text_includes_scores(
-        self, sample_alerts_for_digest, mock_anthropic_client
-    ):
+    async def test_plain_text_includes_scores(self, sample_alerts_for_digest, mock_anthropic_client):
         """Test that plain text includes match scores."""
         agent = AlertDeliveryAgent()
         agent._anthropic_client = mock_anthropic_client

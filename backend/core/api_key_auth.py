@@ -2,6 +2,7 @@
 API Key Authentication Dependency
 FastAPI dependency for validating API key authentication from X-API-Key header.
 """
+
 import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Annotated, Any, List, Optional
@@ -158,8 +159,7 @@ class APIKeyOrBearerAuth:
                 return (api_key, None)
 
         # Fall back to Bearer token
-        from backend.api.deps import get_current_user_optional
-        from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+        from fastapi.security import HTTPBearer
 
         # Try to get Bearer token
         bearer = HTTPBearer(auto_error=False)
@@ -171,11 +171,10 @@ class APIKeyOrBearerAuth:
 
             try:
                 from backend.models import User as UserModel
+
                 token_data = decode_token(credentials.credentials)
                 if token_data.exp and token_data.exp >= datetime.now(timezone.utc):
-                    result = await db.execute(
-                        select(UserModel).where(UserModel.id == token_data.user_id)
-                    )
+                    result = await db.execute(select(UserModel).where(UserModel.id == token_data.user_id))
                     user = result.scalar_one_or_none()
                     if user:
                         return (None, user)
@@ -209,9 +208,7 @@ async def get_api_key_user(
     from sqlalchemy import select
     from backend.models import User as UserModel
 
-    result = await db.execute(
-        select(UserModel).where(UserModel.id == api_key.user_id)
-    )
+    result = await db.execute(select(UserModel).where(UserModel.id == api_key.user_id))
     user = result.scalar_one_or_none()
 
     if not user:

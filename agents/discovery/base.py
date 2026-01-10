@@ -2,6 +2,7 @@
 Base Discovery Agent
 Abstract base class for all grant discovery agents with common functionality.
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -43,20 +44,14 @@ class DiscoveryAgent(ABC):
             source_name: Unique identifier for this data source (e.g., 'nsf', 'nih', 'grants_gov')
         """
         self.source_name = source_name
-        self.logger = structlog.get_logger().bind(
-            agent="discovery",
-            source=source_name
-        )
+        self.logger = structlog.get_logger().bind(agent="discovery", source=source_name)
         self._redis_client: Optional[redis.Redis] = None
 
     @property
     def redis_client(self) -> redis.Redis:
         """Lazy-loaded Redis client."""
         if self._redis_client is None:
-            self._redis_client = redis.from_url(
-                settings.redis_url,
-                decode_responses=True
-            )
+            self._redis_client = redis.from_url(settings.redis_url, decode_responses=True)
         return self._redis_client
 
     def _get_seen_key(self) -> str:
@@ -164,7 +159,7 @@ class DiscoveryAgent(ABC):
             "grant_published",
             external_id=grant_data.get("external_id"),
             title=grant_data.get("title", "")[:100],
-            message_id=message_id
+            message_id=message_id,
         )
 
         return message_id
@@ -185,11 +180,7 @@ class DiscoveryAgent(ABC):
                 msg_id = self.publish_grant(grant)
                 message_ids.append(msg_id)
             except Exception as e:
-                self.logger.error(
-                    "grant_publish_failed",
-                    external_id=grant.get("external_id"),
-                    error=str(e)
-                )
+                self.logger.error("grant_publish_failed", external_id=grant.get("external_id"), error=str(e))
         return message_ids
 
     @abstractmethod

@@ -2,8 +2,8 @@
 Saved Searches API Endpoints
 Create, list, update, delete, and apply saved search filters.
 """
+
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/saved-searches", tags=["Saved Searches"])
     response_model=SavedSearchResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create saved search",
-    description="Save a search filter combination with a name."
+    description="Save a search filter combination with a name.",
 )
 async def create_saved_search(
     saved_search: SavedSearchCreate,
@@ -67,7 +67,7 @@ async def create_saved_search(
     "",
     response_model=SavedSearchList,
     summary="List saved searches",
-    description="Get all saved searches for the current user."
+    description="Get all saved searches for the current user.",
 )
 async def list_saved_searches(
     db: AsyncSessionDep,
@@ -78,11 +78,7 @@ async def list_saved_searches(
 
     Results are ordered by creation date (newest first).
     """
-    query = (
-        select(SavedSearch)
-        .where(SavedSearch.user_id == current_user.id)
-        .order_by(SavedSearch.created_at.desc())
-    )
+    query = select(SavedSearch).where(SavedSearch.user_id == current_user.id).order_by(SavedSearch.created_at.desc())
 
     result = await db.execute(query)
     saved_searches = result.scalars().all()
@@ -107,7 +103,7 @@ async def list_saved_searches(
     "/{saved_search_id}",
     response_model=SavedSearchResponse,
     summary="Get saved search",
-    description="Get a specific saved search by ID."
+    description="Get a specific saved search by ID.",
 )
 async def get_saved_search(
     saved_search_id: UUID,
@@ -130,10 +126,7 @@ async def get_saved_search(
     saved_search = result.scalar_one_or_none()
 
     if not saved_search:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved search not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found")
 
     return SavedSearchResponse(
         id=saved_search.id,
@@ -149,7 +142,7 @@ async def get_saved_search(
     "/{saved_search_id}",
     response_model=SavedSearchResponse,
     summary="Update saved search",
-    description="Update a saved search's name, filters, or alert settings."
+    description="Update a saved search's name, filters, or alert settings.",
 )
 async def update_saved_search(
     saved_search_id: UUID,
@@ -173,10 +166,7 @@ async def update_saved_search(
     saved_search = result.scalar_one_or_none()
 
     if not saved_search:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved search not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found")
 
     # Update fields if provided
     if update_data.name is not None:
@@ -205,7 +195,7 @@ async def update_saved_search(
     "/{saved_search_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete saved search",
-    description="Delete a saved search."
+    description="Delete a saved search.",
 )
 async def delete_saved_search(
     saved_search_id: UUID,
@@ -228,10 +218,7 @@ async def delete_saved_search(
     saved_search = result.scalar_one_or_none()
 
     if not saved_search:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved search not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found")
 
     await db.delete(saved_search)
     await db.flush()
@@ -241,7 +228,7 @@ async def delete_saved_search(
     "/{saved_search_id}/apply",
     response_model=MatchList,
     summary="Apply saved search",
-    description="Get grants matching a saved search's filters."
+    description="Get grants matching a saved search's filters.",
 )
 async def apply_saved_search(
     saved_search_id: UUID,
@@ -267,23 +254,13 @@ async def apply_saved_search(
     saved_search = result.scalar_one_or_none()
 
     if not saved_search:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Saved search not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Saved search not found")
 
     filters = saved_search.filters
 
     # Build query based on saved filters
-    query = (
-        select(Match)
-        .options(joinedload(Match.grant))
-        .where(Match.user_id == current_user.id)
-    )
-    count_query = (
-        select(func.count(Match.id))
-        .where(Match.user_id == current_user.id)
-    )
+    query = select(Match).options(joinedload(Match.grant)).where(Match.user_id == current_user.id)
+    count_query = select(func.count(Match.id)).where(Match.user_id == current_user.id)
 
     # Apply filters from saved search
     filter_conditions = []
@@ -306,12 +283,7 @@ async def apply_saved_search(
         filter_conditions.append(Match.user_action == "saved")
     else:
         # By default, exclude dismissed
-        filter_conditions.append(
-            or_(
-                Match.user_action.is_(None),
-                Match.user_action != "dismissed"
-            )
-        )
+        filter_conditions.append(or_(Match.user_action.is_(None), Match.user_action != "dismissed"))
 
     # Amount filters
     min_amount = filters.get("min_amount")
@@ -322,19 +294,9 @@ async def apply_saved_search(
             count_query = count_query.join(Grant, Match.grant_id == Grant.id)
 
         if min_amount is not None:
-            filter_conditions.append(
-                or_(
-                    Grant.amount_min >= min_amount,
-                    Grant.amount_max >= min_amount
-                )
-            )
+            filter_conditions.append(or_(Grant.amount_min >= min_amount, Grant.amount_max >= min_amount))
         if max_amount is not None:
-            filter_conditions.append(
-                or_(
-                    Grant.amount_max <= max_amount,
-                    Grant.amount_min <= max_amount
-                )
-            )
+            filter_conditions.append(or_(Grant.amount_max <= max_amount, Grant.amount_min <= max_amount))
 
     # Active only filter
     active_only = filters.get("active_only")
@@ -342,12 +304,7 @@ async def apply_saved_search(
         if source is None and min_amount is None and max_amount is None:
             query = query.join(Grant, Match.grant_id == Grant.id)
             count_query = count_query.join(Grant, Match.grant_id == Grant.id)
-        filter_conditions.append(
-            or_(
-                Grant.deadline.is_(None),
-                Grant.deadline > datetime.now(timezone.utc)
-            )
-        )
+        filter_conditions.append(or_(Grant.deadline.is_(None), Grant.deadline > datetime.now(timezone.utc)))
 
     # Apply all filter conditions
     if filter_conditions:
@@ -386,9 +343,5 @@ async def apply_saved_search(
     ]
 
     return MatchList(
-        matches=match_responses,
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(offset + len(matches)) < total
+        matches=match_responses, total=total, page=page, page_size=page_size, has_more=(offset + len(matches)) < total
     )

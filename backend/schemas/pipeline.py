@@ -1,6 +1,7 @@
 """
 Pipeline schemas for grant application tracking.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -24,34 +25,17 @@ class PipelineItemCreate(BaseModel):
 
     grant_id: UUID = Field(..., description="ID of the grant to track")
     match_id: Optional[UUID] = Field(None, description="Optional match ID")
-    stage: ApplicationStageEnum = Field(
-        default=ApplicationStageEnum.RESEARCHING,
-        description="Initial stage"
-    )
-    notes: Optional[str] = Field(
-        None,
-        max_length=5000,
-        description="Notes about this application"
-    )
-    target_date: Optional[datetime] = Field(
-        None,
-        description="Target submission date"
-    )
+    stage: ApplicationStageEnum = Field(default=ApplicationStageEnum.RESEARCHING, description="Initial stage")
+    notes: Optional[str] = Field(None, max_length=5000, description="Notes about this application")
+    target_date: Optional[datetime] = Field(None, description="Target submission date")
 
 
 class PipelineItemUpdate(BaseModel):
     """Schema for updating a pipeline item."""
 
     stage: Optional[ApplicationStageEnum] = Field(None, description="New stage")
-    notes: Optional[str] = Field(
-        None,
-        max_length=5000,
-        description="Updated notes"
-    )
-    target_date: Optional[datetime] = Field(
-        None,
-        description="Updated target date"
-    )
+    notes: Optional[str] = Field(None, max_length=5000, description="Updated notes")
+    target_date: Optional[datetime] = Field(None, description="Updated target date")
 
 
 class PipelineItemMove(BaseModel):
@@ -92,14 +76,8 @@ class PipelineItemResponse(BaseModel):
     grant: GrantSummary = Field(..., description="Grant details")
 
     # Computed fields
-    days_until_deadline: Optional[int] = Field(
-        None,
-        description="Days until grant deadline (negative if past)"
-    )
-    days_until_target: Optional[int] = Field(
-        None,
-        description="Days until target date (negative if past)"
-    )
+    days_until_deadline: Optional[int] = Field(None, description="Days until grant deadline (negative if past)")
+    days_until_target: Optional[int] = Field(None, description="Days until target date (negative if past)")
 
     class Config:
         from_attributes = True
@@ -109,20 +87,14 @@ class PipelineStageGroup(BaseModel):
     """Schema for grouped pipeline items by stage."""
 
     stage: ApplicationStageEnum = Field(..., description="Stage name")
-    items: list[PipelineItemResponse] = Field(
-        default_factory=list,
-        description="Items in this stage"
-    )
+    items: list[PipelineItemResponse] = Field(default_factory=list, description="Items in this stage")
     count: int = Field(..., description="Number of items in stage")
 
 
 class PipelineResponse(BaseModel):
     """Schema for full pipeline response grouped by stage."""
 
-    stages: list[PipelineStageGroup] = Field(
-        ...,
-        description="Pipeline items grouped by stage"
-    )
+    stages: list[PipelineStageGroup] = Field(..., description="Pipeline items grouped by stage")
     total: int = Field(..., description="Total items in pipeline")
 
 
@@ -130,15 +102,6 @@ class PipelineStats(BaseModel):
     """Schema for pipeline statistics."""
 
     total: int = Field(..., description="Total applications")
-    by_stage: dict[str, int] = Field(
-        ...,
-        description="Count by stage"
-    )
-    upcoming_deadlines: int = Field(
-        ...,
-        description="Applications with deadlines in next 14 days"
-    )
-    past_deadlines: int = Field(
-        ...,
-        description="Applications with past deadlines"
-    )
+    by_stage: dict[str, int] = Field(..., description="Count by stage")
+    upcoming_deadlines: int = Field(..., description="Applications with deadlines in next 14 days")
+    past_deadlines: int = Field(..., description="Applications with past deadlines")

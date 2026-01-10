@@ -2,16 +2,14 @@
 Discovery Agent Tests
 Tests for grant discovery agents including RSS parsing, API fetching, and Redis publishing.
 """
+
 import asyncio
-import hashlib
 import json
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-import redis
 
 from agents.discovery.base import DiscoveryAgent
 from agents.discovery.grants_gov_rss import (
@@ -251,6 +249,7 @@ class TestGrantsGovRSSAgent:
     @pytest.mark.asyncio
     async def test_fetch_rss_feed_success(self, agent, sample_rss_feed, mock_httpx_client):
         """Test successful RSS feed fetching."""
+
         # Setup mock response
         async def mock_get(url):
             response = AsyncMock()
@@ -287,6 +286,7 @@ class TestGrantsGovRSSAgent:
     @pytest.mark.asyncio
     async def test_fetch_rss_feed_malformed(self, agent, malformed_rss_feed, mock_httpx_client):
         """Test handling of malformed RSS feed."""
+
         async def mock_get(url):
             response = AsyncMock()
             response.text = malformed_rss_feed
@@ -523,7 +523,7 @@ class TestBaseDiscoveryAgent:
             "title": "Test Grant",
         }
 
-        message_id = base_agent.publish_grant(grant_data)
+        base_agent.publish_grant(grant_data)
 
         mock_redis.xadd.assert_called_once()
         # Source should be added
@@ -607,6 +607,7 @@ class TestDiscoveryErrorHandling:
     async def test_api_rate_limit_handling(self, mock_httpx_client):
         """Test handling of API rate limit responses (retries then raises RetryError)."""
         from tenacity import RetryError
+
         agent = GrantsGovRSSAgent()
 
         async def mock_post(url, **kwargs):
@@ -625,6 +626,7 @@ class TestDiscoveryErrorHandling:
     async def test_json_parse_error_handling(self, mock_httpx_client):
         """Test handling of invalid JSON responses."""
         from tenacity import RetryError
+
         agent = GrantsGovRSSAgent()
 
         async def mock_post(url, **kwargs):
@@ -710,10 +712,7 @@ class TestRedisStreamPublishing:
         mock_redis.expire = MagicMock()
         agent._redis_client = mock_redis
 
-        grants = [
-            {"external_id": f"grant-{i}", "title": f"Grant {i}"}
-            for i in range(5)
-        ]
+        grants = [{"external_id": f"grant-{i}", "title": f"Grant {i}"} for i in range(5)]
 
         message_ids = agent.publish_grants_batch(grants)
 

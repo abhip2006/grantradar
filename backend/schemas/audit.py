@@ -2,6 +2,7 @@
 Audit Logging Schemas
 Pydantic models for audit log API requests and responses.
 """
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional

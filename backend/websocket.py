@@ -9,6 +9,7 @@ Features:
 - Reconnection handling
 - Connection state tracking
 """
+
 import asyncio
 import json
 import logging
@@ -19,7 +20,6 @@ from uuid import UUID
 import redis.asyncio as redis
 import socketio
 from jose import JWTError, jwt
-from pydantic import ValidationError
 
 from backend.core.config import settings
 from backend.core.events import (
@@ -27,7 +27,6 @@ from backend.core.events import (
     GrantUpdateEvent,
     NewMatchEvent,
     StatsUpdateEvent,
-    WebSocketEvent,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,6 +35,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # Redis Pub/Sub Channels
 # =============================================================================
+
 
 class PubSubChannels:
     """Redis pub/sub channel names for WebSocket events."""
@@ -61,6 +61,7 @@ class PubSubChannels:
 # =============================================================================
 # Connection State Manager
 # =============================================================================
+
 
 class ConnectionStateManager:
     """
@@ -151,15 +152,14 @@ class ConnectionStateManager:
         return {
             "total_connections": len(self._session_users),
             "unique_users": len(self._user_sessions),
-            "connections_by_user": {
-                user_id: len(sids) for user_id, sids in self._user_sessions.items()
-            },
+            "connections_by_user": {user_id: len(sids) for user_id, sids in self._user_sessions.items()},
         }
 
 
 # =============================================================================
 # JWT Authentication
 # =============================================================================
+
 
 class JWTAuthenticator:
     """
@@ -210,6 +210,7 @@ class JWTAuthenticator:
 # =============================================================================
 # Socket.IO Server
 # =============================================================================
+
 
 class GrantRadarWebSocket:
     """
@@ -486,7 +487,7 @@ class GrantRadarWebSocket:
 
         # Handle user-specific messages
         if channel.startswith(PubSubChannels.USER_PREFIX):
-            user_id = channel[len(PubSubChannels.USER_PREFIX):]
+            user_id = channel[len(PubSubChannels.USER_PREFIX) :]
             room = f"user:{user_id}"
             await self._sio.emit(event_type, payload, room=room)
             logger.debug(f"Emitted {event_type} to user {user_id}")
@@ -551,8 +552,7 @@ class GrantRadarWebSocket:
             room=room,
         )
         logger.info(
-            f"Emitted deadline_soon to user {user_id}: "
-            f"grant={event.grant_id}, days_remaining={event.days_remaining}"
+            f"Emitted deadline_soon to user {user_id}: grant={event.grant_id}, days_remaining={event.days_remaining}"
         )
 
     async def emit_grant_update(
@@ -573,10 +573,7 @@ class GrantRadarWebSocket:
             event.model_dump(mode="json"),
             room=room,
         )
-        logger.info(
-            f"Emitted grant_update to user {user_id}: "
-            f"grant={event.grant_id}, type={event.update_type}"
-        )
+        logger.info(f"Emitted grant_update to user {user_id}: grant={event.grant_id}, type={event.update_type}")
 
     async def emit_stats_update(
         self,

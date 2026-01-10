@@ -2,15 +2,15 @@
 GrantRadar Redis Streams Event Bus
 Wrapper for Redis Streams with consumer groups, retries, and dead letter queues
 """
+
 import json
 import time
 from datetime import datetime
 from typing import Any, Callable, Optional, TypeVar
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import redis.asyncio as redis
 import structlog
-from pydantic import BaseModel
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -449,11 +449,7 @@ class EventBus:
                 return []
 
             # Filter by idle time and claim messages
-            message_ids = [
-                msg["message_id"]
-                for msg in pending
-                if msg["time_since_delivered"] >= min_idle_time_ms
-            ]
+            message_ids = [msg["message_id"] for msg in pending if msg["time_since_delivered"] >= min_idle_time_ms]
 
             if not message_ids:
                 return []
@@ -536,7 +532,7 @@ class EventBus:
         Returns:
             Message ID in the DLQ.
         """
-        r = await self._ensure_connected()
+        await self._ensure_connected()
 
         # Create DLQ event
         dlq_event = DeadLetterEvent(

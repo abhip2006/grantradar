@@ -30,6 +30,7 @@ import { Templates } from './pages/Templates';
 import { AITools } from './pages/AITools';
 import { Kanban } from './pages/Kanban';
 import { Team } from './pages/Team';
+import Winners from './pages/Winners';
 import { InvitationAccept } from './pages/InvitationAccept';
 import { InvitationDecline } from './pages/InvitationDecline';
 import { GrantPortfolio } from './components/GrantPortfolio';
@@ -203,6 +204,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <GrantPortfolio />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/winners"
+                  element={
+                    <ProtectedRoute>
+                      <Winners />
                     </ProtectedRoute>
                   }
                 />

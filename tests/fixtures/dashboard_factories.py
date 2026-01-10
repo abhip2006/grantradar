@@ -9,11 +9,12 @@ Provides factories for:
 - Workflow Analytics (WorkflowEvent)
 - Team (LabMember, TeamActivityLog)
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Optional
 
-from backend.models import LabMember, TeamActivityLog, GrantApplication, User
+from backend.models import LabMember, TeamActivityLog
 
 
 # =============================================================================
@@ -380,7 +381,8 @@ class DocumentComponentFactory:
             user_id=user_id,
             name=name or f"Test Component {cls._counter}",
             category=category,
-            content=content or "This is test component content for grant applications. It includes sample text that might be used in a specific aims section.",
+            content=content
+            or "This is test component content for grant applications. It includes sample text that might be used in a specific aims section.",
             metadata=kwargs.get("metadata", {"word_count": 50, "version": 1}),
             is_current=kwargs.get("is_current", True),
             version_number=kwargs.get("version_number", 1),

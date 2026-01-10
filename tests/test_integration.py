@@ -2,13 +2,11 @@
 Integration Tests
 End-to-end tests for the complete grant discovery to alert delivery pipeline.
 """
+
 import asyncio
-import json
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -20,7 +18,6 @@ from backend.core.events import (
     PriorityLevel,
     AlertChannel,
 )
-from agents.delivery.models import AlertPriority, DeliveryChannel
 
 
 # =============================================================================
@@ -34,6 +31,7 @@ class TestFullPipeline:
     @pytest.fixture
     def mock_pipeline(self, fake_redis, mock_anthropic, mock_openai, mock_sendgrid, mock_twilio):
         """Create a mock pipeline with all components."""
+
         class MockPipeline:
             def __init__(self):
                 self.redis = fake_redis
@@ -59,10 +57,13 @@ class TestFullPipeline:
                 )
 
                 # Publish to stream
-                await self.redis.xadd("grants:discovered", {
-                    "payload": event.model_dump_json(),
-                    "event_type": "GrantDiscoveredEvent",
-                })
+                await self.redis.xadd(
+                    "grants:discovered",
+                    {
+                        "payload": event.model_dump_json(),
+                        "event_type": "GrantDiscoveredEvent",
+                    },
+                )
 
                 self.discovered_grants.append(event)
                 self.latencies.append(("discovery", time.time() - start))
@@ -86,10 +87,13 @@ class TestFullPipeline:
                 )
 
                 # Publish to stream
-                await self.redis.xadd("grants:validated", {
-                    "payload": validated.model_dump_json(),
-                    "event_type": "GrantValidatedEvent",
-                })
+                await self.redis.xadd(
+                    "grants:validated",
+                    {
+                        "payload": validated.model_dump_json(),
+                        "event_type": "GrantValidatedEvent",
+                    },
+                )
 
                 self.validated_grants.append(validated)
                 self.latencies.append(("validation", time.time() - start))
@@ -123,10 +127,13 @@ class TestFullPipeline:
                     )
 
                     # Publish to stream
-                    await self.redis.xadd("matches:computed", {
-                        "payload": match_event.model_dump_json(),
-                        "event_type": "MatchComputedEvent",
-                    })
+                    await self.redis.xadd(
+                        "matches:computed",
+                        {
+                            "payload": match_event.model_dump_json(),
+                            "event_type": "MatchComputedEvent",
+                        },
+                    )
 
                     matches.append(match_event)
 
@@ -153,10 +160,13 @@ class TestFullPipeline:
                         )
 
                         # Publish to stream
-                        await self.redis.xadd("alerts:pending", {
-                            "payload": alert.model_dump_json(),
-                            "event_type": "AlertPendingEvent",
-                        })
+                        await self.redis.xadd(
+                            "alerts:pending",
+                            {
+                                "payload": alert.model_dump_json(),
+                                "event_type": "AlertPendingEvent",
+                            },
+                        )
 
                         alerts.append(alert)
 
@@ -203,7 +213,7 @@ class TestFullPipeline:
                     "validated_count": len(self.validated_grants),
                     "matches_count": len(self.computed_matches),
                     "alerts_count": len(self.sent_alerts),
-                    "avg_latency_ms": sum(l[1] for l in self.latencies) / max(len(self.latencies), 1) * 1000,
+                    "avg_latency_ms": sum(item[1] for item in self.latencies) / max(len(self.latencies), 1) * 1000,
                 }
 
         return MockPipeline()
@@ -288,6 +298,7 @@ class TestPipelineLatency:
     @pytest.fixture
     def latency_tracker(self):
         """Create a latency tracking fixture."""
+
         class LatencyTracker:
             def __init__(self):
                 self.measurements: list[tuple[str, float]] = []
@@ -390,6 +401,7 @@ class TestRealisticVolume:
     @pytest.fixture
     def volume_generator(self):
         """Generate realistic test data volumes."""
+
         class VolumeGenerator:
             @staticmethod
             def generate_grants(count: int) -> list[dict]:
@@ -400,18 +412,20 @@ class TestRealisticVolume:
 
                 grants = []
                 for i in range(count):
-                    grants.append({
-                        "id": uuid.uuid4(),
-                        "source": sources[i % len(sources)],
-                        "external_id": f"GRANT-{i:06d}",
-                        "title": f"Research Grant {i}: {categories[i % len(categories)]} Initiative",
-                        "description": f"This is grant number {i} for {categories[i % len(categories)]} research.",
-                        "agency": agencies[i % len(agencies)],
-                        "amount_min": 100000 + (i * 10000),
-                        "amount_max": 500000 + (i * 50000),
-                        "deadline": datetime.now(timezone.utc) + timedelta(days=30 + i),
-                        "categories": [categories[i % len(categories)]],
-                    })
+                    grants.append(
+                        {
+                            "id": uuid.uuid4(),
+                            "source": sources[i % len(sources)],
+                            "external_id": f"GRANT-{i:06d}",
+                            "title": f"Research Grant {i}: {categories[i % len(categories)]} Initiative",
+                            "description": f"This is grant number {i} for {categories[i % len(categories)]} research.",
+                            "agency": agencies[i % len(agencies)],
+                            "amount_min": 100000 + (i * 10000),
+                            "amount_max": 500000 + (i * 50000),
+                            "deadline": datetime.now(timezone.utc) + timedelta(days=30 + i),
+                            "categories": [categories[i % len(categories)]],
+                        }
+                    )
                 return grants
 
             @staticmethod
@@ -427,12 +441,14 @@ class TestRealisticVolume:
 
                 users = []
                 for i in range(count):
-                    users.append({
-                        "user_id": uuid.uuid4(),
-                        "email": f"researcher{i}@university.edu",
-                        "research_areas": areas[i % len(areas)],
-                        "institution": f"University {i}",
-                    })
+                    users.append(
+                        {
+                            "user_id": uuid.uuid4(),
+                            "email": f"researcher{i}@university.edu",
+                            "research_areas": areas[i % len(areas)],
+                            "institution": f"University {i}",
+                        }
+                    )
                 return users
 
         return VolumeGenerator()
@@ -443,7 +459,7 @@ class TestRealisticVolume:
     async def test_batch_grant_processing(self, volume_generator, fake_redis):
         """Test processing a batch of grants."""
         grants = volume_generator.generate_grants(50)
-        users = volume_generator.generate_users(10)
+        volume_generator.generate_users(10)
 
         processed_count = 0
         start_time = time.time()
@@ -458,9 +474,12 @@ class TestRealisticVolume:
                 url=f"https://grants.gov/{grant['external_id']}",
             )
 
-            await fake_redis.xadd("grants:discovered", {
-                "payload": event.model_dump_json(),
-            })
+            await fake_redis.xadd(
+                "grants:discovered",
+                {
+                    "payload": event.model_dump_json(),
+                },
+            )
 
             processed_count += 1
 
@@ -497,9 +516,12 @@ class TestRealisticVolume:
                     priority_level=PriorityLevel.MEDIUM,
                 )
 
-                await fake_redis.xadd("matches:computed", {
-                    "payload": match_event.model_dump_json(),
-                })
+                await fake_redis.xadd(
+                    "matches:computed",
+                    {
+                        "payload": match_event.model_dump_json(),
+                    },
+                )
 
                 match_count += 1
 
@@ -528,11 +550,14 @@ class TestEventStreams:
         # Add events with timestamps
         for i in range(10):
             event_id = uuid.uuid4()
-            msg_id = await fake_redis.xadd("test:stream", {
-                "event_id": str(event_id),
-                "sequence": str(i),
-                "timestamp": datetime.utcnow().isoformat(),
-            })
+            msg_id = await fake_redis.xadd(
+                "test:stream",
+                {
+                    "event_id": str(event_id),
+                    "sequence": str(i),
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            )
             events.append((msg_id, i))
 
         # Read events and verify order
@@ -551,9 +576,12 @@ class TestEventStreams:
 
         # Add messages
         for i in range(5):
-            await fake_redis.xadd("test:stream", {
-                "message": f"Message {i}",
-            })
+            await fake_redis.xadd(
+                "test:stream",
+                {
+                    "message": f"Message {i}",
+                },
+            )
 
         # Simulate consumer reading
         messages = await fake_redis.xreadgroup(
@@ -570,17 +598,23 @@ class TestEventStreams:
     async def test_dead_letter_queue(self, fake_redis):
         """Test moving failed messages to DLQ."""
         # Simulate a failed message
-        original_msg_id = await fake_redis.xadd("grants:discovered", {
-            "payload": "test payload",
-        })
+        original_msg_id = await fake_redis.xadd(
+            "grants:discovered",
+            {
+                "payload": "test payload",
+            },
+        )
 
         # Move to DLQ
-        dlq_msg_id = await fake_redis.xadd("dlq:grants:discovered", {
-            "original_stream": "grants:discovered",
-            "original_message_id": original_msg_id,
-            "error": "Processing failed",
-            "retry_count": "3",
-        })
+        await fake_redis.xadd(
+            "dlq:grants:discovered",
+            {
+                "original_stream": "grants:discovered",
+                "original_message_id": original_msg_id,
+                "error": "Processing failed",
+                "retry_count": "3",
+            },
+        )
 
         # Verify DLQ has the message
         dlq_len = await fake_redis.xlen("dlq:grants:discovered")
@@ -604,10 +638,13 @@ class TestErrorRecovery:
             grant_id = uuid.uuid4()
             grant_ids.append(grant_id)
 
-            await fake_redis.xadd("grants:discovered", {
-                "grant_id": str(grant_id),
-                "title": f"Grant {i}",
-            })
+            await fake_redis.xadd(
+                "grants:discovered",
+                {
+                    "grant_id": str(grant_id),
+                    "title": f"Grant {i}",
+                },
+            )
 
         # Simulate validation where one fails
         validated_count = 0
@@ -616,16 +653,22 @@ class TestErrorRecovery:
         for i, grant_id in enumerate(grant_ids):
             if i == 2:  # Simulate failure on third grant
                 failed_count += 1
-                await fake_redis.xadd("dlq:grants:discovered", {
-                    "grant_id": str(grant_id),
-                    "error": "Validation failed",
-                })
+                await fake_redis.xadd(
+                    "dlq:grants:discovered",
+                    {
+                        "grant_id": str(grant_id),
+                        "error": "Validation failed",
+                    },
+                )
             else:
                 validated_count += 1
-                await fake_redis.xadd("grants:validated", {
-                    "grant_id": str(grant_id),
-                    "quality_score": "0.85",
-                })
+                await fake_redis.xadd(
+                    "grants:validated",
+                    {
+                        "grant_id": str(grant_id),
+                        "quality_score": "0.85",
+                    },
+                )
 
         assert validated_count == 4
         assert failed_count == 1
@@ -751,11 +794,13 @@ class TestDataConsistency:
                 continue  # Skip duplicate
 
             seen_pairs.add(pair)
-            matches.append({
-                "grant_id": grant_id,
-                "user_id": user_id,
-                "match_score": 0.85,
-            })
+            matches.append(
+                {
+                    "grant_id": grant_id,
+                    "user_id": user_id,
+                    "match_score": 0.85,
+                }
+            )
 
         assert len(matches) == 1  # Only one match created
 
@@ -803,10 +848,13 @@ class TestPerformanceBenchmarks:
         start_time = time.time()
 
         for i in range(num_messages):
-            await fake_redis.xadd("benchmark:stream", {
-                "message_id": str(i),
-                "timestamp": datetime.utcnow().isoformat(),
-            })
+            await fake_redis.xadd(
+                "benchmark:stream",
+                {
+                    "message_id": str(i),
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            )
 
         elapsed = time.time() - start_time
         throughput = num_messages / elapsed
@@ -820,11 +868,15 @@ class TestPerformanceBenchmarks:
     @pytest.mark.slow
     async def test_concurrent_processing(self, fake_redis):
         """Test concurrent event processing."""
+
         async def process_batch(batch_id: int, count: int):
             for i in range(count):
-                await fake_redis.xadd(f"concurrent:stream:{batch_id}", {
-                    "item": str(i),
-                })
+                await fake_redis.xadd(
+                    f"concurrent:stream:{batch_id}",
+                    {
+                        "item": str(i),
+                    },
+                )
             return count
 
         # Process 5 batches concurrently

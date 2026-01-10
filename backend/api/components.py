@@ -2,14 +2,14 @@
 Document Component Library API Endpoints
 CRUD operations for reusable document components and version control.
 """
+
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import selectinload
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.core.exceptions import NotFoundError
@@ -39,6 +39,7 @@ router = APIRouter(prefix="/api/components", tags=["Components"])
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def _build_component_response(component: DocumentComponent, usage_count: int = 0) -> ComponentResponse:
     """Build a ComponentResponse from a DocumentComponent model."""
@@ -111,8 +112,8 @@ async def list_categories(
         .where(
             and_(
                 DocumentComponent.user_id == current_user.id,
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
             )
         )
         .group_by(DocumentComponent.category)
@@ -136,6 +137,7 @@ async def list_categories(
 # Component CRUD
 # =============================================================================
 
+
 @router.get("", response_model=ComponentListResponse)
 async def list_components(
     current_user: CurrentUser,
@@ -156,10 +158,7 @@ async def list_components(
     """
     # Create a subquery for usage counts per component
     usage_count_subq = (
-        select(
-            ComponentUsage.component_id,
-            func.count(ComponentUsage.id).label("usage_count")
-        )
+        select(ComponentUsage.component_id, func.count(ComponentUsage.id).label("usage_count"))
         .group_by(ComponentUsage.component_id)
         .subquery()
     )
@@ -169,20 +168,20 @@ async def list_components(
         select(
             DocumentComponent,
             func.coalesce(usage_count_subq.c.usage_count, 0).label("usage_count"),
-            func.count(DocumentComponent.id).over().label("total_count")
+            func.count(DocumentComponent.id).over().label("total_count"),
         )
         .outerjoin(usage_count_subq, DocumentComponent.id == usage_count_subq.c.component_id)
         .where(
             and_(
                 DocumentComponent.user_id == current_user.id,
-                DocumentComponent.is_current == True,
+                DocumentComponent.is_current,
             )
         )
     )
 
     # Apply the same filters
     if not include_archived:
-        main_query = main_query.where(DocumentComponent.is_archived == False)
+        main_query = main_query.where(not DocumentComponent.is_archived)
 
     if category:
         main_query = main_query.where(DocumentComponent.category == category)
@@ -213,10 +212,7 @@ async def list_components(
     has_more = (offset + len(rows)) < total
 
     return ComponentListResponse(
-        data=[
-            _build_component_response(row[0], row.usage_count)
-            for row in rows
-        ],
+        data=[_build_component_response(row[0], row.usage_count) for row in rows],
         pagination=PaginationInfo(
             total=total,
             offset=offset,
@@ -277,9 +273,7 @@ async def get_component(
 
     # Get usage count
     usage_count_result = await db.execute(
-        select(func.count(ComponentUsage.id)).where(
-            ComponentUsage.component_id == component_id
-        )
+        select(func.count(ComponentUsage.id)).where(ComponentUsage.component_id == component_id)
     )
     usage_count = usage_count_result.scalar() or 0
 
@@ -305,7 +299,7 @@ async def update_component(
             and_(
                 DocumentComponent.id == component_id,
                 DocumentComponent.user_id == current_user.id,
-                DocumentComponent.is_current == True,
+                DocumentComponent.is_current,
             )
         )
     )
@@ -326,7 +320,9 @@ async def update_component(
         # Create new version
         new_component = DocumentComponent(
             user_id=current_user.id,
-            category=update_data.get("category", component.category).value if isinstance(update_data.get("category"), type) else update_data.get("category", component.category),
+            category=update_data.get("category", component.category).value
+            if isinstance(update_data.get("category"), type)
+            else update_data.get("category", component.category),
             name=update_data.get("name", component.name),
             description=update_data.get("description", component.description),
             content=update_data["content"],
@@ -361,9 +357,7 @@ async def update_component(
 
         # Get usage count
         usage_count_result = await db.execute(
-            select(func.count(ComponentUsage.id)).where(
-                ComponentUsage.component_id == component_id
-            )
+            select(func.count(ComponentUsage.id)).where(ComponentUsage.component_id == component_id)
         )
         usage_count = usage_count_result.scalar() or 0
 
@@ -457,6 +451,7 @@ async def duplicate_component(
 # Component Usage in Applications
 # =============================================================================
 
+
 @router.post("/{component_id}/use/{card_id}", response_model=ComponentUsageResponse)
 async def use_component_in_application(
     component_id: UUID,
@@ -477,8 +472,8 @@ async def use_component_in_application(
             and_(
                 DocumentComponent.id == component_id,
                 DocumentComponent.user_id == current_user.id,
-                DocumentComponent.is_current == True,
-                DocumentComponent.is_archived == False,
+                DocumentComponent.is_current,
+                not DocumentComponent.is_archived,
             )
         )
     )
@@ -551,15 +546,15 @@ async def get_component_usages(
         raise NotFoundError("Component")
 
     # Get usages
-    query = select(ComponentUsage).where(
-        ComponentUsage.component_id == component_id
-    ).order_by(ComponentUsage.used_at.desc())
+    query = (
+        select(ComponentUsage)
+        .where(ComponentUsage.component_id == component_id)
+        .order_by(ComponentUsage.used_at.desc())
+    )
 
     # Get total count
     count_result = await db.execute(
-        select(func.count(ComponentUsage.id)).where(
-            ComponentUsage.component_id == component_id
-        )
+        select(func.count(ComponentUsage.id)).where(ComponentUsage.component_id == component_id)
     )
     total = count_result.scalar() or 0
 
@@ -641,10 +636,7 @@ async def get_document_versions(
     total = await db.scalar(count_query) or 0
 
     # Apply pagination and ordering
-    query = query.order_by(
-        DocumentVersion.section,
-        DocumentVersion.version_number.desc()
-    ).offset(offset).limit(limit)
+    query = query.order_by(DocumentVersion.section, DocumentVersion.version_number.desc()).offset(offset).limit(limit)
 
     result = await db.execute(query)
     versions = result.scalars().all()
@@ -763,6 +755,7 @@ async def get_version(
 # =============================================================================
 # Application Component Usage Endpoint
 # =============================================================================
+
 
 @versions_router.get("/{card_id}/components", response_model=ComponentUsageListResponse)
 async def get_application_components(

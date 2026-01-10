@@ -2,6 +2,7 @@
 Alembic Migration Environment for GrantRadar
 Supports both synchronous and asynchronous database operations.
 """
+
 import asyncio
 from logging.config import fileConfig
 

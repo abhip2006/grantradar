@@ -2,6 +2,7 @@
 Funder Insights API Endpoints
 Historical data on funders including average award sizes, success rates, and grant patterns.
 """
+
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Optional
@@ -11,8 +12,8 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import and_, case, distinct, func, select
 from sqlalchemy.orm import joinedload
 
-from backend.api.deps import AsyncSessionDep, CurrentUser, OptionalUser
-from backend.models import ApplicationStage, Grant, GrantApplication, Match
+from backend.api.deps import AsyncSessionDep, OptionalUser
+from backend.models import ApplicationStage, Grant, GrantApplication
 from backend.schemas.funder_insights import (
     DeadlineMonth,
     FunderGrantResponse,
@@ -28,8 +29,19 @@ router = APIRouter(prefix="/api/funders", tags=["Funder Insights"])
 
 # Month names for display
 MONTH_NAMES = [
-    "", "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
 ]
 
 
@@ -84,23 +96,13 @@ async def list_funders(
         base_query = base_query.where(Grant.agency.ilike(f"%{search}%"))
 
     # Group and order
-    base_query = (
-        base_query
-        .group_by(Grant.agency)
-        .order_by(func.count(Grant.id).desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    base_query = base_query.group_by(Grant.agency).order_by(func.count(Grant.id).desc()).limit(limit).offset(offset)
 
     result = await db.execute(base_query)
     rows = result.all()
 
     # Get total count
-    count_query = (
-        select(func.count(distinct(Grant.agency)))
-        .where(Grant.agency.isnot(None))
-        .where(Grant.agency != "")
-    )
+    count_query = select(func.count(distinct(Grant.agency))).where(Grant.agency.isnot(None)).where(Grant.agency != "")
     if search:
         count_query = count_query.where(Grant.agency.ilike(f"%{search}%"))
 
@@ -123,10 +125,7 @@ async def list_funders(
         categories_subquery = categories_query.subquery()
 
         focus_areas_query = (
-            select(
-                categories_subquery.c.category,
-                func.count().label("cnt")
-            )
+            select(categories_subquery.c.category, func.count().label("cnt"))
             .group_by(categories_subquery.c.category)
             .order_by(func.count().desc())
             .limit(5)
@@ -214,10 +213,7 @@ async def get_top_funders(
         categories_subquery = categories_query.subquery()
 
         focus_areas_query = (
-            select(
-                categories_subquery.c.category,
-                func.count().label("cnt")
-            )
+            select(categories_subquery.c.category, func.count().label("cnt"))
             .group_by(categories_subquery.c.category)
             .order_by(func.count().desc())
             .limit(5)
@@ -262,13 +258,10 @@ async def get_funder_insights(
     """
     # Decode URL-encoded funder name
     decoded_name = unquote(funder_name)
-    now = datetime.now(timezone.utc)
+    datetime.now(timezone.utc)
 
     # Get all grants from this funder
-    grants_query = (
-        select(Grant)
-        .where(Grant.agency == decoded_name)
-    )
+    grants_query = select(Grant).where(Grant.agency == decoded_name)
     result = await db.execute(grants_query)
     grants = result.scalars().all()
 
@@ -408,9 +401,7 @@ async def get_funder_grants(
 
     # Filter active only
     if active_only:
-        base_query = base_query.where(
-            (Grant.deadline.is_(None)) | (Grant.deadline > now)
-        )
+        base_query = base_query.where((Grant.deadline.is_(None)) | (Grant.deadline > now))
 
     # Get total count
     count_query = select(func.count()).select_from(base_query.subquery())
@@ -420,10 +411,7 @@ async def get_funder_grants(
     # Apply pagination and ordering
     offset = (page - 1) * page_size
     grants_query = (
-        base_query
-        .order_by(Grant.deadline.asc().nullslast(), Grant.posted_at.desc())
-        .limit(page_size)
-        .offset(offset)
+        base_query.order_by(Grant.deadline.asc().nullslast(), Grant.posted_at.desc()).limit(page_size).offset(offset)
     )
 
     result = await db.execute(grants_query)

@@ -2,13 +2,13 @@
 Tests for Deadline API endpoints.
 Tests CRUD operations, filtering, sorting, and iCal export for deadlines.
 """
+
 import pytest
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
-from backend.models import Deadline, User, Grant
-from backend.schemas.deadlines import DeadlineStatus, DeadlinePriority
+from backend.models import Deadline, Grant
 
 
 @pytest.fixture
@@ -74,9 +74,8 @@ class TestListDeadlines:
 
         # Query for our user's deadlines
         from sqlalchemy import select
-        result = await async_session.execute(
-            select(Deadline).where(Deadline.user_id == db_user.id)
-        )
+
+        result = await async_session.execute(select(Deadline).where(Deadline.user_id == db_user.id))
         deadlines = result.scalars().all()
 
         assert len(deadlines) == 1
@@ -106,6 +105,7 @@ class TestListDeadlines:
 
         # Query for active deadlines only
         from sqlalchemy import select
+
         result = await async_session.execute(
             select(Deadline).where(
                 Deadline.user_id == db_user.id,
@@ -144,6 +144,7 @@ class TestListDeadlines:
         to_date = now + timedelta(days=30)
 
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -181,6 +182,7 @@ class TestListDeadlines:
         await async_session.commit()
 
         from sqlalchemy import select
+
         result = await async_session.execute(
             select(Deadline).where(
                 Deadline.user_id == db_user.id,
@@ -212,6 +214,7 @@ class TestListDeadlines:
         await async_session.commit()
 
         from sqlalchemy import select
+
         result = await async_session.execute(
             select(Deadline).where(
                 Deadline.user_id == db_user.id,
@@ -245,10 +248,9 @@ class TestListDeadlines:
         await async_session.commit()
 
         from sqlalchemy import select
+
         result = await async_session.execute(
-            select(Deadline)
-            .where(Deadline.user_id == db_user.id)
-            .order_by(Deadline.sponsor_deadline.asc())
+            select(Deadline).where(Deadline.user_id == db_user.id).order_by(Deadline.sponsor_deadline.asc())
         )
         sorted_deadlines = result.scalars().all()
 
@@ -277,10 +279,9 @@ class TestListDeadlines:
         await async_session.commit()
 
         from sqlalchemy import select
+
         result = await async_session.execute(
-            select(Deadline)
-            .where(Deadline.user_id == db_user.id)
-            .order_by(Deadline.sponsor_deadline.desc())
+            select(Deadline).where(Deadline.user_id == db_user.id).order_by(Deadline.sponsor_deadline.desc())
         )
         sorted_deadlines = result.scalars().all()
 
@@ -402,9 +403,8 @@ class TestCreateDeadline:
         await async_session.commit()
 
         from sqlalchemy import select
-        result = await async_session.execute(
-            select(Deadline).where(Deadline.user_id == db_user.id)
-        )
+
+        result = await async_session.execute(select(Deadline).where(Deadline.user_id == db_user.id))
         deadlines = result.scalars().all()
 
         assert len(deadlines) == 3
@@ -428,6 +428,7 @@ class TestGetDeadline:
         await async_session.refresh(deadline)
 
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -448,6 +449,7 @@ class TestGetDeadline:
         fake_id = uuid4()
 
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -475,6 +477,7 @@ class TestGetDeadline:
 
         # Try to access with db_user
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -615,9 +618,8 @@ class TestDeleteDeadline:
         await async_session.commit()
 
         from sqlalchemy import select
-        result = await async_session.execute(
-            select(Deadline).where(Deadline.id == deadline_id)
-        )
+
+        result = await async_session.execute(select(Deadline).where(Deadline.id == deadline_id))
         deleted = result.scalar_one_or_none()
 
         assert deleted is None
@@ -628,6 +630,7 @@ class TestDeleteDeadline:
         fake_id = uuid4()
 
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -669,9 +672,8 @@ class TestLinkGrant:
         fake_grant_id = uuid4()
 
         from sqlalchemy import select
-        result = await async_session.execute(
-            select(Grant).where(Grant.id == fake_grant_id)
-        )
+
+        result = await async_session.execute(select(Grant).where(Grant.id == fake_grant_id))
         grant = result.scalar_one_or_none()
 
         assert grant is None
@@ -701,6 +703,7 @@ class TestExportIcs:
         await async_session.commit()
 
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -736,6 +739,7 @@ class TestExportIcs:
         await async_session.commit()
 
         from sqlalchemy import select, and_
+
         result = await async_session.execute(
             select(Deadline).where(
                 and_(
@@ -768,7 +772,11 @@ class TestDeadlineEdgeCases:
 
         # SQLite returns timezone-naive datetimes, so compare naive to naive
         now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
-        deadline_naive = deadline.sponsor_deadline.replace(tzinfo=None) if deadline.sponsor_deadline.tzinfo else deadline.sponsor_deadline
+        deadline_naive = (
+            deadline.sponsor_deadline.replace(tzinfo=None)
+            if deadline.sponsor_deadline.tzinfo
+            else deadline.sponsor_deadline
+        )
         assert deadline_naive < now_naive
 
     @pytest.mark.asyncio
@@ -833,9 +841,8 @@ class TestDeadlineEdgeCases:
         await async_session.commit()
 
         from sqlalchemy import select
-        result = await async_session.execute(
-            select(Deadline).where(Deadline.user_id == db_user.id)
-        )
+
+        result = await async_session.execute(select(Deadline).where(Deadline.user_id == db_user.id))
         deadlines = result.scalars().all()
 
         assert len(deadlines) == 5

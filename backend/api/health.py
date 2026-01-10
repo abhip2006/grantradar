@@ -2,6 +2,7 @@
 GrantRadar Health Check Endpoints
 Comprehensive health monitoring for Kubernetes and infrastructure monitoring.
 """
+
 import logging
 import time
 from datetime import datetime, timezone
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class HealthStatus(str, Enum):
     """Health status values for components and overall system."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -33,6 +35,7 @@ class HealthStatus(str, Enum):
 
 class ComponentHealth(BaseModel):
     """Health status for an individual component."""
+
     status: HealthStatus
     latency_ms: Optional[float] = None
     message: Optional[str] = None
@@ -41,11 +44,13 @@ class ComponentHealth(BaseModel):
 
 class CeleryComponentHealth(ComponentHealth):
     """Extended health status for Celery workers."""
+
     workers: Optional[int] = None
 
 
 class HealthResponse(BaseModel):
     """Full health check response."""
+
     status: HealthStatus
     timestamp: str
     components: dict[str, Any]
@@ -54,11 +59,13 @@ class HealthResponse(BaseModel):
 
 class LivenessResponse(BaseModel):
     """Simple liveness check response."""
+
     status: str
 
 
 class StartupResponse(BaseModel):
     """Startup probe response."""
+
     status: str
     started_at: str
 

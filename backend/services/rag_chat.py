@@ -1,4 +1,5 @@
 """RAG chat service for document Q&A."""
+
 import anthropic
 import openai
 from datetime import datetime, timezone
@@ -191,9 +192,7 @@ class RAGChatService:
         yield StreamEvent("message_end", {})
 
         # Yield sources event
-        yield StreamEvent("sources", {
-            "sources": [s.model_dump() for s in sources] if sources else []
-        })
+        yield StreamEvent("sources", {"sources": [s.model_dump() for s in sources] if sources else []})
 
         # Save assistant message to database
         assistant_msg = ChatMessage(
@@ -210,9 +209,7 @@ class RAGChatService:
         await db.commit()
         await db.refresh(assistant_msg)
 
-    async def _get_conversation_history(
-        self, db: AsyncSession, session_id: UUID
-    ) -> List[dict]:
+    async def _get_conversation_history(self, db: AsyncSession, session_id: UUID) -> List[dict]:
         """Get conversation history for context."""
         result = await db.execute(
             select(ChatMessage)
@@ -222,11 +219,7 @@ class RAGChatService:
         )
         messages = result.scalars().all()
 
-        return [
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-            if msg.role in ("user", "assistant")
-        ]
+        return [{"role": msg.role, "content": msg.content} for msg in messages if msg.role in ("user", "assistant")]
 
     async def _retrieve_context(
         self,
@@ -259,10 +252,7 @@ class RAGChatService:
                 LIMIT 5
             """)
 
-            result = await db.execute(
-                grants_query,
-                {"embedding": str(query_embedding)}
-            )
+            result = await db.execute(grants_query, {"embedding": str(query_embedding)})
             similar_grants = result.fetchall()
 
             for grant_row in similar_grants:
@@ -280,22 +270,24 @@ class RAGChatService:
                     if eligibility_text:
                         excerpt += f"\n\nEligibility: {eligibility_text}"
 
-                    sources.append(ChatSource(
-                        document_type="grant",
-                        document_id=str(grant_row.id),
-                        title=grant_row.title,
-                        excerpt=excerpt,
-                        relevance_score=float(grant_row.similarity),
-                    ))
+                    sources.append(
+                        ChatSource(
+                            document_type="grant",
+                            document_id=str(grant_row.id),
+                            title=grant_row.title,
+                            excerpt=excerpt,
+                            relevance_score=float(grant_row.similarity),
+                        )
+                    )
 
                     context_parts.append(f"""
 Grant: {grant_row.title}
-Agency: {grant_row.agency or 'Unknown'}
-Categories: {', '.join(grant_row.categories) if grant_row.categories else 'N/A'}
-Description: {grant_row.description or 'No description'}
-Eligibility: {eligibility_text or 'Not specified'}
+Agency: {grant_row.agency or "Unknown"}
+Categories: {", ".join(grant_row.categories) if grant_row.categories else "N/A"}
+Description: {grant_row.description or "No description"}
+Eligibility: {eligibility_text or "Not specified"}
 Amount: ${grant_row.amount_min or 0:,} - ${grant_row.amount_max or 0:,}
-Deadline: {grant_row.deadline or 'Not specified'}
+Deadline: {grant_row.deadline or "Not specified"}
 ---""")
 
             # If session has a context grant, always include it
@@ -309,28 +301,29 @@ Deadline: {grant_row.deadline or 'Not specified'}
                         else:
                             eligibility_text = str(context_grant.eligibility)
 
-                    context_parts.insert(0, f"""
+                    context_parts.insert(
+                        0,
+                        f"""
 FOCUSED GRANT (User's primary interest):
 Title: {context_grant.title}
 Agency: {context_grant.agency}
-Categories: {', '.join(context_grant.categories) if context_grant.categories else 'N/A'}
+Categories: {", ".join(context_grant.categories) if context_grant.categories else "N/A"}
 Description: {context_grant.description}
-Eligibility: {eligibility_text or 'Not specified'}
+Eligibility: {eligibility_text or "Not specified"}
 Deadline: {context_grant.deadline}
 Award Amount: ${context_grant.amount_min or 0:,} - ${context_grant.amount_max or 0:,}
----""")
+---""",
+                    )
 
             # Get user's lab profile for context
-            profile_result = await db.execute(
-                select(LabProfile).where(LabProfile.user_id == user.id)
-            )
+            profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
             profile = profile_result.scalar_one_or_none()
             if profile:
                 context_parts.append(f"""
 RESEARCHER PROFILE:
-Research Areas: {', '.join(profile.research_areas or [])}
-Institution: {profile.institution or 'Unknown'}
-Career Stage: {profile.career_stage or 'Unknown'}
+Research Areas: {", ".join(profile.research_areas or [])}
+Institution: {profile.institution or "Unknown"}
+Career Stage: {profile.career_stage or "Unknown"}
 ---""")
 
         except Exception as e:
@@ -340,9 +333,7 @@ Career Stage: {profile.career_stage or 'Unknown'}
         context = "\n".join(context_parts) if context_parts else ""
         return sources[:5], context  # Limit sources
 
-    def _build_system_prompt(
-        self, session: ChatSession, context: str, user: User
-    ) -> str:
+    def _build_system_prompt(self, session: ChatSession, context: str, user: User) -> str:
         """Build system prompt with RAG context."""
         base_prompt = f"""You are GrantRadar AI, an expert grant writing and funding advisor. You help researchers find and apply for grants.
 
@@ -373,9 +364,7 @@ Use this context to answer the user's question. Reference specific grants or req
 
         return base_prompt
 
-    async def _generate_response(
-        self, system_prompt: str, history: List[dict], user_message: str
-    ) -> str:
+    async def _generate_response(self, system_prompt: str, history: List[dict], user_message: str) -> str:
         """Generate response using Claude."""
         messages = history.copy()
         messages.append({"role": "user", "content": user_message})
@@ -392,9 +381,7 @@ Use this context to answer the user's question. Reference specific grants or req
             logger.error("Claude API error", error=str(e))
             return "I apologize, but I encountered an error processing your request. Please try again."
 
-    async def get_sessions(
-        self, db: AsyncSession, user_id: UUID, limit: int = 50
-    ) -> List[dict]:
+    async def get_sessions(self, db: AsyncSession, user_id: UUID, limit: int = 50) -> List[dict]:
         """Get user's chat sessions."""
         result = await db.execute(
             select(ChatSession)
@@ -408,19 +395,22 @@ Use this context to answer the user's question. Reference specific grants or req
         for s in sessions:
             # Get message count and last message time
             msg_result = await db.execute(
-                select(func.count(ChatMessage.id), func.max(ChatMessage.created_at))
-                .where(ChatMessage.session_id == s.id)
+                select(func.count(ChatMessage.id), func.max(ChatMessage.created_at)).where(
+                    ChatMessage.session_id == s.id
+                )
             )
             count, last_msg = msg_result.one()
 
-            session_list.append({
-                "id": s.id,
-                "title": s.title,
-                "session_type": s.session_type,
-                "message_count": count or 0,
-                "last_message_at": last_msg,
-                "created_at": s.created_at,
-            })
+            session_list.append(
+                {
+                    "id": s.id,
+                    "title": s.title,
+                    "session_type": s.session_type,
+                    "message_count": count or 0,
+                    "last_message_at": last_msg,
+                    "created_at": s.created_at,
+                }
+            )
 
         return session_list
 
@@ -434,9 +424,7 @@ Use this context to answer the user's question. Reference specific grants or req
             raise ValueError("Session not found")
 
         result = await db.execute(
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.created_at)
+            select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at)
         )
         messages = result.scalars().all()
 
@@ -452,9 +440,7 @@ Use this context to answer the user's question. Reference specific grants or req
             for m in messages
         ]
 
-    async def delete_session(
-        self, db: AsyncSession, user_id: UUID, session_id: UUID
-    ) -> bool:
+    async def delete_session(self, db: AsyncSession, user_id: UUID, session_id: UUID) -> bool:
         """Delete a chat session."""
         session = await db.get(ChatSession, session_id)
         if not session or session.user_id != user_id:

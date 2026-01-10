@@ -2,6 +2,7 @@
 Admin Analytics Schemas
 Pydantic models for admin platform-wide analytics responses.
 """
+
 from datetime import datetime
 from typing import Optional
 
@@ -56,18 +57,10 @@ class TopUserByActivity(BaseModel):
 class UserAnalyticsResponse(BaseModel):
     """User growth and engagement metrics."""
 
-    signups_by_day: list[DailySignup] = Field(
-        default_factory=list, description="Daily signup counts"
-    )
-    active_users_by_day: list[DailyActiveUsers] = Field(
-        default_factory=list, description="Daily active user counts"
-    )
-    retention_rate: float = Field(
-        ..., description="7-day retention rate as percentage (0-100)", ge=0, le=100
-    )
-    top_users_by_activity: list[TopUserByActivity] = Field(
-        default_factory=list, description="Top 10 users by activity"
-    )
+    signups_by_day: list[DailySignup] = Field(default_factory=list, description="Daily signup counts")
+    active_users_by_day: list[DailyActiveUsers] = Field(default_factory=list, description="Daily active user counts")
+    retention_rate: float = Field(..., description="7-day retention rate as percentage (0-100)", ge=0, le=100)
+    top_users_by_activity: list[TopUserByActivity] = Field(default_factory=list, description="Top 10 users by activity")
 
 
 # =============================================================================
@@ -85,15 +78,11 @@ class DailyChatSessions(BaseModel):
 class AIUsageResponse(BaseModel):
     """AI feature usage metrics."""
 
-    chat_sessions_by_day: list[DailyChatSessions] = Field(
-        default_factory=list, description="Daily chat session counts"
-    )
+    chat_sessions_by_day: list[DailyChatSessions] = Field(default_factory=list, description="Daily chat session counts")
     insights_generated: int = Field(..., description="Total grant insights generated")
     writing_analyses: int = Field(..., description="Total writing analyses performed")
     research_sessions: int = Field(..., description="Total deep research sessions")
-    tokens_used_estimate: int = Field(
-        ..., description="Estimated total tokens used (approximate)"
-    )
+    tokens_used_estimate: int = Field(..., description="Estimated total tokens used (approximate)")
 
 
 # =============================================================================
@@ -134,12 +123,8 @@ class MatchScoreBucket(BaseModel):
 class GrantAnalyticsResponse(BaseModel):
     """Grant discovery and application metrics."""
 
-    grants_by_source: list[GrantsBySource] = Field(
-        default_factory=list, description="Grant counts by source"
-    )
-    grants_by_agency: list[GrantsByAgency] = Field(
-        default_factory=list, description="Grant counts by top agencies"
-    )
+    grants_by_source: list[GrantsBySource] = Field(default_factory=list, description="Grant counts by source")
+    grants_by_agency: list[GrantsByAgency] = Field(default_factory=list, description="Grant counts by top agencies")
     applications_by_status: list[ApplicationsByStatus] = Field(
         default_factory=list, description="Application counts by status"
     )
@@ -165,12 +150,8 @@ class TeamAnalyticsResponse(BaseModel):
 
     total_teams: int = Field(..., description="Total number of lab teams/groups")
     avg_team_size: float = Field(..., description="Average team size")
-    active_collaborations: int = Field(
-        ..., description="Active collaborations (teams with recent activity)"
-    )
-    comments_per_day: list[DailyComments] = Field(
-        default_factory=list, description="Daily team comment counts"
-    )
+    active_collaborations: int = Field(..., description="Active collaborations (teams with recent activity)")
+    comments_per_day: list[DailyComments] = Field(default_factory=list, description="Daily team comment counts")
 
 
 # =============================================================================
@@ -181,9 +162,5 @@ class TeamAnalyticsResponse(BaseModel):
 class DateRangeParams(BaseModel):
     """Date range parameters for filtering analytics."""
 
-    start_date: Optional[datetime] = Field(
-        None, description="Start date for filtering (inclusive)"
-    )
-    end_date: Optional[datetime] = Field(
-        None, description="End date for filtering (inclusive)"
-    )
+    start_date: Optional[datetime] = Field(None, description="Start date for filtering (inclusive)")
+    end_date: Optional[datetime] = Field(None, description="End date for filtering (inclusive)")

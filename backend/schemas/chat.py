@@ -1,4 +1,5 @@
 """Chat with proposal schemas."""
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
@@ -14,6 +15,7 @@ class ChatSessionType(str, Enum):
 
 class ChatSource(BaseModel):
     """A source citation from RAG."""
+
     document_type: str  # 'grant', 'foa', 'guideline', 'profile'
     document_id: Optional[str] = None
     title: str
@@ -23,11 +25,13 @@ class ChatSource(BaseModel):
 
 class ChatMessageCreate(BaseModel):
     """Create a new chat message."""
+
     content: str = Field(..., min_length=1, max_length=4000)
 
 
 class ChatMessageResponse(BaseModel):
     """Chat message response."""
+
     id: UUID
     session_id: UUID
     role: str
@@ -41,6 +45,7 @@ class ChatMessageResponse(BaseModel):
 
 class ChatSessionCreate(BaseModel):
     """Create a new chat session."""
+
     title: Optional[str] = None
     session_type: ChatSessionType = ChatSessionType.PROPOSAL
     context_grant_id: Optional[UUID] = None
@@ -48,6 +53,7 @@ class ChatSessionCreate(BaseModel):
 
 class ChatSessionResponse(BaseModel):
     """Chat session response."""
+
     id: UUID
     title: str
     session_type: str
@@ -62,6 +68,7 @@ class ChatSessionResponse(BaseModel):
 
 class ChatSessionListItem(BaseModel):
     """Summary of a chat session for listing."""
+
     id: UUID
     title: str
     session_type: str

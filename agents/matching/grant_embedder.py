@@ -2,8 +2,8 @@
 Grant Embedding Generator
 Generates vector embeddings for grants to enable similarity matching.
 """
+
 import hashlib
-import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
@@ -163,11 +163,7 @@ class GrantEmbedder:
 
         return result.needs_embedding
 
-    def build_embedding(
-        self,
-        grant_id: UUID,
-        force: bool = False
-    ) -> Optional[dict[str, Any]]:
+    def build_embedding(self, grant_id: UUID, force: bool = False) -> Optional[dict[str, Any]]:
         """
         Generate and store embedding for a single grant.
 
@@ -232,10 +228,7 @@ class GrantEmbedder:
                 SET embedding = :embedding::vector
                 WHERE id = :grant_id
             """)
-            session.execute(
-                update_query,
-                {"grant_id": str(grant_id), "embedding": embedding_str}
-            )
+            session.execute(update_query, {"grant_id": str(grant_id), "embedding": embedding_str})
             session.commit()
 
             logger.info(
@@ -282,10 +275,7 @@ class GrantEmbedder:
                 FROM grants
                 WHERE id = ANY(:grant_ids)
             """)
-            results = session.execute(
-                query,
-                {"grant_ids": [str(gid) for gid in grant_ids]}
-            ).fetchall()
+            results = session.execute(query, {"grant_ids": [str(gid) for gid in grant_ids]}).fetchall()
 
             # Filter to those needing embeddings
             grants_to_process = []
@@ -308,7 +298,7 @@ class GrantEmbedder:
 
             # Process in batches
             for i in range(0, len(grants_to_process), self.BATCH_SIZE):
-                batch = grants_to_process[i:i + self.BATCH_SIZE]
+                batch = grants_to_process[i : i + self.BATCH_SIZE]
 
                 try:
                     # Generate texts
@@ -330,7 +320,7 @@ class GrantEmbedder:
                             {
                                 "grant_id": str(grant["id"]),
                                 "embedding": embedding_str,
-                            }
+                            },
                         )
                         stats["generated"] += 1
 

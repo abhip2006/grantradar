@@ -8,6 +8,7 @@ JSONB Field Types:
 - metadata_: WorkflowEventMetadataDict - see backend.schemas.jsonb_types for structure
 - metrics: WorkflowMetricsDict - see backend.schemas.jsonb_types for structure
 """
+
 import uuid
 from datetime import date, datetime
 from typing import Any, Optional

@@ -1,9 +1,10 @@
 """Institution API endpoints for multi-user portfolio views and institutional dashboard."""
+
 import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.services.institution import InstitutionService
@@ -21,9 +22,7 @@ from backend.schemas.institution import (
     PortfolioAggregation,
     InstitutionMetricsResponse,
     DepartmentListResponse,
-    DepartmentStats,
     InstitutionDeadlinesResponse,
-    DeadlineSummary,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,21 +102,23 @@ async def get_my_institutions(
 
     responses = []
     for inst in institutions:
-        responses.append(InstitutionResponse(
-            id=inst["id"],
-            name=inst["name"],
-            type=inst["type"],
-            domain=inst.get("domain"),
-            description=None,
-            logo_url=inst.get("logo_url"),
-            website=None,
-            address=None,
-            settings=None,
-            created_by=None,
-            created_at=None,
-            updated_at=None,
-            member_count=None,
-        ))
+        responses.append(
+            InstitutionResponse(
+                id=inst["id"],
+                name=inst["name"],
+                type=inst["type"],
+                domain=inst.get("domain"),
+                description=None,
+                logo_url=inst.get("logo_url"),
+                website=None,
+                address=None,
+                settings=None,
+                created_by=None,
+                created_at=None,
+                updated_at=None,
+                member_count=None,
+            )
+        )
 
     return InstitutionsListResponse(
         institutions=responses,
@@ -276,20 +277,22 @@ async def list_members(
         if m.get("permissions"):
             permissions = InstitutionMemberPermissions(**m["permissions"])
 
-        member_responses.append(InstitutionMemberResponse(
-            id=m["id"],
-            institution_id=m["institution_id"],
-            user_id=m["user_id"],
-            role=m["role"],
-            department=m.get("department"),
-            title=m.get("title"),
-            permissions=permissions,
-            added_at=m["added_at"],
-            added_by=m.get("added_by"),
-            updated_at=m["updated_at"],
-            user_name=m.get("user_name"),
-            user_email=m.get("user_email"),
-        ))
+        member_responses.append(
+            InstitutionMemberResponse(
+                id=m["id"],
+                institution_id=m["institution_id"],
+                user_id=m["user_id"],
+                role=m["role"],
+                department=m.get("department"),
+                title=m.get("title"),
+                permissions=permissions,
+                added_at=m["added_at"],
+                added_by=m.get("added_by"),
+                updated_at=m["updated_at"],
+                user_name=m.get("user_name"),
+                user_email=m.get("user_email"),
+            )
+        )
 
     return InstitutionMembersListResponse(
         members=member_responses,
@@ -324,7 +327,9 @@ async def add_member(
         added_by=current_user.id,
     )
 
-    logger.info(f"Member added to institution: institution={institution_id}, user={member['user_id']}, by={current_user.id}")
+    logger.info(
+        f"Member added to institution: institution={institution_id}, user={member['user_id']}, by={current_user.id}"
+    )
 
     permissions = None
     if member.get("permissions"):

@@ -1,4 +1,5 @@
 """Celery tasks for funding alert emails."""
+
 from datetime import datetime, timezone
 import logging
 from sendgrid import SendGridAPIClient
@@ -6,7 +7,6 @@ from sendgrid.helpers.mail import Mail
 
 from backend.celery_app import celery_app
 from backend.core.config import settings
-from backend.database import get_sync_session
 from backend.models import User, FundingAlertPreference
 from backend.services.funding_alerts import FundingAlertsService
 from sqlalchemy import select
@@ -24,18 +24,14 @@ def send_funding_alert(user_id: str):
 
         async with AsyncSessionLocal() as db:
             # Get user
-            result = await db.execute(
-                select(User).where(User.id == user_id)
-            )
+            result = await db.execute(select(User).where(User.id == user_id))
             user = result.scalar_one_or_none()
             if not user:
                 logger.warning("User not found for alert", extra={"user_id": user_id})
                 return
 
             # Get preferences
-            result = await db.execute(
-                select(FundingAlertPreference).where(FundingAlertPreference.user_id == user_id)
-            )
+            result = await db.execute(select(FundingAlertPreference).where(FundingAlertPreference.user_id == user_id))
             prefs = result.scalar_one_or_none()
 
             if not prefs or not prefs.enabled:
@@ -73,7 +69,7 @@ def send_funding_alert(user_id: str):
                             "status_code": response.status_code,
                             "grants": len(preview.new_grants),
                             "deadlines": len(preview.upcoming_deadlines),
-                        }
+                        },
                     )
 
                     # Update last_sent_at
@@ -101,10 +97,7 @@ def send_scheduled_alerts():
             now = datetime.now(timezone.utc)
 
             # Find users due for alerts
-            result = await db.execute(
-                select(FundingAlertPreference)
-                .where(FundingAlertPreference.enabled == True)
-            )
+            result = await db.execute(select(FundingAlertPreference).where(FundingAlertPreference.enabled))
             all_prefs = result.scalars().all()
 
             for prefs in all_prefs:

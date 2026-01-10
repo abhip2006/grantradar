@@ -2,6 +2,7 @@
 Document Templates API Endpoints
 CRUD operations for reusable grant proposal templates.
 """
+
 import logging
 import re
 from datetime import datetime, timezone
@@ -32,20 +33,18 @@ router = APIRouter(prefix="/api/templates", tags=["Templates"])
 # Categories
 # =============================================================================
 
+
 @router.get("/categories", response_model=List[TemplateCategoryResponse])
 async def list_categories(
     db: AsyncSessionDep,
 ) -> List[TemplateCategoryResponse]:
     """Get all template categories with template counts."""
-    result = await db.execute(
-        select(TemplateCategory).order_by(TemplateCategory.display_order)
-    )
+    result = await db.execute(select(TemplateCategory).order_by(TemplateCategory.display_order))
     categories = result.scalars().all()
 
     # Get template counts per category
     count_result = await db.execute(
-        select(Template.category_id, func.count(Template.id))
-        .group_by(Template.category_id)
+        select(Template.category_id, func.count(Template.id)).group_by(Template.category_id)
     )
     counts = dict(count_result.all())
 
@@ -64,6 +63,7 @@ async def list_categories(
 # =============================================================================
 # Templates CRUD
 # =============================================================================
+
 
 @router.get("", response_model=TemplateListResponse)
 async def list_templates(
@@ -90,10 +90,10 @@ async def list_templates(
     ]
 
     if is_public is not False:
-        conditions.append(and_(Template.is_public == True, Template.user_id != current_user.id))
+        conditions.append(and_(Template.is_public, Template.user_id != current_user.id))
 
     if is_system is not False:
-        conditions.append(Template.is_system == True)
+        conditions.append(Template.is_system)
 
     query = select(Template).where(or_(*conditions))
 
@@ -141,9 +141,7 @@ async def create_template(
     """Create a new template."""
     # Validate category exists if provided
     if template.category_id:
-        result = await db.execute(
-            select(TemplateCategory).where(TemplateCategory.id == template.category_id)
-        )
+        result = await db.execute(select(TemplateCategory).where(TemplateCategory.id == template.category_id))
         if not result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Category not found")
 
@@ -175,9 +173,7 @@ async def get_template(
     db: AsyncSessionDep,
 ) -> TemplateResponse:
     """Get a single template by ID."""
-    result = await db.execute(
-        select(Template).where(Template.id == template_id)
-    )
+    result = await db.execute(select(Template).where(Template.id == template_id))
     template = result.scalar_one_or_none()
 
     if not template:
@@ -203,7 +199,7 @@ async def update_template(
             and_(
                 Template.id == template_id,
                 Template.user_id == current_user.id,
-                Template.is_system == False,  # Can't edit system templates
+                not Template.is_system,  # Can't edit system templates
             )
         )
     )
@@ -242,7 +238,7 @@ async def delete_template(
             and_(
                 Template.id == template_id,
                 Template.user_id == current_user.id,
-                Template.is_system == False,  # Can't delete system templates
+                not Template.is_system,  # Can't delete system templates
             )
         )
     )
@@ -262,9 +258,7 @@ async def duplicate_template(
     db: AsyncSessionDep,
 ) -> TemplateResponse:
     """Duplicate a template to user's own templates."""
-    result = await db.execute(
-        select(Template).where(Template.id == template_id)
-    )
+    result = await db.execute(select(Template).where(Template.id == template_id))
     original = result.scalar_one_or_none()
 
     if not original:
@@ -305,9 +299,7 @@ async def render_template(
     db: AsyncSessionDep,
 ) -> TemplateRenderResponse:
     """Render a template with provided variables."""
-    result = await db.execute(
-        select(Template).where(Template.id == template_id)
-    )
+    result = await db.execute(select(Template).where(Template.id == template_id))
     template = result.scalar_one_or_none()
 
     if not template:
@@ -331,12 +323,13 @@ async def render_template(
 # Helper Functions
 # =============================================================================
 
+
 def _extract_variables(content: str) -> list:
     """
     Extract variables from template content.
     Variables are in format: {{variable_name}} or {{variable_name:type}}
     """
-    pattern = r'\{\{(\w+)(?::(\w+))?\}\}'
+    pattern = r"\{\{(\w+)(?::(\w+))?\}\}"
     matches = re.findall(pattern, content)
 
     variables = []
@@ -345,11 +338,13 @@ def _extract_variables(content: str) -> list:
     for name, var_type in matches:
         if name not in seen:
             seen.add(name)
-            variables.append({
-                "name": name,
-                "type": var_type or "text",
-                "required": True,
-            })
+            variables.append(
+                {
+                    "name": name,
+                    "type": var_type or "text",
+                    "required": True,
+                }
+            )
 
     return variables
 
@@ -362,10 +357,6 @@ def _render_template(content: str, variables: dict) -> str:
 
     for key, value in variables.items():
         # Replace both {{key}} and {{key:type}} patterns
-        result = re.sub(
-            rf'\{{\{{{key}(?::\w+)?\}}\}}',
-            str(value),
-            result
-        )
+        result = re.sub(rf"\{{\{{{key}(?::\w+)?\}}\}}", str(value), result)
 
     return result

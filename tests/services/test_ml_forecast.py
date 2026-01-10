@@ -2,9 +2,10 @@
 Tests for ML forecast service.
 Tests Prophet-based time-series forecasting for grant deadlines.
 """
+
 import uuid
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -23,6 +24,7 @@ from backend.services.ml_forecast import (
 # Prophet ML Availability Check
 # =============================================================================
 
+
 def _check_prophet_ml_available():
     """
     Check if Prophet ML functionality is available.
@@ -35,10 +37,12 @@ def _check_prophet_ml_available():
         import pandas as pd
 
         # Create minimal test data
-        df = pd.DataFrame({
-            'ds': pd.date_range('2020-01-01', periods=10, freq='M'),
-            'y': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        })
+        df = pd.DataFrame(
+            {
+                "ds": pd.date_range("2020-01-01", periods=10, freq="M"),
+                "y": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            }
+        )
 
         # Try to create and fit a model
         model = Prophet(
@@ -57,8 +61,7 @@ PROPHET_ML_AVAILABLE = _check_prophet_ml_available()
 
 # Skip marker for tests requiring Prophet ML
 requires_prophet_ml = pytest.mark.skipif(
-    not PROPHET_ML_AVAILABLE,
-    reason="Prophet ML functionality not available (stan backend issue)"
+    not PROPHET_ML_AVAILABLE, reason="Prophet ML functionality not available (stan backend issue)"
 )
 
 
@@ -76,7 +79,7 @@ def predictor():
 @pytest.fixture
 def sample_deadlines():
     """Create sample deadline dates for testing."""
-    today = date.today()
+    date.today()
     # Create deadlines that show an annual pattern (same month each year)
     return [
         date(2023, 3, 31),
@@ -291,6 +294,7 @@ class TestProphetModelCreation:
         model = predictor._create_prophet_model()
 
         from prophet import Prophet
+
         assert isinstance(model, Prophet)
 
     def test_create_prophet_model_yearly_seasonality(self, predictor):
@@ -319,46 +323,32 @@ class TestTrainFunderModel:
     """Tests for training funder models."""
 
     @pytest.mark.asyncio
-    async def test_train_with_sufficient_data(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_train_with_sufficient_data(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test training with sufficient historical data."""
-        result = await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        result = await predictor.train_funder_model(async_session, "National Science Foundation")
 
         assert result is True
         assert "National Science Foundation" in predictor._model_cache
 
     @pytest.mark.asyncio
-    async def test_train_with_insufficient_data(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_train_with_insufficient_data(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test training with insufficient historical data."""
-        result = await predictor.train_funder_model(
-            async_session, "Small Foundation"
-        )
+        result = await predictor.train_funder_model(async_session, "Small Foundation")
 
         assert result is False
         assert "Small Foundation" not in predictor._model_cache
 
     @pytest.mark.asyncio
-    async def test_train_uses_cached_model(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_train_uses_cached_model(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test that training uses cached model when available."""
         # First training
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation")
 
         # Record cache state
         cache_time_1 = predictor._model_cache["National Science Foundation"][1]
 
         # Second training (should use cache)
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation")
 
         cache_time_2 = predictor._model_cache["National Science Foundation"][1]
 
@@ -366,21 +356,15 @@ class TestTrainFunderModel:
         assert cache_time_1 == cache_time_2
 
     @pytest.mark.asyncio
-    async def test_train_force_retrain(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_train_force_retrain(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test force retraining bypasses cache."""
         # First training
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation")
 
         cache_time_1 = predictor._model_cache["National Science Foundation"][1]
 
         # Force retrain
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation", force_retrain=True
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation", force_retrain=True)
 
         cache_time_2 = predictor._model_cache["National Science Foundation"][1]
 
@@ -404,13 +388,9 @@ class TestPredictNextDeadline:
 
     @requires_prophet_ml
     @pytest.mark.asyncio
-    async def test_predict_returns_tuple(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_predict_returns_tuple(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test that prediction returns correct structure."""
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation")
 
         result = predictor.predict_next_deadline("National Science Foundation")
 
@@ -425,33 +405,21 @@ class TestPredictNextDeadline:
 
     @requires_prophet_ml
     @pytest.mark.asyncio
-    async def test_predict_date_is_future(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_predict_date_is_future(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test that predicted date is in the future."""
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation")
 
-        predicted_date, _, _ = predictor.predict_next_deadline(
-            "National Science Foundation"
-        )
+        predicted_date, _, _ = predictor.predict_next_deadline("National Science Foundation")
 
         assert predicted_date >= date.today()
 
     @requires_prophet_ml
     @pytest.mark.asyncio
-    async def test_predict_confidence_in_range(
-        self, async_session: AsyncSession, sample_grants_for_ml, predictor
-    ):
+    async def test_predict_confidence_in_range(self, async_session: AsyncSession, sample_grants_for_ml, predictor):
         """Test that confidence is within valid range."""
-        await predictor.train_funder_model(
-            async_session, "National Science Foundation"
-        )
+        await predictor.train_funder_model(async_session, "National Science Foundation")
 
-        _, confidence, _ = predictor.predict_next_deadline(
-            "National Science Foundation"
-        )
+        _, confidence, _ = predictor.predict_next_deadline("National Science Foundation")
 
         assert 0.5 <= confidence <= 0.95
 
@@ -466,15 +434,11 @@ class TestGetPredictionWithFallback:
 
     @requires_prophet_ml
     @pytest.mark.asyncio
-    async def test_returns_ml_prediction_with_sufficient_data(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_returns_ml_prediction_with_sufficient_data(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test ML prediction is used with sufficient data."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
-        result = await predictor.get_prediction_with_fallback(
-            async_session, "National Science Foundation"
-        )
+        result = await predictor.get_prediction_with_fallback(async_session, "National Science Foundation")
 
         assert result["method"] == "ml"
         assert "predicted_date" in result
@@ -483,28 +447,20 @@ class TestGetPredictionWithFallback:
         assert "upper_bound" in result
 
     @pytest.mark.asyncio
-    async def test_returns_rule_based_with_insufficient_data(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_returns_rule_based_with_insufficient_data(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test rule-based fallback with insufficient data."""
         predictor = GrantDeadlinePredictor(min_data_points=10)
 
-        result = await predictor.get_prediction_with_fallback(
-            async_session, "Small Foundation"
-        )
+        result = await predictor.get_prediction_with_fallback(async_session, "Small Foundation")
 
         assert result["method"] == "rule_based"
 
     @pytest.mark.asyncio
-    async def test_returns_uncertainty_days(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_returns_uncertainty_days(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test that uncertainty days is included."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
-        result = await predictor.get_prediction_with_fallback(
-            async_session, "National Science Foundation"
-        )
+        result = await predictor.get_prediction_with_fallback(async_session, "National Science Foundation")
 
         assert "uncertainty_days" in result
         assert isinstance(result["uncertainty_days"], int)
@@ -524,9 +480,7 @@ class TestRuleBasedPrediction:
         """Test rule-based prediction with no historical data."""
         predictor = GrantDeadlinePredictor()
 
-        result = await predictor._get_rule_based_prediction(
-            async_session, "Unknown Funder"
-        )
+        result = await predictor._get_rule_based_prediction(async_session, "Unknown Funder")
 
         assert result["method"] == "rule_based"
         assert result["confidence"] == 0.3
@@ -534,15 +488,11 @@ class TestRuleBasedPrediction:
         assert result["predicted_date"] > date.today()
 
     @pytest.mark.asyncio
-    async def test_rule_based_with_some_data(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_rule_based_with_some_data(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test rule-based prediction with some historical data."""
         predictor = GrantDeadlinePredictor(min_data_points=100)  # Force rule-based
 
-        result = await predictor._get_rule_based_prediction(
-            async_session, "National Science Foundation"
-        )
+        result = await predictor._get_rule_based_prediction(async_session, "National Science Foundation")
 
         assert result["method"] == "rule_based"
         assert result["predicted_date"] is not None
@@ -557,9 +507,7 @@ class TestBatchPredict:
     """Tests for batch prediction functionality."""
 
     @pytest.mark.asyncio
-    async def test_batch_predict_multiple_funders(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_batch_predict_multiple_funders(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test batch prediction for multiple funders."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
@@ -595,29 +543,21 @@ class TestGetAllFunderPredictions:
     """Tests for getting predictions for all funders."""
 
     @pytest.mark.asyncio
-    async def test_returns_predictions_list(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_returns_predictions_list(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test that predictions are returned as a list."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
-        results = await predictor.get_all_funder_predictions(
-            async_session, min_grants=2
-        )
+        results = await predictor.get_all_funder_predictions(async_session, min_grants=2)
 
         assert isinstance(results, list)
         assert len(results) > 0
 
     @pytest.mark.asyncio
-    async def test_includes_funder_info(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_includes_funder_info(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test that results include funder information."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
-        results = await predictor.get_all_funder_predictions(
-            async_session, min_grants=2
-        )
+        results = await predictor.get_all_funder_predictions(async_session, min_grants=2)
 
         for result in results:
             assert "funder_name" in result
@@ -625,31 +565,23 @@ class TestGetAllFunderPredictions:
             assert "last_deadline" in result
 
     @pytest.mark.asyncio
-    async def test_filters_by_min_grants(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_filters_by_min_grants(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test filtering by minimum grants."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
         # With min_grants=5, should only get NSF (has 5 grants)
-        results = await predictor.get_all_funder_predictions(
-            async_session, min_grants=5
-        )
+        results = await predictor.get_all_funder_predictions(async_session, min_grants=5)
 
         funder_names = [r["funder_name"] for r in results]
         # Small Foundation only has 1 grant, should be excluded
         assert "Small Foundation" not in funder_names
 
     @pytest.mark.asyncio
-    async def test_sorted_by_predicted_date(
-        self, async_session: AsyncSession, sample_grants_for_ml
-    ):
+    async def test_sorted_by_predicted_date(self, async_session: AsyncSession, sample_grants_for_ml):
         """Test that results are sorted by predicted date."""
         predictor = GrantDeadlinePredictor(min_data_points=3)
 
-        results = await predictor.get_all_funder_predictions(
-            async_session, min_grants=2
-        )
+        results = await predictor.get_all_funder_predictions(async_session, min_grants=2)
 
         if len(results) > 1:
             dates = [r["predicted_date"] for r in results]

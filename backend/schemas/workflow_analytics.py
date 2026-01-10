@@ -8,17 +8,14 @@ Pydantic schemas for workflow analytics operations including:
 - Completion rate tracking
 - Deadline risk forecasting
 """
+
 from datetime import date, datetime
 from typing import Any, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from backend.schemas.common import PaginatedResponse, PaginationInfo
-from backend.schemas.jsonb_types import (
-    WorkflowEventMetadataDict,
-    WorkflowMetricsDict,
-)
+from backend.schemas.common import PaginationInfo
 
 
 # =============================================================================
@@ -74,28 +71,17 @@ class WorkflowEventCreate(WorkflowEventBase):
             "assignee_removed",
         }
         if v not in valid_types:
-            raise ValueError(
-                f"Invalid event_type '{v}'. Must be one of: {sorted(valid_types)}"
-            )
+            raise ValueError(f"Invalid event_type '{v}'. Must be one of: {sorted(valid_types)}")
         return v
 
     @field_validator("metadata")
     @classmethod
-    def validate_metadata_structure(
-        cls, v: Optional[dict[str, Any]]
-    ) -> Optional[dict[str, Any]]:
+    def validate_metadata_structure(cls, v: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
         """Validate that metadata conforms to WorkflowEventMetadataDict structure."""
         if v is None:
             return v
 
         # Optional: Validate known metadata fields if present
-        allowed_keys = {
-            "previous_value",
-            "new_value",
-            "reason",
-            "triggered_by",
-            "additional_info",
-        }
         # Allow additional keys but log warning for unknown ones
         # This is a loose validation to allow flexibility
 

@@ -2,13 +2,13 @@
 Tests for Redis Streams event bus.
 Tests event publishing, consuming, and dead letter queue handling.
 """
+
 import json
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
 
 from backend.core.events import (
     AlertPendingEvent,
@@ -332,15 +332,17 @@ class TestStreamMetrics:
         """Create mock Redis with stream info."""
         redis_mock = AsyncMock()
         redis_mock.ping = AsyncMock(return_value=True)
-        redis_mock.xinfo_stream = AsyncMock(return_value={
-            "length": 100,
-            "radix-tree-keys": 1,
-            "radix-tree-nodes": 2,
-            "groups": 1,
-            "last-generated-id": "1234567890-0",
-            "first-entry": ("1234567890-0", {"data": "test"}),
-            "last-entry": ("1234567891-0", {"data": "test2"}),
-        })
+        redis_mock.xinfo_stream = AsyncMock(
+            return_value={
+                "length": 100,
+                "radix-tree-keys": 1,
+                "radix-tree-nodes": 2,
+                "groups": 1,
+                "last-generated-id": "1234567890-0",
+                "first-entry": ("1234567890-0", {"data": "test"}),
+                "last-entry": ("1234567891-0", {"data": "test2"}),
+            }
+        )
         redis_mock.aclose = AsyncMock()
         return redis_mock
 

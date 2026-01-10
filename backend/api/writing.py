@@ -2,6 +2,7 @@
 Writing Assistant API Endpoints
 Provides endpoints for analyzing and improving grant application drafts.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,6 @@ from backend.models import User
 from backend.schemas.writing import (
     AnalyzeRequest,
     AnalyzeResponse,
-    CriteriaRequest,
     FeedbackRequest,
     FeedbackResponse,
     MechanismCriteria,
@@ -55,15 +55,9 @@ async def analyze_draft(
             grant_id=request.grant_id,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Analysis failed: {str(e)}")
 
 
 @router.get("/criteria/{mechanism}", response_model=MechanismCriteria)
@@ -96,8 +90,7 @@ async def get_review_criteria(
         return criteria
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve criteria: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve criteria: {str(e)}"
         )
 
 
@@ -131,14 +124,10 @@ async def get_draft_feedback(
             grant_id=request.grant_id,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Feedback generation failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Feedback generation failed: {str(e)}"
         )
 
 
@@ -167,6 +156,7 @@ async def stream_draft_feedback(
     Returns:
         StreamingResponse with text/event-stream content type
     """
+
     async def event_generator():
         async for event in writing_assistant.stream_feedback(
             db=db,
@@ -217,14 +207,10 @@ async def get_improvement_suggestions(
             max_suggestions=request.max_suggestions,
         )
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Suggestions generation failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Suggestions generation failed: {str(e)}"
         )
 
 
@@ -263,7 +249,7 @@ async def get_criterion_tips(
 
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Criterion '{criterion}' not found for mechanism '{mechanism}'"
+            detail=f"Criterion '{criterion}' not found for mechanism '{mechanism}'",
         )
 
     return {

@@ -2,6 +2,7 @@
 Google Calendar Service
 Handles OAuth flow and calendar event management.
 """
+
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
@@ -69,9 +70,7 @@ class GoogleCalendarService:
             State string in format "user_id:signature".
         """
         # Simple encoding - in production use signed tokens
-        signature = hashlib.sha256(
-            f"{user_id}{settings.secret_key}".encode()
-        ).hexdigest()[:16]
+        signature = hashlib.sha256(f"{user_id}{settings.secret_key}".encode()).hexdigest()[:16]
         return f"{user_id}:{signature}"
 
     def _verify_state(self, state: str) -> Optional[str]:
@@ -86,9 +85,7 @@ class GoogleCalendarService:
         """
         try:
             user_id, sig = state.split(":")
-            expected_sig = hashlib.sha256(
-                f"{user_id}{settings.secret_key}".encode()
-            ).hexdigest()[:16]
+            expected_sig = hashlib.sha256(f"{user_id}{settings.secret_key}".encode()).hexdigest()[:16]
             if sig == expected_sig:
                 return user_id
         except (ValueError, AttributeError):
@@ -189,9 +186,7 @@ class GoogleCalendarService:
             logger.info("Access token expired, refreshing...")
             tokens = await self.refresh_token(integration.refresh_token)
             integration.access_token = tokens["access_token"]
-            integration.token_expires_at = datetime.now(timezone.utc) + timedelta(
-                seconds=tokens["expires_in"]
-            )
+            integration.token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"])
             # Token will be saved when db.commit() is called
 
         synced = 0
@@ -202,9 +197,7 @@ class GoogleCalendarService:
                     event = self._deadline_to_event(deadline)
 
                     # Check if event already exists (by searching for our custom ID)
-                    existing_event_id = await self._find_existing_event(
-                        client, integration, deadline.id
-                    )
+                    existing_event_id = await self._find_existing_event(client, integration, deadline.id)
 
                     if existing_event_id:
                         # Update existing event
@@ -231,9 +224,7 @@ class GoogleCalendarService:
                         synced += 1
                         logger.info(f"Synced deadline {deadline.id} to Google Calendar")
                     else:
-                        logger.warning(
-                            f"Failed to sync deadline {deadline.id}: {response.text}"
-                        )
+                        logger.warning(f"Failed to sync deadline {deadline.id}: {response.text}")
 
                 except Exception as e:
                     logger.error(f"Error syncing deadline {deadline.id}: {e}")

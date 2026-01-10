@@ -2,9 +2,9 @@
 Tests for deadline history service.
 Tests historical deadline tracking and prediction functions.
 """
+
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -207,7 +207,7 @@ class TestAddDeadlineRecord:
         )
 
         # Second add with same details
-        result2 = await add_deadline_record(
+        await add_deadline_record(
             db=async_session,
             funder_name="Duplicate Foundation",
             grant_title="Duplicate Grant",
@@ -228,27 +228,17 @@ class TestGetFunderDeadlineHistory:
     """Tests for retrieving funder deadline history."""
 
     @pytest.mark.asyncio
-    async def test_get_history_returns_records(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_get_history_returns_records(self, async_session: AsyncSession, sample_deadline_history):
         """Test retrieving history for a specific funder."""
-        records = await get_funder_deadline_history(
-            async_session, "National Science Foundation"
-        )
+        records = await get_funder_deadline_history(async_session, "National Science Foundation")
 
         assert len(records) == 10  # We created 10 NSF records
 
     @pytest.mark.asyncio
-    async def test_get_history_filters_by_funder(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_get_history_filters_by_funder(self, async_session: AsyncSession, sample_deadline_history):
         """Test that history is filtered by funder name."""
-        nsf_records = await get_funder_deadline_history(
-            async_session, "National Science Foundation"
-        )
-        nih_records = await get_funder_deadline_history(
-            async_session, "NIH - National Cancer Institute"
-        )
+        nsf_records = await get_funder_deadline_history(async_session, "National Science Foundation")
+        nih_records = await get_funder_deadline_history(async_session, "NIH - National Cancer Institute")
 
         assert len(nsf_records) == 10
         assert len(nih_records) == 5
@@ -256,9 +246,7 @@ class TestGetFunderDeadlineHistory:
     @pytest.mark.asyncio
     async def test_get_history_unknown_funder(self, async_session: AsyncSession):
         """Test retrieving history for unknown funder."""
-        records = await get_funder_deadline_history(
-            async_session, "Unknown Foundation"
-        )
+        records = await get_funder_deadline_history(async_session, "Unknown Foundation")
 
         assert len(records) == 0
 
@@ -272,13 +260,9 @@ class TestGetDeadlinePatterns:
     """Tests for analyzing deadline patterns."""
 
     @pytest.mark.asyncio
-    async def test_get_patterns_returns_analysis(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_get_patterns_returns_analysis(self, async_session: AsyncSession, sample_deadline_history):
         """Test that pattern analysis returns expected structure."""
-        patterns = await get_deadline_patterns(
-            async_session, "National Science Foundation"
-        )
+        patterns = await get_deadline_patterns(async_session, "National Science Foundation")
 
         assert patterns is not None
         assert "typical_months" in patterns
@@ -286,13 +270,9 @@ class TestGetDeadlinePatterns:
         assert "date_variance_days" in patterns
 
     @pytest.mark.asyncio
-    async def test_patterns_calculates_typical_day(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_patterns_calculates_typical_day(self, async_session: AsyncSession, sample_deadline_history):
         """Test that typical day of month is calculated."""
-        patterns = await get_deadline_patterns(
-            async_session, "National Science Foundation"
-        )
+        patterns = await get_deadline_patterns(async_session, "National Science Foundation")
 
         # Our sample data has day=28
         assert patterns["typical_day_of_month"] is not None
@@ -301,9 +281,7 @@ class TestGetDeadlinePatterns:
     @pytest.mark.asyncio
     async def test_patterns_with_insufficient_data(self, async_session: AsyncSession):
         """Test patterns with insufficient historical data."""
-        patterns = await get_deadline_patterns(
-            async_session, "Unknown Foundation"
-        )
+        patterns = await get_deadline_patterns(async_session, "Unknown Foundation")
 
         # Should return None or empty patterns
         assert patterns is None or patterns.get("typical_day_of_month") is None
@@ -318,9 +296,7 @@ class TestGetDeadlineHistoryStats:
     """Tests for deadline history statistics."""
 
     @pytest.mark.asyncio
-    async def test_stats_returns_totals(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_stats_returns_totals(self, async_session: AsyncSession, sample_deadline_history):
         """Test that stats returns total counts."""
         stats = await get_deadline_history_stats(async_session)
 
@@ -328,9 +304,7 @@ class TestGetDeadlineHistoryStats:
         assert stats["unique_funders"] == 2
 
     @pytest.mark.asyncio
-    async def test_stats_returns_date_range(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_stats_returns_date_range(self, async_session: AsyncSession, sample_deadline_history):
         """Test that stats includes date range."""
         stats = await get_deadline_history_stats(async_session)
 
@@ -355,13 +329,9 @@ class TestPredictNextDeadline:
     """Tests for deadline prediction."""
 
     @pytest.mark.asyncio
-    async def test_predict_returns_prediction(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_predict_returns_prediction(self, async_session: AsyncSession, sample_deadline_history):
         """Test that prediction returns expected structure."""
-        prediction = await predict_next_deadline(
-            async_session, "National Science Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "National Science Foundation")
 
         assert prediction is not None
         assert "funder_name" in prediction
@@ -369,25 +339,17 @@ class TestPredictNextDeadline:
         assert "confidence" in prediction
 
     @pytest.mark.asyncio
-    async def test_predict_includes_typical_day(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_predict_includes_typical_day(self, async_session: AsyncSession, sample_deadline_history):
         """Test that prediction includes typical day of month."""
-        prediction = await predict_next_deadline(
-            async_session, "National Science Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "National Science Foundation")
 
         assert "typical_day_of_month" in prediction
         assert prediction["typical_day_of_month"] is not None
 
     @pytest.mark.asyncio
-    async def test_predict_includes_typical_months(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_predict_includes_typical_months(self, async_session: AsyncSession, sample_deadline_history):
         """Test that prediction includes typical months."""
-        prediction = await predict_next_deadline(
-            async_session, "National Science Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "National Science Foundation")
 
         assert "typical_months" in prediction
         assert isinstance(prediction["typical_months"], list)
@@ -395,31 +357,21 @@ class TestPredictNextDeadline:
     @pytest.mark.asyncio
     async def test_predict_with_unknown_funder(self, async_session: AsyncSession):
         """Test prediction for unknown funder returns None."""
-        prediction = await predict_next_deadline(
-            async_session, "Unknown Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "Unknown Foundation")
 
         assert prediction is None
 
     @pytest.mark.asyncio
-    async def test_predict_confidence_range(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_predict_confidence_range(self, async_session: AsyncSession, sample_deadline_history):
         """Test that confidence is within valid range."""
-        prediction = await predict_next_deadline(
-            async_session, "National Science Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "National Science Foundation")
 
         assert 0 <= prediction["confidence"] <= 1
 
     @pytest.mark.asyncio
-    async def test_predict_based_on_records_count(
-        self, async_session: AsyncSession, sample_deadline_history
-    ):
+    async def test_predict_based_on_records_count(self, async_session: AsyncSession, sample_deadline_history):
         """Test that prediction reports number of records used."""
-        prediction = await predict_next_deadline(
-            async_session, "National Science Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "National Science Foundation")
 
         assert "based_on_records" in prediction
         assert prediction["based_on_records"] == 10
@@ -445,13 +397,9 @@ class TestDeadlineHistoryIntegration:
         assert stats["total_records"] > 0
 
         # Step 3: Get patterns for NSF
-        patterns = await get_deadline_patterns(
-            async_session, "National Science Foundation"
-        )
+        await get_deadline_patterns(async_session, "National Science Foundation")
         # May be None if not enough variety in data
 
         # Step 4: Predict next deadline
-        prediction = await predict_next_deadline(
-            async_session, "National Science Foundation"
-        )
+        prediction = await predict_next_deadline(async_session, "National Science Foundation")
         assert prediction is not None

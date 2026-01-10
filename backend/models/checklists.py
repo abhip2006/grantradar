@@ -5,6 +5,7 @@ Provides SQLAlchemy ORM models for checklist templates and application checklist
 JSONB Field Types:
 - items: List[ChecklistItemDict] - see backend.schemas.jsonb_types for structure
 """
+
 import uuid
 from datetime import datetime
 from typing import Any, List, Optional
@@ -207,10 +208,6 @@ class ApplicationChecklist(Base):
         if total_weight == 0:
             return 0.0
 
-        completed_weight = sum(
-            item.get("weight", 1.0)
-            for item in self.items
-            if item.get("completed", False)
-        )
+        completed_weight = sum(item.get("weight", 1.0) for item in self.items if item.get("completed", False))
 
         return (completed_weight / total_weight) * 100.0

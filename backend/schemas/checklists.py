@@ -2,15 +2,15 @@
 Checklist schemas for request/response models.
 Provides Pydantic models for checklist management API endpoints.
 """
+
 from datetime import datetime
 from enum import Enum
-from typing import Any, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, computed_field, field_validator
 
-from backend.schemas.common import PaginatedResponse, PaginationInfo
-from backend.schemas.jsonb_types import ChecklistItemDict
+from backend.schemas.common import PaginationInfo
 
 
 class ChecklistItemCategory(str, Enum):

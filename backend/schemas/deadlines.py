@@ -2,6 +2,7 @@
 Deadline schemas for request/response models.
 Provides Pydantic models for deadline management API endpoints.
 """
+
 from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
@@ -73,33 +74,16 @@ class DeadlineCreate(BaseModel):
     funder: Optional[str] = Field(None, max_length=100, description="Funding organization")
     mechanism: Optional[str] = Field(None, max_length=50, description="Grant mechanism type")
     internal_deadline: Optional[datetime] = Field(None, description="Internal institutional deadline")
-    status: DeadlineStatus = Field(
-        DeadlineStatus.NOT_STARTED,
-        description="Initial status"
-    )
-    priority: DeadlinePriority = Field(
-        DeadlinePriority.MEDIUM,
-        description="Priority level"
-    )
+    status: DeadlineStatus = Field(DeadlineStatus.NOT_STARTED, description="Initial status")
+    priority: DeadlinePriority = Field(DeadlinePriority.MEDIUM, description="Priority level")
     url: Optional[str] = Field(None, max_length=1000, description="URL to grant opportunity")
     notes: Optional[str] = Field(None, description="Additional notes")
-    color: str = Field(
-        "#3B82F6",
-        pattern=r"^#[0-9A-Fa-f]{6}$",
-        description="Hex color code for calendar display"
-    )
+    color: str = Field("#3B82F6", pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code for calendar display")
     # Recurring deadline fields
     is_recurring: bool = Field(False, description="Whether this is a recurring deadline template")
-    recurrence_rule: Optional[str] = Field(
-        None,
-        max_length=255,
-        description="RRULE format recurrence rule (RFC 5545)"
-    )
+    recurrence_rule: Optional[str] = Field(None, max_length=255, description="RRULE format recurrence rule (RFC 5545)")
     # Reminder configuration
-    reminder_config: List[int] = Field(
-        default=[30, 14, 7, 3, 1],
-        description="Days before deadline to send reminders"
-    )
+    reminder_config: List[int] = Field(default=[30, 14, 7, 3, 1], description="Days before deadline to send reminders")
 
 
 class DeadlineUpdate(BaseModel):
@@ -116,23 +100,12 @@ class DeadlineUpdate(BaseModel):
     priority: Optional[DeadlinePriority] = Field(None, description="Priority level")
     url: Optional[str] = Field(None, max_length=1000, description="URL to grant opportunity")
     notes: Optional[str] = Field(None, description="Additional notes")
-    color: Optional[str] = Field(
-        None,
-        pattern=r"^#[0-9A-Fa-f]{6}$",
-        description="Hex color code for calendar display"
-    )
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$", description="Hex color code for calendar display")
     # Recurring deadline fields
     is_recurring: Optional[bool] = Field(None, description="Whether this is a recurring deadline template")
-    recurrence_rule: Optional[str] = Field(
-        None,
-        max_length=255,
-        description="RRULE format recurrence rule (RFC 5545)"
-    )
+    recurrence_rule: Optional[str] = Field(None, max_length=255, description="RRULE format recurrence rule (RFC 5545)")
     # Reminder configuration
-    reminder_config: Optional[List[int]] = Field(
-        None,
-        description="Days before deadline to send reminders"
-    )
+    reminder_config: Optional[List[int]] = Field(None, description="Days before deadline to send reminders")
 
 
 class DeadlineResponse(BaseModel):
@@ -157,10 +130,7 @@ class DeadlineResponse(BaseModel):
     recurrence_rule: Optional[str] = Field(None, description="RRULE format recurrence rule")
     parent_deadline_id: Optional[UUID] = Field(None, description="Parent recurring deadline ID")
     # Reminder configuration
-    reminder_config: List[int] = Field(
-        default=[30, 14, 7, 3, 1],
-        description="Days before deadline to send reminders"
-    )
+    reminder_config: List[int] = Field(default=[30, 14, 7, 3, 1], description="Days before deadline to send reminders")
     escalation_sent: bool = Field(False, description="Whether escalation alert has been sent")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
@@ -271,10 +241,7 @@ class ReminderConfigUpdate(BaseModel):
     """Schema for updating reminder configuration."""
 
     reminder_config: List[int] = Field(
-        ...,
-        min_length=1,
-        max_length=10,
-        description="Days before deadline to send reminders (e.g., [30, 14, 7, 3, 1])"
+        ..., min_length=1, max_length=10, description="Days before deadline to send reminders (e.g., [30, 14, 7, 3, 1])"
     )
 
 

@@ -2,6 +2,7 @@
 Seed initial checklist templates for common funders.
 Run this once during initial setup or migration.
 """
+
 import asyncio
 import logging
 from uuid import uuid4
@@ -697,10 +698,9 @@ async def seed_checklist_templates():
     async with get_async_session() as session:
         # Check if templates already exist
         from sqlalchemy import select, func
+
         result = await session.execute(
-            select(func.count()).select_from(ChecklistTemplate).where(
-                ChecklistTemplate.is_system == True
-            )
+            select(func.count()).select_from(ChecklistTemplate).where(ChecklistTemplate.is_system)
         )
         existing_count = result.scalar()
 
@@ -732,9 +732,7 @@ async def reset_and_seed_checklist_templates():
         from sqlalchemy import delete
 
         # Delete existing system templates
-        await session.execute(
-            delete(ChecklistTemplate).where(ChecklistTemplate.is_system == True)
-        )
+        await session.execute(delete(ChecklistTemplate).where(ChecklistTemplate.is_system))
         await session.commit()
 
         logger.info("Deleted existing system checklist templates")

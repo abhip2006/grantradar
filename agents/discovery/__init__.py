@@ -5,6 +5,7 @@ Agents responsible for discovering grant opportunities from various sources.
 Each agent inherits from DiscoveryAgent and implements source-specific
 logic for fetching, normalizing, and publishing grant data.
 """
+
 # Base class
 from agents.discovery.base import DiscoveryAgent
 

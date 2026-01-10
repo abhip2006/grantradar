@@ -56,11 +56,8 @@ def generate_embedding(text: str, retry_count: int = 3) -> list[float] | None:
             return embedding
 
         except openai.RateLimitError as e:
-            wait_time = (2 ** attempt) * 2  # Exponential backoff: 2s, 4s, 8s
-            logger.warning(
-                f"Rate limit hit (attempt {attempt + 1}/{retry_count}). "
-                f"Waiting {wait_time}s: {e}"
-            )
+            wait_time = (2**attempt) * 2  # Exponential backoff: 2s, 4s, 8s
+            logger.warning(f"Rate limit hit (attempt {attempt + 1}/{retry_count}). Waiting {wait_time}s: {e}")
             if attempt < retry_count - 1:
                 time.sleep(wait_time)
             else:
@@ -245,14 +242,11 @@ def reindex_grants(self, batch_size: int = 100) -> dict[str, Any]:
 
         # Process in batches
         for i in range(0, total_grants, batch_size):
-            batch = grants_to_index[i:i + batch_size]
+            batch = grants_to_index[i : i + batch_size]
             batch_num = (i // batch_size) + 1
             total_batches = (total_grants + batch_size - 1) // batch_size
 
-            logger.info(
-                f"Processing batch {batch_num}/{total_batches} "
-                f"({len(batch)} grants)"
-            )
+            logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} grants)")
 
             for grant in batch:
                 try:
@@ -276,10 +270,7 @@ def reindex_grants(self, batch_size: int = 100) -> dict[str, Any]:
                 except Exception as e:
                     stats["failed"] += 1
                     stats["total_processed"] += 1
-                    logger.error(
-                        f"Error processing grant {grant.id}: {e}",
-                        exc_info=True
-                    )
+                    logger.error(f"Error processing grant {grant.id}: {e}", exc_info=True)
 
             # Commit batch
             try:
@@ -359,14 +350,11 @@ def reindex_profiles(self, batch_size: int = 50) -> dict[str, Any]:
 
         # Process in batches
         for i in range(0, total_profiles, batch_size):
-            batch = profiles_to_index[i:i + batch_size]
+            batch = profiles_to_index[i : i + batch_size]
             batch_num = (i // batch_size) + 1
             total_batches = (total_profiles + batch_size - 1) // batch_size
 
-            logger.info(
-                f"Processing batch {batch_num}/{total_batches} "
-                f"({len(batch)} profiles)"
-            )
+            logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} profiles)")
 
             for profile in batch:
                 try:
@@ -383,19 +371,14 @@ def reindex_profiles(self, batch_size: int = 50) -> dict[str, Any]:
                         logger.debug(f"Generated embedding for profile {profile.id}")
                     else:
                         stats["failed"] += 1
-                        logger.warning(
-                            f"Failed to generate embedding for profile {profile.id}"
-                        )
+                        logger.warning(f"Failed to generate embedding for profile {profile.id}")
 
                     stats["total_processed"] += 1
 
                 except Exception as e:
                     stats["failed"] += 1
                     stats["total_processed"] += 1
-                    logger.error(
-                        f"Error processing profile {profile.id}: {e}",
-                        exc_info=True
-                    )
+                    logger.error(f"Error processing profile {profile.id}: {e}", exc_info=True)
 
             # Commit batch
             try:
@@ -472,13 +455,15 @@ def rebuild_vector_indexes(self) -> dict[str, Any]:
             db.execute(text("DROP INDEX IF EXISTS ix_grants_embedding"))
             db.commit()
 
-            db.execute(text(
-                """
+            db.execute(
+                text(
+                    """
                 CREATE INDEX ix_grants_embedding ON grants
                 USING ivfflat (embedding vector_cosine_ops)
                 WITH (lists = 100)
                 """
-            ))
+                )
+            )
             db.commit()
             results["grants_index_rebuilt"] = True
             logger.info("Grants embedding index rebuilt successfully")
@@ -494,13 +479,15 @@ def rebuild_vector_indexes(self) -> dict[str, Any]:
             db.execute(text("DROP INDEX IF EXISTS ix_lab_profiles_embedding"))
             db.commit()
 
-            db.execute(text(
-                """
+            db.execute(
+                text(
+                    """
                 CREATE INDEX ix_lab_profiles_embedding ON lab_profiles
                 USING ivfflat (profile_embedding vector_cosine_ops)
                 WITH (lists = 100)
                 """
-            ))
+                )
+            )
             db.commit()
             results["profiles_index_rebuilt"] = True
             logger.info("Lab profiles embedding index rebuilt successfully")

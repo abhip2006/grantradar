@@ -3,6 +3,7 @@ ORCID API Service
 Fetch researcher profile data from ORCID public API.
 No authentication required for public profiles.
 """
+
 import logging
 import re
 from typing import Any, Optional
@@ -174,12 +175,14 @@ def parse_orcid_works(works_data: dict, max_works: int = 20) -> list[dict]:
             work_type = summary.get("type", "").replace("-", " ").title()
 
             if title:
-                publications.append({
-                    "title": title,
-                    "journal": journal_name,
-                    "year": int(year) if year else None,
-                    "type": work_type,
-                })
+                publications.append(
+                    {
+                        "title": title,
+                        "journal": journal_name,
+                        "year": int(year) if year else None,
+                        "type": work_type,
+                    }
+                )
 
     except Exception as e:
         logger.error(f"Error parsing ORCID works: {e}")
@@ -227,13 +230,15 @@ def parse_orcid_fundings(fundings_data: dict, max_fundings: int = 20) -> list[di
             end_year = end_date.get("year", {}).get("value") if end_date else None
 
             if title:
-                grants.append({
-                    "title": title,
-                    "funder": funder,
-                    "type": funding_type,
-                    "start_year": int(start_year) if start_year else None,
-                    "end_year": int(end_year) if end_year else None,
-                })
+                grants.append(
+                    {
+                        "title": title,
+                        "funder": funder,
+                        "type": funding_type,
+                        "start_year": int(start_year) if start_year else None,
+                        "end_year": int(end_year) if end_year else None,
+                    }
+                )
 
     except Exception as e:
         logger.error(f"Error parsing ORCID fundings: {e}")
@@ -267,14 +272,45 @@ def extract_research_areas_from_orcid(
 
     # Extract common research terms from publication titles
     common_research_terms = {
-        "machine learning", "deep learning", "artificial intelligence", "neural network",
-        "natural language processing", "computer vision", "data science", "bioinformatics",
-        "genomics", "proteomics", "cancer", "immunology", "neuroscience", "genetics",
-        "molecular biology", "cell biology", "biochemistry", "pharmacology", "epidemiology",
-        "climate change", "environmental", "ecology", "sustainability", "renewable energy",
-        "materials science", "nanotechnology", "quantum", "physics", "chemistry",
-        "psychology", "cognitive", "behavioral", "social science", "economics",
-        "public health", "healthcare", "clinical", "therapeutics", "diagnostics",
+        "machine learning",
+        "deep learning",
+        "artificial intelligence",
+        "neural network",
+        "natural language processing",
+        "computer vision",
+        "data science",
+        "bioinformatics",
+        "genomics",
+        "proteomics",
+        "cancer",
+        "immunology",
+        "neuroscience",
+        "genetics",
+        "molecular biology",
+        "cell biology",
+        "biochemistry",
+        "pharmacology",
+        "epidemiology",
+        "climate change",
+        "environmental",
+        "ecology",
+        "sustainability",
+        "renewable energy",
+        "materials science",
+        "nanotechnology",
+        "quantum",
+        "physics",
+        "chemistry",
+        "psychology",
+        "cognitive",
+        "behavioral",
+        "social science",
+        "economics",
+        "public health",
+        "healthcare",
+        "clinical",
+        "therapeutics",
+        "diagnostics",
     }
 
     # Check publication titles for research terms
@@ -303,13 +339,36 @@ def extract_methods_from_orcid(publications: list[dict]) -> list[str]:
     methods = set()
 
     common_methods = {
-        "statistical analysis", "regression", "machine learning", "deep learning",
-        "survey", "interview", "ethnography", "case study", "experiment",
-        "randomized controlled trial", "meta-analysis", "systematic review",
-        "simulation", "modeling", "computational", "quantitative", "qualitative",
-        "sequencing", "mass spectrometry", "microscopy", "spectroscopy",
-        "chromatography", "pcr", "elisa", "western blot", "flow cytometry",
-        "clinical trial", "cohort study", "cross-sectional", "longitudinal",
+        "statistical analysis",
+        "regression",
+        "machine learning",
+        "deep learning",
+        "survey",
+        "interview",
+        "ethnography",
+        "case study",
+        "experiment",
+        "randomized controlled trial",
+        "meta-analysis",
+        "systematic review",
+        "simulation",
+        "modeling",
+        "computational",
+        "quantitative",
+        "qualitative",
+        "sequencing",
+        "mass spectrometry",
+        "microscopy",
+        "spectroscopy",
+        "chromatography",
+        "pcr",
+        "elisa",
+        "western blot",
+        "flow cytometry",
+        "clinical trial",
+        "cohort study",
+        "cross-sectional",
+        "longitudinal",
     }
 
     for pub in publications:

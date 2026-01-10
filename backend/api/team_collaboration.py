@@ -1,9 +1,10 @@
 """Team collaboration API endpoints for grant assignments, comments, and coordination."""
+
 import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Query
 
 from backend.api.deps import AsyncSessionDep, CurrentUser
 from backend.services.team_collaboration import TeamCollaborationService
@@ -159,10 +160,7 @@ async def assign_grant(
         data=data,
     )
 
-    logger.info(
-        f"Grant assigned: grant_id={data.grant_id}, assignee={data.assigned_to}, "
-        f"role={data.role.value}"
-    )
+    logger.info(f"Grant assigned: grant_id={data.grant_id}, assignee={data.assigned_to}, role={data.role.value}")
 
     return _build_assignment_response(assignment)
 
@@ -500,9 +498,7 @@ async def get_team_activity(
 async def check_deadline_conflicts(
     db: AsyncSessionDep,
     current_user: CurrentUser,
-    window_days: int = Query(
-        7, ge=1, le=30, description="Days window for conflict detection"
-    ),
+    window_days: int = Query(7, ge=1, le=30, description="Days window for conflict detection"),
 ) -> DeadlineConflictsResponse:
     """
     Check for deadline conflicts within the team.
@@ -519,16 +515,16 @@ async def check_deadline_conflicts(
 
     conflicts = []
     for c in result["conflicts"]:
-        conflicts.append(DeadlineConflict(
-            user_id=c["user_id"],
-            user_name=c["user_name"],
-            user_email=c["user_email"],
-            conflict_date=c["conflict_date"],
-            conflicting_assignments=[
-                DeadlineAssignment(**a) for a in c["conflicting_assignments"]
-            ],
-            severity=c["severity"],
-        ))
+        conflicts.append(
+            DeadlineConflict(
+                user_id=c["user_id"],
+                user_name=c["user_name"],
+                user_email=c["user_email"],
+                conflict_date=c["conflict_date"],
+                conflicting_assignments=[DeadlineAssignment(**a) for a in c["conflicting_assignments"]],
+                severity=c["severity"],
+            )
+        )
 
     return DeadlineConflictsResponse(
         conflicts=conflicts,

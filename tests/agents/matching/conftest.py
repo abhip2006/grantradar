@@ -2,12 +2,12 @@
 Matching agent test fixtures.
 Provides mock data and utilities for testing matching components.
 """
+
 import pytest
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any
-from unittest.mock import MagicMock, AsyncMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import MagicMock
+from uuid import uuid4
 
 
 @pytest.fixture
@@ -73,9 +73,7 @@ def mock_anthropic_response(sample_match_result):
     import json
 
     mock_response = MagicMock()
-    mock_response.content = [
-        MagicMock(text=json.dumps([sample_match_result]))
-    ]
+    mock_response.content = [MagicMock(text=json.dumps([sample_match_result]))]
     return mock_response
 
 
@@ -83,9 +81,7 @@ def mock_anthropic_response(sample_match_result):
 def mock_openai_embedding():
     """Mock OpenAI embedding response."""
     mock_response = MagicMock()
-    mock_response.data = [
-        MagicMock(embedding=[0.1] * 1536)
-    ]
+    mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
     return mock_response
 
 
@@ -129,6 +125,7 @@ def mock_redis_client():
 # GrantData fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def grant_data_minimal():
     """Minimal GrantData for testing."""
@@ -164,6 +161,7 @@ def grant_data_full(sample_grant_data):
 # UserProfile fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def user_profile_minimal():
     """Minimal UserProfile for testing."""
@@ -195,6 +193,7 @@ def user_profile_full(sample_user_profile):
 # ProfileMatch fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def profile_match(user_profile_full):
     """ProfileMatch for testing."""
@@ -210,6 +209,7 @@ def profile_match(user_profile_full):
 # =============================================================================
 # Helper functions
 # =============================================================================
+
 
 def create_mock_db_result(data: dict[str, Any]):
     """Create a mock database result row."""

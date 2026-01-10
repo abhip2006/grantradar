@@ -4,7 +4,7 @@ Compliance Engine API Endpoints
 Endpoints for managing compliance requirements, tasks, and templates.
 Helps researchers stay compliant with funder requirements after grants are awarded.
 """
-from datetime import datetime, timezone
+
 from typing import List, Optional
 from uuid import UUID
 
@@ -22,7 +22,6 @@ from backend.schemas.compliance_engine import (
     ComplianceTaskResponse,
     ComplianceTaskStatus,
     ComplianceTaskUpdate,
-    ComplianceTemplateList,
     ComplianceTemplateResponse,
     FunderRequirementCreate,
     FunderRequirementList,
@@ -146,9 +145,7 @@ async def create_requirement(
 async def get_compliance_tasks(
     db: AsyncSessionDep,
     current_user: CurrentUser,
-    status_filter: Optional[ComplianceTaskStatus] = Query(
-        None, alias="status", description="Filter by task status"
-    ),
+    status_filter: Optional[ComplianceTaskStatus] = Query(None, alias="status", description="Filter by task status"),
     limit: int = Query(50, ge=1, le=100, description="Maximum results"),
     offset: int = Query(0, ge=0, description="Results to skip"),
 ) -> ComplianceTaskList:
@@ -413,7 +410,7 @@ async def generate_compliance_tasks(
                     EXTRACT(DAY FROM due_date - NOW())::integer as days_until_due
                 FROM compliance_tasks WHERE id = :id
             """),
-            {"id": task["id"]}
+            {"id": task["id"]},
         )
         row = result.fetchone()
         if row:
@@ -481,7 +478,7 @@ async def get_compliance_stats(
             FROM compliance_tasks
             WHERE user_id = :user_id
         """),
-        {"user_id": current_user.id}
+        {"user_id": current_user.id},
     )
 
     row = result.fetchone()
