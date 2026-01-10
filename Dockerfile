@@ -90,4 +90,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 
 # Default command for running the application
 # Runs migrations before starting the server
-CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:socket_app --host 0.0.0.0 --port ${PORT} --workers 4 --loop uvloop --http httptools"]
+# PYTHONPATH=/app is required for alembic to find the backend module
+CMD ["sh", "-c", "PYTHONPATH=/app alembic upgrade head && uvicorn backend.main:socket_app --host 0.0.0.0 --port ${PORT} --workers 4 --loop uvloop --http httptools"]

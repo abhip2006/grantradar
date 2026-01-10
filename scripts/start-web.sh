@@ -4,6 +4,9 @@
 
 set -e
 
+# Set PYTHONPATH so alembic can find the backend module
+export PYTHONPATH=/app
+
 echo "🔄 Running database migrations..."
 alembic upgrade head
 
