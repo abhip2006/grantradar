@@ -10,7 +10,8 @@ export PORT=${PORT:-80}
 echo "Starting nginx on port $PORT"
 
 # Substitute environment variables in the nginx config template
-envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+# Write to /tmp since /etc/nginx may be read-only in Railway
+envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /tmp/nginx.conf
 
-# Start nginx
-exec nginx -g 'daemon off;'
+# Start nginx with the generated config
+exec nginx -c /tmp/nginx.conf -g 'daemon off;'
