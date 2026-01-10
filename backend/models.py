@@ -393,6 +393,16 @@ class User(Base):
         nullable=True,
         doc="Research institution/university",
     )
+    lab_name: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Specific lab or research group name",
+    )
+    cv_path: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        doc="Path to uploaded CV file",
+    )
     phone: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True,
@@ -631,6 +641,50 @@ class LabProfile(Base):
         nullable=True,
         doc="Vector embedding of research profile for matching",
     )
+
+    # Profile analysis fields
+    analysis_status: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        default=None,
+        doc="Status of profile analysis: pending, in_progress, completed, failed",
+    )
+    analysis_started_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When profile analysis started",
+    )
+    analysis_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        doc="When profile analysis completed",
+    )
+    lab_details: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Scraped lab details: website, members count, focus areas, etc.",
+    )
+    current_funding: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Current active funding/grants",
+    )
+    past_work: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Past research work and projects",
+    )
+    current_work: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Current research work and projects",
+    )
+    cv_analysis: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=True,
+        doc="Extracted information from uploaded CV",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         nullable=False,

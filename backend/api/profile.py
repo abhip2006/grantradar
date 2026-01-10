@@ -290,7 +290,10 @@ async def import_from_orcid(
 )
 async def import_from_cv(
     current_user: CurrentUser,
+    db: AsyncSessionDep,
     file: UploadFile = File(..., description="CV/resume PDF file"),
+    save_file: bool = True,
+    trigger_analysis: bool = True,
 ) -> ImportPreviewResponse:
     """
     Import profile data from uploaded CV.
@@ -303,9 +306,14 @@ async def import_from_cv(
     - Grant history
     - Career stage
 
+    If save_file=True, stores the CV and updates user.cv_path.
+    If trigger_analysis=True, triggers the profile analysis workflow.
+
     Returns a preview that can be used to populate onboarding.
-    No AI credits used - uses regex pattern matching only.
     """
+    import os
+    import uuid as uuid_lib
+
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
@@ -331,6 +339,31 @@ async def import_from_cv(
             detail="Could not parse CV. Ensure the PDF contains extractable text."
         )
 
+    # Save CV file if requested
+    cv_path = None
+    if save_file:
+        # Create uploads directory if it doesn't exist
+        uploads_dir = os.path.join(os.getcwd(), "uploads", "cvs")
+        os.makedirs(uploads_dir, exist_ok=True)
+
+        # Generate unique filename
+        file_ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
+        unique_filename = f"{current_user.id}_{uuid_lib.uuid4()}{file_ext}"
+        cv_path = os.path.join(uploads_dir, unique_filename)
+
+        # Write file
+        with open(cv_path, "wb") as f:
+            f.write(content)
+
+        # Update user record with CV path
+        current_user.cv_path = cv_path
+        await db.flush()
+
+    # Trigger profile analysis workflow if requested
+    if trigger_analysis:
+        from backend.tasks.profile_analysis import analyze_user_profile
+        analyze_user_profile.delay(str(current_user.id))
+
     return ImportPreviewResponse(
         name=result.get("name"),
         institution=result.get("institution"),
@@ -343,3 +376,89 @@ async def import_from_cv(
         orcid=None,
         source="cv",
     )
+
+
+class ProfileAnalysisStatus(BaseModel):
+    """Status of profile analysis."""
+    status: str = Field(..., description="Status: pending, in_progress, completed, failed")
+    started_at: Optional[str] = Field(None, description="When analysis started")
+    completed_at: Optional[str] = Field(None, description="When analysis completed")
+    lab_details: Optional[dict] = Field(None, description="Analyzed lab details")
+    current_funding: Optional[dict] = Field(None, description="Current funding info")
+    publications: Optional[dict] = Field(None, description="Publications info")
+
+
+@router.get(
+    "/analysis/status",
+    response_model=ProfileAnalysisStatus,
+    summary="Get profile analysis status",
+    description="Check the status of the user's profile analysis."
+)
+async def get_analysis_status(
+    current_user: CurrentUser,
+    db: AsyncSessionDep,
+) -> ProfileAnalysisStatus:
+    """Get the status of the user's profile analysis workflow."""
+    result = await db.execute(
+        select(LabProfile).where(LabProfile.user_id == current_user.id)
+    )
+    profile = result.scalar_one_or_none()
+
+    if not profile:
+        return ProfileAnalysisStatus(status="no_profile")
+
+    return ProfileAnalysisStatus(
+        status=profile.analysis_status or "not_started",
+        started_at=profile.analysis_started_at.isoformat() if profile.analysis_started_at else None,
+        completed_at=profile.analysis_completed_at.isoformat() if profile.analysis_completed_at else None,
+        lab_details=profile.lab_details,
+        current_funding=profile.current_funding,
+        publications=profile.publications,
+    )
+
+
+@router.post(
+    "/analysis/trigger",
+    summary="Trigger profile analysis",
+    description="Manually trigger profile analysis for the current user."
+)
+async def trigger_analysis(
+    current_user: CurrentUser,
+    db: AsyncSessionDep,
+) -> dict:
+    """
+    Trigger profile analysis workflow.
+
+    Analyzes the user's profile to gather:
+    - Publications from web sources
+    - Past and current funding
+    - Lab details and team info
+    - Research focus areas
+    """
+    # Get or create profile
+    result = await db.execute(
+        select(LabProfile).where(LabProfile.user_id == current_user.id)
+    )
+    profile = result.scalar_one_or_none()
+
+    if not profile:
+        # Create a basic profile to store analysis results
+        profile = LabProfile(
+            user_id=current_user.id,
+            analysis_status="pending",
+        )
+        db.add(profile)
+        await db.flush()
+    else:
+        profile.analysis_status = "pending"
+        await db.flush()
+
+    # Trigger Celery task
+    from backend.tasks.profile_analysis import analyze_user_profile
+    task = analyze_user_profile.delay(str(current_user.id))
+
+    return {
+        "message": "Profile analysis started",
+        "task_id": task.id,
+        "status": "pending"
+    }

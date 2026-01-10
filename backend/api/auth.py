@@ -88,6 +88,7 @@ async def register(
         password_hash=hashed_password,
         name=user_data.name,
         institution=user_data.institution,
+        lab_name=user_data.lab_name,
         email_verified=False,
     )
 

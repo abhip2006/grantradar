@@ -254,8 +254,9 @@ export const authApi = {
     const response = await api.post<AuthResponse>('/auth/register', {
       email: data.email,
       password: data.password,
-      name: data.organization_name || data.name,
-      institution: data.institution,
+      name: data.name,
+      institution: data.organization_name || data.institution,
+      lab_name: data.lab_name,
     });
     return response.data;
   },

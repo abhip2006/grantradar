@@ -31,6 +31,7 @@ export interface SignupData {
   password: string;
   name?: string;
   institution?: string;
+  lab_name?: string;
   // Frontend-specific fields that map to profile
   organization_name?: string;
   organization_type?: string;

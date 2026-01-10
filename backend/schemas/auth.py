@@ -57,6 +57,7 @@ class UserCreate(BaseModel):
     )
     name: Optional[str] = Field(None, description="User's full name")
     institution: Optional[str] = Field(None, description="Research institution")
+    lab_name: Optional[str] = Field(None, description="Specific lab or research group name")
 
     @field_validator("password")
     @classmethod
