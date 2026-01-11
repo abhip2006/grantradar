@@ -7,6 +7,7 @@ Create Date: 2025-01-07
 from typing import Sequence, Union
 
 from alembic import op
+from sqlalchemy import inspect
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
@@ -18,8 +19,27 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def table_exists(table_name: str) -> bool:
+    """Check if a table exists in the database."""
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    return table_name in inspector.get_table_names()
+
+
+def index_exists(index_name: str, table_name: str) -> bool:
+    """Check if an index exists on a table."""
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    indexes = inspector.get_indexes(table_name)
+    return any(idx["name"] == index_name for idx in indexes)
+
+
 def upgrade() -> None:
-    """Create deadlines table for tracking user grant submission deadlines."""
+    """Create deadlines table for tracking user grant submission deadlines (idempotent)."""
+    if table_exists("deadlines"):
+        # Table already exists, skip creation
+        return
+
     op.create_table(
         "deadlines",
         sa.Column(
@@ -88,10 +108,14 @@ def upgrade() -> None:
         ),
     )
 
-    # Create indexes for efficient querying
-    op.create_index("ix_deadlines_user_id", "deadlines", ["user_id"])
-    op.create_index("ix_deadlines_sponsor_deadline", "deadlines", ["sponsor_deadline"])
-    op.create_index("ix_deadlines_status", "deadlines", ["status"])
+    # Create indexes for efficient querying (only if table was just created)
+    # If table already existed, indexes likely also exist
+    if not index_exists("ix_deadlines_user_id", "deadlines"):
+        op.create_index("ix_deadlines_user_id", "deadlines", ["user_id"])
+    if not index_exists("ix_deadlines_sponsor_deadline", "deadlines"):
+        op.create_index("ix_deadlines_sponsor_deadline", "deadlines", ["sponsor_deadline"])
+    if not index_exists("ix_deadlines_status", "deadlines"):
+        op.create_index("ix_deadlines_status", "deadlines", ["status"])
 
 
 def downgrade() -> None:
