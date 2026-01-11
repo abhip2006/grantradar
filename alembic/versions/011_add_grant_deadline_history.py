@@ -7,6 +7,7 @@ Create Date: 2025-01-08
 from typing import Sequence, Union
 
 from alembic import op
+from sqlalchemy import inspect
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
@@ -18,8 +19,18 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def table_exists(table_name: str) -> bool:
+    """Check if a table exists in the database."""
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    return table_name in inspector.get_table_names()
+
+
 def upgrade() -> None:
-    """Create grant_deadline_history table for storing historical deadline data."""
+    """Create grant_deadline_history table (idempotent)."""
+    if table_exists("grant_deadline_history"):
+        return
+
     op.create_table(
         "grant_deadline_history",
         sa.Column(
