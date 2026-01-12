@@ -4,7 +4,7 @@
 # ==============================================================================
 # Stage 1: Dependencies Builder
 # ==============================================================================
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /app
 
@@ -34,7 +34,7 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools && \
 # ==============================================================================
 # Stage 2: Production Runtime
 # ==============================================================================
-FROM python:3.11-slim AS production
+FROM python:3.14-slim AS production
 
 # Labels for container identification
 LABEL maintainer="GrantRadar Team"
