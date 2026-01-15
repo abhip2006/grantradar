@@ -39,6 +39,8 @@ DEMO_EMAILS = [
     "admin@grantradar.com",
     "researcher@example.com",
     "team_lead@university.edu",
+    "test.user1@grantradar.com",
+    "test.user2@grantradar.com",
 ]
 
 # Demo grant external ID prefix
@@ -658,6 +660,136 @@ DEMO_USERS = [
             "keywords": ["climate change", "carbon sequestration", "ecosystem services"],
         },
     },
+    # Test User Profile #1 - Neuroscience Postdoc
+    {
+        "email": "test.user1@grantradar.com",
+        "password": "TestUser1!2025",
+        "name": "Dr. Emily Nakamura",
+        "institution": "Harvard Medical School",
+        "lab_name": "Bhattacharya Lab for Neural Circuits",
+        "phone": "+1-617-555-0201",
+        "role": "user",
+        "lab_profile": {
+            "research_areas": [
+                "systems neuroscience",
+                "neural circuits",
+                "optogenetics",
+                "decision making",
+                "memory formation",
+            ],
+            "methods": [
+                "two-photon calcium imaging",
+                "optogenetics",
+                "patch clamp electrophysiology",
+                "fiber photometry",
+                "viral tracing",
+                "behavioral assays",
+            ],
+            "career_stage": "early_career",
+            "citizenship_status": "us_citizen",
+            "institution_type": "r1_university",
+            "is_pi_eligible": True,
+            "institution": "Harvard Medical School",
+            "department": "Neurobiology",
+            "keywords": [
+                "prefrontal cortex",
+                "hippocampus",
+                "working memory",
+                "reward circuits",
+                "dopamine",
+                "neural encoding",
+            ],
+            "past_grants": {
+                "K99_NS123456": {
+                    "title": "Neural Circuit Mechanisms of Working Memory",
+                    "agency": "NIH/NINDS",
+                    "amount": 250000,
+                    "years": "2023-2025",
+                    "status": "active",
+                }
+            },
+            "publications": {
+                "h_index": 12,
+                "total_papers": 18,
+                "first_author": 6,
+                "notable": [
+                    "Nakamura et al., Nature Neuroscience 2024 - Prefrontal-hippocampal interactions in memory",
+                    "Nakamura et al., Neuron 2023 - Optogenetic dissection of reward circuits",
+                ],
+            },
+            "orcid": "0000-0002-1234-5678",
+        },
+    },
+    # Test User Profile #2 - Cancer Immunology Early-Career PI
+    {
+        "email": "test.user2@grantradar.com",
+        "password": "TestUser2!2025",
+        "name": "Dr. Marcus Thompson",
+        "institution": "Johns Hopkins University",
+        "lab_name": "Thompson Immuno-Oncology Laboratory",
+        "phone": "+1-410-555-0302",
+        "role": "user",
+        "lab_profile": {
+            "research_areas": [
+                "cancer immunotherapy",
+                "T cell biology",
+                "tumor microenvironment",
+                "checkpoint inhibitors",
+                "CAR-T cell therapy",
+            ],
+            "methods": [
+                "flow cytometry",
+                "single-cell RNA sequencing",
+                "CRISPR screening",
+                "mouse tumor models",
+                "humanized mouse models",
+                "multiplex immunofluorescence",
+                "spatial transcriptomics",
+            ],
+            "career_stage": "early_career",
+            "citizenship_status": "permanent_resident",
+            "institution_type": "r1_university",
+            "is_pi_eligible": True,
+            "institution": "Johns Hopkins University",
+            "department": "Oncology - Sidney Kimmel Comprehensive Cancer Center",
+            "keywords": [
+                "PD-1",
+                "CTLA-4",
+                "tumor infiltrating lymphocytes",
+                "immunosuppression",
+                "combination therapy",
+                "biomarkers",
+                "pancreatic cancer",
+            ],
+            "past_grants": {
+                "R00_CA234567": {
+                    "title": "Mechanisms of Resistance to Checkpoint Inhibitors",
+                    "agency": "NIH/NCI",
+                    "amount": 249000,
+                    "years": "2022-2025",
+                    "status": "active",
+                },
+                "V_Scholar_2023": {
+                    "title": "Novel Combination Strategies for Pancreatic Cancer",
+                    "agency": "V Foundation",
+                    "amount": 200000,
+                    "years": "2023-2025",
+                    "status": "active",
+                },
+            },
+            "publications": {
+                "h_index": 15,
+                "total_papers": 28,
+                "first_author": 8,
+                "notable": [
+                    "Thompson et al., Cancer Cell 2024 - Spatial analysis of immune exclusion in pancreatic cancer",
+                    "Thompson et al., Journal of Clinical Investigation 2023 - CAR-T engineering for solid tumors",
+                    "Thompson et al., Nature Medicine 2022 - Combination immunotherapy phase I results",
+                ],
+            },
+            "orcid": "0000-0003-5678-9012",
+        },
+    },
 ]
 
 
@@ -740,6 +872,7 @@ async def seed_demo_users(session, dry_run: bool = False) -> list:
             password_hash=get_password_hash(user_data["password"]),
             name=user_data["name"],
             institution=user_data["institution"],
+            lab_name=user_data.get("lab_name"),
             phone=user_data.get("phone"),
             email_notifications=True,
             sms_notifications=False,
@@ -763,6 +896,9 @@ async def seed_demo_users(session, dry_run: bool = False) -> list:
             institution=profile_data.get("institution"),
             department=profile_data.get("department"),
             keywords=profile_data.get("keywords", []),
+            past_grants=profile_data.get("past_grants"),
+            publications=profile_data.get("publications"),
+            orcid=profile_data.get("orcid"),
         )
         session.add(lab_profile)
 
