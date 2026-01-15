@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 
 from backend.api import (
     admin_analytics,
+    admin_seed,
     aims,
     alerts,
     analytics,
@@ -402,6 +403,7 @@ app.include_router(health.router)
 
 # Include all API routers
 app.include_router(admin_analytics.router)
+app.include_router(admin_seed.router)
 app.include_router(aims.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
