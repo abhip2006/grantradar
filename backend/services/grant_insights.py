@@ -1,14 +1,14 @@
 """
 AI-powered grant insights service with streaming support.
 Generates eligibility analysis and writing tips for grant applications.
-Uses Anthropic Claude for AI-powered analysis.
+Uses OpenAI for AI-powered analysis.
 """
 
 import json
 from typing import AsyncGenerator, Optional, Literal
 from uuid import UUID
 
-import anthropic
+import openai
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,11 +23,11 @@ class GrantInsightsService:
     """Service for generating AI-powered grant insights with streaming."""
 
     def __init__(self):
-        if not settings.anthropic_api_key:
-            logger.warning("ANTHROPIC_API_KEY not configured - AI insights will not work")
+        if not settings.openai_api_key:
+            logger.warning("OPENAI_API_KEY not configured - AI insights will not work")
             self.client = None
         else:
-            self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+            self.client = openai.OpenAI(api_key=settings.openai_api_key)
 
     async def stream_insights(
         self,
@@ -53,7 +53,7 @@ class GrantInsightsService:
             yield {
                 "event": "error",
                 "data": {
-                    "message": "AI insights are not available. Please configure your ANTHROPIC_API_KEY in the .env file."
+                    "message": "AI insights are not available. Please configure your OPENAI_API_KEY in the .env file."
                 },
             }
             return
@@ -142,14 +142,16 @@ Be honest about uncertainty. If key information is missing, clearly state what a
 
 Use markdown formatting with headers, bullet points, and bold text for emphasis."""
 
-        # Use Anthropic Claude streaming
-        with self.client.messages.stream(
+        # Use OpenAI streaming
+        stream = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+            stream=True,
+        )
+        for chunk in stream:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     async def _stream_writing_tips(
         self,
@@ -193,14 +195,16 @@ Based on the researcher's profile, provide 3-5 personalized recommendations that
 
 Make all suggestions specific to this grant and researcher combination. Use markdown formatting with headers and bullet points."""
 
-        # Use Anthropic Claude streaming
-        with self.client.messages.stream(
+        # Use OpenAI streaming
+        stream = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                yield text
+            stream=True,
+        )
+        for chunk in stream:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     def _build_researcher_context(self, user: User, profile: Optional[LabProfile]) -> str:
         """Build context string about the researcher."""

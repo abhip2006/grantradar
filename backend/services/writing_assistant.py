@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import AsyncGenerator, Dict, List, Optional
 from uuid import UUID
 
-import anthropic
+import openai
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,7 +74,7 @@ class WritingAssistantService:
     """Service for analyzing and providing feedback on grant writing."""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self.client = openai.OpenAI(api_key=settings.openai_api_key)
 
     async def analyze_text(
         self,
@@ -122,14 +122,14 @@ class WritingAssistantService:
             grant_context=grant_context,
         )
 
-        # Call Claude for analysis
+        # Call OpenAI for analysis
         try:
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
-            result = self._parse_analysis_response(response.content[0].text, text, relevant_criteria)
+            result = self._parse_analysis_response(response.choices[0].message.content, text, relevant_criteria)
         except Exception as e:
             logger.error("Failed to analyze text", error=str(e))
             # Return a basic analysis on error
@@ -352,12 +352,12 @@ Identify gaps in coverage and suggest specific improvements. Return JSON:
 Focus on structure and completeness, not writing style. Limit to {max_suggestions} suggestions."""
 
         try:
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return self._parse_suggestions_response(response.content[0].text, relevant_criteria)
+            return self._parse_suggestions_response(response.choices[0].message.content, relevant_criteria)
         except Exception as e:
             logger.error("Failed to generate suggestions", error=str(e))
             return self._create_fallback_suggestions(relevant_criteria)
@@ -493,12 +493,12 @@ Provide structured feedback. Return JSON:
 Focus on structure, completeness, and alignment with review criteria. Do not critique writing style."""
 
         try:
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return self._parse_feedback_response(response.content[0].text, criteria.criteria)
+            return self._parse_feedback_response(response.choices[0].message.content, criteria.criteria)
         except Exception as e:
             logger.error("Failed to generate feedback", error=str(e))
             return self._create_fallback_feedback(criteria.criteria)
@@ -644,15 +644,16 @@ Write your feedback in a clear, readable format using markdown for structure."""
         yield self._format_sse_event("feedback_start", {})
 
         try:
-            # Use streaming with the Anthropic client
-            with self.client.messages.stream(
+            # Use streaming with the OpenAI client
+            stream = self.client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
                 messages=[{"role": "user", "content": prompt}],
-            ) as stream:
-                for text_chunk in stream.text_stream:
-                    if text_chunk:
-                        yield self._format_sse_event("feedback_chunk", {"content": text_chunk})
+                stream=True,
+            )
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield self._format_sse_event("feedback_chunk", {"content": chunk.choices[0].delta.content})
 
             # Emit end event
             yield self._format_sse_event("feedback_end", {})

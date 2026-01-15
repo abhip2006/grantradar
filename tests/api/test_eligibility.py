@@ -14,12 +14,10 @@ from backend.services.eligibility_checker import EligibilityChecker
 
 
 @pytest.fixture
-def mock_anthropic_response():
-    """Mock response from Anthropic API for eligibility check."""
-    return MagicMock(
-        content=[
-            MagicMock(
-                text="""{
+def mock_openai_response():
+    """Mock response from OpenAI API for eligibility check."""
+    mock_choice = MagicMock()
+    mock_choice.message.content = """{
             "overall_status": "eligible",
             "overall_confidence": 0.85,
             "criteria": [
@@ -51,18 +49,14 @@ def mock_anthropic_response():
                 "Publication history in the specific research area"
             ]
         }"""
-            )
-        ]
-    )
+    return MagicMock(choices=[mock_choice])
 
 
 @pytest.fixture
-def mock_anthropic_partial_response():
+def mock_openai_partial_response():
     """Mock response for partial eligibility."""
-    return MagicMock(
-        content=[
-            MagicMock(
-                text="""{
+    mock_choice = MagicMock()
+    mock_choice.message.content = """{
             "overall_status": "partial",
             "overall_confidence": 0.6,
             "criteria": [
@@ -83,9 +77,7 @@ def mock_anthropic_partial_response():
             "recommendations": ["Consider R21 mechanism instead"],
             "missing_info": []
         }"""
-            )
-        ]
-    )
+    return MagicMock(choices=[mock_choice])
 
 
 @pytest.fixture
@@ -98,7 +90,7 @@ class TestEligibilityService:
     """Tests for EligibilityChecker service."""
 
     @pytest.mark.asyncio
-    async def test_check_eligibility_returns_eligible(self, async_session, db_user, db_grant, mock_anthropic_response):
+    async def test_check_eligibility_returns_eligible(self, async_session, db_user, db_grant, mock_openai_response):
         """Test eligibility check returns eligible status."""
         # Create lab profile for user
         profile = LabProfile(
@@ -111,8 +103,8 @@ class TestEligibilityService:
         async_session.add(profile)
         await async_session.commit()
 
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_response
 
             checker = EligibilityChecker()
             # Override the client
@@ -132,11 +124,11 @@ class TestEligibilityService:
 
     @pytest.mark.asyncio
     async def test_check_eligibility_creates_chat_session(
-        self, async_session, db_user, db_grant, mock_anthropic_response
+        self, async_session, db_user, db_grant, mock_openai_response
     ):
         """Test that eligibility check creates a chat session for follow-up."""
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
@@ -162,11 +154,11 @@ class TestEligibilityService:
 
     @pytest.mark.asyncio
     async def test_check_eligibility_with_additional_context(
-        self, async_session, db_user, db_grant, mock_anthropic_response
+        self, async_session, db_user, db_grant, mock_openai_response
     ):
         """Test eligibility check includes additional context."""
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
@@ -179,7 +171,7 @@ class TestEligibilityService:
             )
 
             # Verify API was called with context
-            call_args = mock_client.return_value.messages.create.call_args
+            call_args = mock_client.return_value.chat.completions.create.call_args
             assert "K99" in str(call_args)
 
     @pytest.mark.asyncio
@@ -196,11 +188,11 @@ class TestEligibilityService:
 
     @pytest.mark.asyncio
     async def test_check_eligibility_partial_status(
-        self, async_session, db_user, db_grant, mock_anthropic_partial_response
+        self, async_session, db_user, db_grant, mock_openai_partial_response
     ):
         """Test eligibility check returns partial status correctly."""
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_partial_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_partial_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
@@ -240,10 +232,12 @@ class TestEligibilityFollowUp:
         async_session.add_all([user_msg, asst_msg])
         await async_session.commit()
 
-        mock_response = MagicMock(content=[MagicMock(text="Based on your K99 award, you're in a strong position.")])
+        mock_choice = MagicMock()
+        mock_choice.message.content = "Based on your K99 award, you're in a strong position."
+        mock_response = MagicMock(choices=[mock_choice])
 
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
@@ -501,10 +495,10 @@ class TestEligibilityEdgeCases:
     """Tests for edge cases and error handling."""
 
     @pytest.mark.asyncio
-    async def test_check_eligibility_no_profile(self, async_session, db_user, db_grant, mock_anthropic_response):
+    async def test_check_eligibility_no_profile(self, async_session, db_user, db_grant, mock_openai_response):
         """Test eligibility check works without lab profile."""
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
@@ -560,10 +554,10 @@ class TestChatSessionMessages:
     """Tests for chat session and message handling."""
 
     @pytest.mark.asyncio
-    async def test_eligibility_check_saves_messages(self, async_session, db_user, db_grant, mock_anthropic_response):
+    async def test_eligibility_check_saves_messages(self, async_session, db_user, db_grant, mock_openai_response):
         """Test that eligibility check saves initial messages."""
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value
@@ -606,10 +600,12 @@ class TestChatSessionMessages:
         async_session.add(initial_msg)
         await async_session.commit()
 
-        mock_response = MagicMock(content=[MagicMock(text="Here is the follow-up response.")])
+        mock_choice = MagicMock()
+        mock_choice.message.content = "Here is the follow-up response."
+        mock_response = MagicMock(choices=[mock_choice])
 
-        with patch("backend.services.eligibility_checker.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_response
+        with patch("backend.services.eligibility_checker.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_response
 
             checker = EligibilityChecker()
             checker.client = mock_client.return_value

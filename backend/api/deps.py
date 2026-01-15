@@ -3,7 +3,6 @@ FastAPI Dependencies
 Shared dependencies for authentication and database access.
 """
 
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 from uuid import UUID
@@ -22,7 +21,7 @@ from backend.schemas.auth import TokenData
 
 # DEV BYPASS: Set to True to skip authentication (uses first user in DB)
 # SECURITY: Default is FALSE - must explicitly enable in development only
-DEV_BYPASS_AUTH = os.getenv("DEV_BYPASS_AUTH", "false").lower() == "true"
+DEV_BYPASS_AUTH = settings.dev_bypass_auth
 
 # =============================================================================
 # Password Hashing

@@ -1,6 +1,6 @@
 """Funding alerts service for personalized email newsletters."""
 
-import anthropic
+import openai
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from uuid import UUID
@@ -25,8 +25,8 @@ class FundingAlertsService:
     """Service for generating and sending funding alert emails."""
 
     def __init__(self):
-        if settings.anthropic_api_key:
-            self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        if settings.openai_api_key:
+            self.client = openai.OpenAI(api_key=settings.openai_api_key)
         else:
             self.client = None
 
@@ -235,12 +235,12 @@ Provide actionable insights like:
 Keep it concise and actionable."""
 
         try:
-            response = self.client.messages.create(
+            response = self.client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.content[0].text.strip()
+            return response.choices[0].message.content.strip()
         except Exception as e:
             logger.error("Failed to generate insights", error=str(e))
             return None

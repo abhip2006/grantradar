@@ -8,7 +8,7 @@ import re
 from collections import Counter
 from typing import Optional
 
-from anthropic import AsyncAnthropic
+from openai import AsyncOpenAI
 
 from backend.core.config import settings
 from backend.services.cache import get_cached, set_cached
@@ -168,9 +168,9 @@ class WinnersAnalyticsService:
     """
 
     def __init__(self):
-        self.anthropic = None
-        if settings.anthropic_api_key:
-            self.anthropic = AsyncAnthropic(api_key=settings.anthropic_api_key)
+        self.openai = None
+        if settings.openai_api_key:
+            self.openai = AsyncOpenAI(api_key=settings.openai_api_key)
 
     def _extract_keywords(self, text: str) -> list[str]:
         """Extract keywords from text."""
@@ -462,7 +462,7 @@ class WinnersAnalyticsService:
 
         # User comparison if abstract provided
         user_comparison = None
-        if request.user_abstract and self.anthropic:
+        if request.user_abstract and self.openai:
             user_comparison = await self._compare_user_abstract(
                 request.user_abstract,
                 abstracts[:10],  # Compare against top 10
@@ -557,7 +557,7 @@ class WinnersAnalyticsService:
         mechanism: str,
     ) -> Optional[UserAbstractComparison]:
         """Compare user's abstract against successful ones using AI."""
-        if not self.anthropic:
+        if not self.openai:
             return None
 
         try:
@@ -584,14 +584,14 @@ Format your response as JSON:
     "suggestions": ["...", "..."]
 }}"""
 
-            message = await self.anthropic.messages.create(
+            message = await self.openai.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}],
             )
 
             # Parse response
-            response_text = message.content[0].text
+            response_text = message.choices[0].message.content
 
             # Extract JSON from response
             import json

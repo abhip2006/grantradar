@@ -1,6 +1,5 @@
 """Deep research service for intelligent grant discovery."""
 
-import anthropic
 import openai
 from datetime import datetime, timezone
 from typing import Optional, List, AsyncIterator
@@ -29,7 +28,6 @@ class DeepResearchService:
     """Service for intelligent grant discovery and research."""
 
     def __init__(self):
-        self.anthropic = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self.openai = openai.OpenAI(api_key=settings.openai_api_key)
 
     async def create_session(self, db: AsyncSession, user: User, query: str) -> ResearchSession:
@@ -283,12 +281,12 @@ Provide an expanded search query that captures:
 Return ONLY the expanded query text, no explanations. Keep it under 300 words."""
 
         try:
-            response = self.anthropic.messages.create(
+            response = self.openai.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.content[0].text.strip()
+            return response.choices[0].message.content.strip()
         except Exception as e:
             logger.warning("Query expansion failed", error=str(e))
             return query
@@ -308,19 +306,22 @@ Return ONLY the expanded query text, no explanations. Keep it under 300 words.""
         profile: Optional[LabProfile],
     ) -> List[Grant]:
         """Search grants using vector similarity."""
+        # Convert embedding list to pgvector format string
+        embedding_str = "[" + ",".join(map(str, embedding)) + "]"
+
         # Use pgvector for semantic search
         query = text("""
             SELECT id, title, description, agency, amount_min, amount_max,
                    deadline, url, eligibility,
-                   1 - (embedding <=> :embedding::vector) as similarity
+                   1 - (embedding <=> CAST(:embedding AS vector)) as similarity
             FROM grants
             WHERE embedding IS NOT NULL
               AND (deadline IS NULL OR deadline > NOW())
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT 50
         """)
 
-        result = await db.execute(query, {"embedding": str(embedding)})
+        result = await db.execute(query, {"embedding": embedding_str})
         rows = result.fetchall()
 
         grants = []
@@ -380,14 +381,14 @@ Return ONLY the JSON array, no other text. Example:
 [{{"index": 1, "relevance_score": 0.85, "match_reasons": ["Strong alignment with cancer research", "Supports early-career investigators"]}}]"""
 
         try:
-            response = self.anthropic.messages.create(
+            response = self.openai.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=2000,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            # Parse Claude's response
-            response_text = response.content[0].text.strip()
+            # Parse OpenAI's response
+            response_text = response.choices[0].message.content.strip()
             # Extract JSON from response
             json_start = response_text.find("[")
             json_end = response_text.rfind("]") + 1
@@ -471,12 +472,12 @@ Provide insights about:
 Keep response under 200 words. Be specific and actionable."""
 
         try:
-            response = self.anthropic.messages.create(
+            response = self.openai.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=400,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.content[0].text.strip()
+            return response.choices[0].message.content.strip()
         except Exception as e:
             logger.error("Insights generation failed", error=str(e))
             return f"Found {len(results)} relevant grants across {len(funders)} funders."

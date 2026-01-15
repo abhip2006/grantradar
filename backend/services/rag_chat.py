@@ -1,6 +1,5 @@
 """RAG chat service for document Q&A."""
 
-import anthropic
 import openai
 from datetime import datetime, timezone
 from typing import Optional, List, AsyncGenerator
@@ -34,7 +33,6 @@ class RAGChatService:
     """Service for RAG-powered chat with grant documents."""
 
     def __init__(self):
-        self.anthropic = anthropic.Anthropic(api_key=settings.anthropic_api_key)
         self.openai = openai.OpenAI(api_key=settings.openai_api_key)
         self.embedding_model = settings.embedding_model
 
@@ -167,23 +165,26 @@ class RAGChatService:
         # Yield message_start event
         yield StreamEvent("message_start", {})
 
-        # Stream response using Claude
+        # Stream response using OpenAI
         full_response = ""
-        messages = history.copy()
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.extend(history)
         messages.append({"role": "user", "content": content})
 
         try:
-            with self.anthropic.messages.stream(
+            stream = self.openai.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
-                system=system_prompt,
                 messages=messages,
-            ) as stream:
-                for text_chunk in stream.text_stream:
+                stream=True,
+            )
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    text_chunk = chunk.choices[0].delta.content
                     full_response += text_chunk
                     yield StreamEvent("message_chunk", {"content": text_chunk})
         except Exception as e:
-            logger.error("Claude streaming API error", error=str(e))
+            logger.error("OpenAI streaming API error", error=str(e))
             error_message = "I apologize, but I encountered an error processing your request. Please try again."
             full_response = error_message
             yield StreamEvent("message_chunk", {"content": error_message})
@@ -242,17 +243,19 @@ class RAGChatService:
 
             # Search grants using pgvector
             # Query grants table for similar content
+            # Convert embedding list to pgvector format string
+            embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
             grants_query = text("""
                 SELECT id, title, description, agency, eligibility, categories,
                        amount_min, amount_max, deadline,
-                       1 - (embedding <=> :embedding::vector) as similarity
+                       1 - (embedding <=> CAST(:embedding AS vector)) as similarity
                 FROM grants
                 WHERE embedding IS NOT NULL
-                ORDER BY embedding <=> :embedding::vector
+                ORDER BY embedding <=> CAST(:embedding AS vector)
                 LIMIT 5
             """)
 
-            result = await db.execute(grants_query, {"embedding": str(query_embedding)})
+            result = await db.execute(grants_query, {"embedding": embedding_str})
             similar_grants = result.fetchall()
 
             for grant_row in similar_grants:
@@ -365,20 +368,20 @@ Use this context to answer the user's question. Reference specific grants or req
         return base_prompt
 
     async def _generate_response(self, system_prompt: str, history: List[dict], user_message: str) -> str:
-        """Generate response using Claude."""
-        messages = history.copy()
+        """Generate response using OpenAI."""
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.extend(history)
         messages.append({"role": "user", "content": user_message})
 
         try:
-            response = self.anthropic.messages.create(
+            response = self.openai.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
-                system=system_prompt,
                 messages=messages,
             )
-            return response.content[0].text
+            return response.choices[0].message.content
         except Exception as e:
-            logger.error("Claude API error", error=str(e))
+            logger.error("OpenAI API error", error=str(e))
             return "I apologize, but I encountered an error processing your request. Please try again."
 
     async def get_sessions(self, db: AsyncSession, user_id: UUID, limit: int = 50) -> List[dict]:

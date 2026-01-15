@@ -28,18 +28,14 @@ def sample_alert_preferences():
 
 
 @pytest.fixture
-def mock_anthropic_insights():
-    """Mock Anthropic response for insights generation."""
-    return MagicMock(
-        content=[
-            MagicMock(
-                text="""Based on your profile, here are key insights:
+def mock_openai_insights():
+    """Mock OpenAI response for insights generation."""
+    mock_choice = MagicMock()
+    mock_choice.message.content = """Based on your profile, here are key insights:
 1. The NIH R01 deadline in 2 weeks should be your top priority
 2. NSF has increased funding for computational biology
 3. Consider the new K99/R00 mechanism for career development"""
-            )
-        ]
-    )
+    return MagicMock(choices=[mock_choice])
 
 
 class TestFundingAlertPreferences:
@@ -167,10 +163,10 @@ class TestAlertPreview:
         async_session.add(match)
         await async_session.commit()
 
-        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = MagicMock(
-                content=[MagicMock(text="Focus on the high-scoring NIH grant.")]
-            )
+        with patch("backend.services.funding_alerts.openai.OpenAI") as mock_client:
+            mock_choice = MagicMock()
+            mock_choice.message.content = "Focus on the high-scoring NIH grant."
+            mock_client.return_value.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
@@ -195,10 +191,10 @@ class TestAlertPreview:
         async_session.add(deadline)
         await async_session.commit()
 
-        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = MagicMock(
-                content=[MagicMock(text="Don't miss the R01 deadline!")]
-            )
+        with patch("backend.services.funding_alerts.openai.OpenAI") as mock_client:
+            mock_choice = MagicMock()
+            mock_choice.message.content = "Don't miss the R01 deadline!"
+            mock_client.return_value.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
@@ -273,10 +269,10 @@ class TestAlertPreview:
             async_session.add(match)
         await async_session.commit()
 
-        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = MagicMock(
-                content=[MagicMock(text="Focus on NIH opportunities.")]
-            )
+        with patch("backend.services.funding_alerts.openai.OpenAI") as mock_client:
+            mock_choice = MagicMock()
+            mock_choice.message.content = "Focus on NIH opportunities."
+            mock_client.return_value.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
@@ -381,7 +377,7 @@ class TestInsightsGeneration:
     """Tests for AI insights generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_insights_with_content(self, async_session, db_user, mock_anthropic_insights):
+    async def test_generate_insights_with_content(self, async_session, db_user, mock_openai_insights):
         """Test insights generation with grants and deadlines."""
         from backend.schemas.alerts import AlertGrantSummary, AlertDeadlineSummary
 
@@ -408,8 +404,8 @@ class TestInsightsGeneration:
             )
         ]
 
-        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.return_value = mock_anthropic_insights
+        with patch("backend.services.funding_alerts.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_insights
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
@@ -437,8 +433,8 @@ class TestInsightsGeneration:
             )
         ]
 
-        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
-            mock_client.return_value.messages.create.side_effect = Exception("API Error")
+        with patch("backend.services.funding_alerts.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.side_effect = Exception("API Error")
 
             service = FundingAlertsService()
             service.client = mock_client.return_value
@@ -505,16 +501,20 @@ class TestPreferencesWithLabProfile:
             )
         ]
 
-        with patch("backend.services.funding_alerts.anthropic.Anthropic") as mock_client:
+        with patch("backend.services.funding_alerts.openai.OpenAI") as mock_client:
             # Check that the prompt includes profile information
             captured_prompt = None
 
             def capture_create(**kwargs):
                 nonlocal captured_prompt
-                captured_prompt = kwargs.get("messages", [{}])[0].get("content", "")
-                return MagicMock(content=[MagicMock(text="Based on your ML background, consider the K99.")])
+                messages = kwargs.get("messages", [{}])
+                if messages:
+                    captured_prompt = messages[-1].get("content", "")
+                mock_choice = MagicMock()
+                mock_choice.message.content = "Based on your ML background, consider the K99."
+                return MagicMock(choices=[mock_choice])
 
-            mock_client.return_value.messages.create.side_effect = capture_create
+            mock_client.return_value.chat.completions.create.side_effect = capture_create
 
             service = FundingAlertsService()
             service.client = mock_client.return_value

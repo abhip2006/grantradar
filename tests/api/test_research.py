@@ -20,46 +20,34 @@ def mock_openai_embedding():
 
 
 @pytest.fixture
-def mock_anthropic_query_expansion():
-    """Mock Anthropic response for query expansion."""
-    return MagicMock(
-        content=[
-            MagicMock(
-                text="machine learning healthcare AI medical imaging deep learning cancer diagnosis NIH R01 R21 computational biology biomedical informatics"
-            )
-        ]
-    )
+def mock_openai_query_expansion():
+    """Mock OpenAI response for query expansion."""
+    mock_choice = MagicMock()
+    mock_choice.message.content = "machine learning healthcare AI medical imaging deep learning cancer diagnosis NIH R01 R21 computational biology biomedical informatics"
+    return MagicMock(choices=[mock_choice])
 
 
 @pytest.fixture
-def mock_anthropic_scoring():
-    """Mock Anthropic response for result scoring."""
-    return MagicMock(
-        content=[
-            MagicMock(
-                text="""[
+def mock_openai_scoring():
+    """Mock OpenAI response for result scoring."""
+    mock_choice = MagicMock()
+    mock_choice.message.content = """[
             {"index": 1, "relevance_score": 0.92, "match_reasons": ["Strong ML focus", "Healthcare application", "NIH alignment"]},
             {"index": 2, "relevance_score": 0.78, "match_reasons": ["Related methodology", "Computational approach"]}
         ]"""
-            )
-        ]
-    )
+    return MagicMock(choices=[mock_choice])
 
 
 @pytest.fixture
-def mock_anthropic_insights():
-    """Mock Anthropic response for insights generation."""
-    return MagicMock(
-        content=[
-            MagicMock(
-                text="""Key Insights:
+def mock_openai_insights():
+    """Mock OpenAI response for insights generation."""
+    mock_choice = MagicMock()
+    mock_choice.message.content = """Key Insights:
 1. The NIH R01 for AI in Healthcare is your strongest match - prioritize this application
 2. NSF has increased computational biology funding by 15% this cycle
 3. Consider pairing with a clinical collaborator for the translational grants
 4. Deadline clustering in March suggests starting applications now"""
-            )
-        ]
-    )
+    return MagicMock(choices=[mock_choice])
 
 
 @pytest.fixture
@@ -79,10 +67,7 @@ class TestResearchSessionManagement:
     @pytest.mark.asyncio
     async def test_create_session(self, async_session, db_user, sample_research_query):
         """Test creating a research session."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI"):
             service = DeepResearchService()
 
             session = await service.create_session(
@@ -118,10 +103,7 @@ class TestResearchSessionManagement:
         async_session.add(other_session)
         await async_session.commit()
 
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI"):
             service = DeepResearchService()
             sessions = await service.get_sessions(async_session, db_user.id)
 
@@ -141,10 +123,7 @@ class TestResearchSessionManagement:
             async_session.add(session)
         await async_session.commit()
 
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI"):
             service = DeepResearchService()
             sessions = await service.get_sessions(async_session, db_user.id)
 
@@ -156,16 +135,13 @@ class TestQueryExpansion:
     """Tests for query expansion with AI."""
 
     @pytest.mark.asyncio
-    async def test_expand_query_adds_terms(self, mock_anthropic_query_expansion):
+    async def test_expand_query_adds_terms(self, mock_openai_query_expansion):
         """Test query expansion adds relevant terms."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_client,
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
-            mock_client.return_value.messages.create.return_value = mock_anthropic_query_expansion
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_query_expansion
 
             service = DeepResearchService()
-            service.anthropic = mock_client.return_value
+            service.openai = mock_client.return_value
 
             expanded = await service._expand_query(
                 "machine learning in healthcare",
@@ -183,35 +159,31 @@ class TestQueryExpansion:
         profile.institution = "Harvard"
         profile.career_stage = "assistant_professor"
 
-        mock_response = MagicMock(content=[MagicMock(text="expanded query with oncology genomics")])
+        mock_choice = MagicMock()
+        mock_choice.message.content = "expanded query with oncology genomics"
+        mock_response = MagicMock(choices=[mock_choice])
 
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_client,
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
-            mock_client.return_value.messages.create.return_value = mock_response
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_response
 
             service = DeepResearchService()
-            service.anthropic = mock_client.return_value
+            service.openai = mock_client.return_value
 
             await service._expand_query("cancer research funding", profile)
 
             # Verify profile was included in prompt
-            call_args = mock_client.return_value.messages.create.call_args
+            call_args = mock_client.return_value.chat.completions.create.call_args
             prompt = call_args[1]["messages"][0]["content"]
             assert "Oncology" in prompt or "oncology" in prompt.lower()
 
     @pytest.mark.asyncio
     async def test_expand_query_handles_error(self):
         """Test query expansion returns original on error."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_client,
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
-            mock_client.return_value.messages.create.side_effect = Exception("API Error")
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.side_effect = Exception("API Error")
 
             service = DeepResearchService()
-            service.anthropic = mock_client.return_value
+            service.openai = mock_client.return_value
 
             original = "machine learning healthcare"
             expanded = await service._expand_query(original, None)
@@ -225,10 +197,7 @@ class TestEmbeddingGeneration:
     @pytest.mark.asyncio
     async def test_generate_embedding(self, mock_openai_embedding):
         """Test embedding generation returns correct dimensions."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI") as mock_client,
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
             mock_client.return_value.embeddings.create.return_value = mock_openai_embedding
 
             service = DeepResearchService()
@@ -241,10 +210,7 @@ class TestEmbeddingGeneration:
     @pytest.mark.asyncio
     async def test_generate_embedding_truncates_long_text(self, mock_openai_embedding):
         """Test embedding generation truncates very long text."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI") as mock_client,
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
             mock_client.return_value.embeddings.create.return_value = mock_openai_embedding
 
             service = DeepResearchService()
@@ -262,7 +228,7 @@ class TestResultScoring:
     """Tests for AI-powered result scoring."""
 
     @pytest.mark.asyncio
-    async def test_score_results_returns_scored_grants(self, mock_anthropic_scoring):
+    async def test_score_results_returns_scored_grants(self, mock_openai_scoring):
         """Test scoring returns grants with scores and reasons."""
         # Create mock grants
         grants = []
@@ -277,14 +243,11 @@ class TestResultScoring:
             grant.amount_max = 500000
             grants.append(grant)
 
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_client,
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
-            mock_client.return_value.messages.create.return_value = mock_anthropic_scoring
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_scoring
 
             service = DeepResearchService()
-            service.anthropic = mock_client.return_value
+            service.openai = mock_client.return_value
 
             results = await service._score_results(
                 "machine learning healthcare",
@@ -299,10 +262,7 @@ class TestResultScoring:
     @pytest.mark.asyncio
     async def test_score_results_handles_empty_grants(self):
         """Test scoring handles empty grant list."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI"):
             service = DeepResearchService()
             results = await service._score_results("query", [], None)
 
@@ -320,16 +280,15 @@ class TestResultScoring:
         grants[0].amount_min = None
         grants[0].amount_max = None
 
-        mock_response = MagicMock(content=[MagicMock(text="This is not valid JSON")])
+        mock_choice = MagicMock()
+        mock_choice.message.content = "This is not valid JSON"
+        mock_response = MagicMock(choices=[mock_choice])
 
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_client,
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
-            mock_client.return_value.messages.create.return_value = mock_response
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_response
 
             service = DeepResearchService()
-            service.anthropic = mock_client.return_value
+            service.openai = mock_client.return_value
 
             # Should return default scores, not crash
             results = await service._score_results("query", grants, None)
@@ -342,7 +301,7 @@ class TestInsightsGeneration:
     """Tests for insights generation."""
 
     @pytest.mark.asyncio
-    async def test_generate_insights_with_results(self, mock_anthropic_insights):
+    async def test_generate_insights_with_results(self, mock_openai_insights):
         """Test insights generation with results."""
         results = [
             ResearchGrantResult(
@@ -359,14 +318,11 @@ class TestInsightsGeneration:
             )
         ]
 
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_client,
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
-            mock_client.return_value.messages.create.return_value = mock_anthropic_insights
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_client:
+            mock_client.return_value.chat.completions.create.return_value = mock_openai_insights
 
             service = DeepResearchService()
-            service.anthropic = mock_client.return_value
+            service.openai = mock_client.return_value
 
             insights = await service._generate_insights("query", results, None)
 
@@ -376,10 +332,7 @@ class TestInsightsGeneration:
     @pytest.mark.asyncio
     async def test_generate_insights_empty_results(self):
         """Test insights for empty results."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI"):
             service = DeepResearchService()
             insights = await service._generate_insights("query", [], None)
 
@@ -399,9 +352,9 @@ class TestFullResearchPipeline:
         async_session,
         db_user,
         mock_openai_embedding,
-        mock_anthropic_query_expansion,
-        mock_anthropic_scoring,
-        mock_anthropic_insights,
+        mock_openai_query_expansion,
+        mock_openai_scoring,
+        mock_openai_insights,
     ):
         """Test full research run updates session status and results."""
         # Create session
@@ -414,22 +367,18 @@ class TestFullResearchPipeline:
         await async_session.commit()
         await async_session.refresh(session)
 
-        with (
-            patch("backend.services.deep_research.openai.OpenAI") as mock_openai,
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_anthropic,
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create.return_value = mock_openai_embedding
 
             # Different responses for different calls
-            mock_anthropic.return_value.messages.create.side_effect = [
-                mock_anthropic_query_expansion,
-                mock_anthropic_scoring,
-                mock_anthropic_insights,
+            mock_openai.return_value.chat.completions.create.side_effect = [
+                mock_openai_query_expansion,
+                mock_openai_scoring,
+                mock_openai_insights,
             ]
 
             service = DeepResearchService()
             service.openai = mock_openai.return_value
-            service.anthropic = mock_anthropic.return_value
 
             try:
                 result = await service.run_research(async_session, session.id)
@@ -455,11 +404,8 @@ class TestFullResearchPipeline:
         await async_session.commit()
         await async_session.refresh(session)
 
-        with (
-            patch("backend.services.deep_research.openai.OpenAI") as mock_openai,
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-        ):
-            mock_openai.return_value.embeddings.create.side_effect = Exception("API Error")
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_openai:
+            mock_openai.return_value.chat.completions.create.side_effect = Exception("API Error")
 
             service = DeepResearchService()
             service.openai = mock_openai.return_value
@@ -482,10 +428,7 @@ class TestQuickSearch:
     @pytest.mark.asyncio
     async def test_quick_search_returns_results(self, async_session, db_user, mock_openai_embedding):
         """Test quick search returns grant results."""
-        with (
-            patch("backend.services.deep_research.openai.OpenAI") as mock_openai,
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create.return_value = mock_openai_embedding
 
             service = DeepResearchService()
@@ -508,10 +451,7 @@ class TestQuickSearch:
     @pytest.mark.asyncio
     async def test_quick_search_respects_max_results(self, async_session, db_user, mock_openai_embedding):
         """Test quick search respects max_results parameter."""
-        with (
-            patch("backend.services.deep_research.openai.OpenAI") as mock_openai,
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_openai:
             mock_openai.return_value.embeddings.create.return_value = mock_openai_embedding
 
             service = DeepResearchService()
@@ -665,24 +605,16 @@ class TestServiceInitialization:
 
     def test_service_creation_with_mocked_clients(self):
         """Test service can be created with mocked API clients."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic") as mock_anthropic,
-            patch("backend.services.deep_research.openai.OpenAI") as mock_openai,
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI") as mock_openai:
             service = DeepResearchService()
 
-            # Verify clients were initialized
-            mock_anthropic.assert_called_once()
+            # Verify client was initialized
             mock_openai.assert_called_once()
-            assert service.anthropic is not None
             assert service.openai is not None
 
     def test_service_has_required_methods(self):
         """Test service has all required methods."""
-        with (
-            patch("backend.services.deep_research.anthropic.Anthropic"),
-            patch("backend.services.deep_research.openai.OpenAI"),
-        ):
+        with patch("backend.services.deep_research.openai.OpenAI"):
             service = DeepResearchService()
 
             assert hasattr(service, "create_session")

@@ -1,6 +1,6 @@
-"""Specific Aims Analysis Service using Claude."""
+"""Specific Aims Analysis Service using OpenAI."""
 
-import anthropic
+import openai
 import json
 import re
 from datetime import datetime, timezone
@@ -519,7 +519,7 @@ class SpecificAimsAnalyzer:
     """Service to analyze and provide feedback on Specific Aims pages."""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self.client = openai.OpenAI(api_key=settings.openai_api_key)
 
     # -------------------------------------------------------------------------
     # Main Analysis Functions
@@ -549,15 +549,15 @@ class SpecificAimsAnalyzer:
         # Build the analysis prompt
         prompt = self._build_analysis_prompt(text, mechanism, guidelines, research_area, additional_context)
 
-        # Call Claude for analysis
-        response = self.client.messages.create(
+        # Call OpenAI for analysis
+        response = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=settings.llm_max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
 
         # Parse the response
-        result = self._parse_analysis_response(response.content[0].text, text, mechanism, guidelines)
+        result = self._parse_analysis_response(response.choices[0].message.content, text, mechanism, guidelines)
 
         # Create chat session for follow-up
         session = ChatSession(
@@ -602,13 +602,13 @@ class SpecificAimsAnalyzer:
 
         prompt = self._build_scope_check_prompt(aim_text, mechanism, guidelines, aim_number)
 
-        response = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}],
         )
 
-        return self._parse_scope_response(response.content[0].text, aim_text, mechanism, aim_number, guidelines)
+        return self._parse_scope_response(response.choices[0].message.content, aim_text, mechanism, aim_number, guidelines)
 
     def detect_common_issues(self, aims_text: str) -> List[DetectedIssue]:
         """
@@ -800,13 +800,13 @@ class SpecificAimsAnalyzer:
 
         prompt = self._build_comparison_prompt(aims_text, mechanism, guidelines, examples, research_area)
 
-        response = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=2000,
             messages=[{"role": "user", "content": prompt}],
         )
 
-        return self._parse_comparison_response(response.content[0].text, mechanism, examples)
+        return self._parse_comparison_response(response.choices[0].message.content, mechanism, examples)
 
     def get_mechanism_template(self, mechanism: GrantMechanism) -> MechanismTemplateResponse:
         """Get template structure for a specific mechanism."""
@@ -867,14 +867,14 @@ Continue the conversation naturally, providing specific advice on:
 
 Be constructive and provide actionable suggestions."""
 
-        response = self.client.messages.create(
+        messages = [{"role": "system", "content": system_prompt}] + claude_messages
+        response = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=settings.llm_max_tokens,
-            system=system_prompt,
-            messages=claude_messages,
+            messages=messages,
         )
 
-        response_text = response.content[0].text
+        response_text = response.choices[0].message.content
 
         # Save messages
         user_msg = ChatMessage(session_id=session_id, role="user", content=message)

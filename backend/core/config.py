@@ -93,7 +93,7 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 1536
 
     # ===== LLM Config =====
-    llm_model: str = "claude-sonnet-4-20250514"
+    llm_model: str = "gpt-4o"
     llm_max_tokens: int = 4096
 
     # ===== Sentry Error Tracking =====

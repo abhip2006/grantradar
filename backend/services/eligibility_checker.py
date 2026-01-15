@@ -1,6 +1,6 @@
-"""Eligibility checking service using Claude."""
+"""Eligibility checking service using OpenAI."""
 
-import anthropic
+import openai
 import json
 from datetime import datetime, timezone
 from typing import Optional
@@ -26,7 +26,7 @@ class EligibilityChecker:
     """Service to check researcher eligibility for grants using AI."""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self.client = openai.OpenAI(api_key=settings.openai_api_key)
 
     async def check_eligibility(
         self,
@@ -52,18 +52,18 @@ class EligibilityChecker:
         # Build grant context
         grant_context = self._build_grant_context(grant)
 
-        # Create prompt for Claude
+        # Create prompt for OpenAI
         prompt = self._build_eligibility_prompt(researcher_context, grant_context)
 
-        # Call Claude
-        response = self.client.messages.create(
+        # Call OpenAI
+        response = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=settings.llm_max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
 
         # Parse response
-        result = self._parse_eligibility_response(response.content[0].text, grant)
+        result = self._parse_eligibility_response(response.choices[0].message.content, grant)
 
         # Create chat session for follow-up questions
         session = ChatSession(
@@ -253,15 +253,15 @@ Funder: {grant.agency if grant else "Unknown"}
 Continue the conversation naturally, answering questions about eligibility, requirements, and how to strengthen their application.
 If they provide new information about themselves, update your eligibility assessment accordingly."""
 
-        # Call Claude
-        response = self.client.messages.create(
+        # Call OpenAI
+        messages = [{"role": "system", "content": system_prompt}] + claude_messages
+        response = self.client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=settings.llm_max_tokens,
-            system=system_prompt,
-            messages=claude_messages,
+            messages=messages,
         )
 
-        response_text = response.content[0].text
+        response_text = response.choices[0].message.content
 
         # Save messages
         user_msg = ChatMessage(session_id=session_id, role="user", content=message)
