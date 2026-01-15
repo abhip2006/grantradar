@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-import anthropic
+import openai
 import redis
 import structlog
 from bs4 import BeautifulSoup
@@ -225,8 +225,8 @@ HTML Content:
 """
 
 
-class ClaudeExtractionError(Exception):
-    """Raised when Claude API extraction fails."""
+class LLMExtractionError(Exception):
+    """Raised when LLM API extraction fails."""
 
     pass
 
@@ -234,17 +234,17 @@ class ClaudeExtractionError(Exception):
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=60),
-    retry=retry_if_exception_type((anthropic.APIConnectionError, anthropic.RateLimitError)),
+    retry=retry_if_exception_type((openai.APIConnectionError, openai.RateLimitError)),
 )
-async def extract_opportunities_with_claude(html: str) -> list[NIHFundingOpportunity]:
+async def extract_opportunities_with_llm(html: str) -> list[NIHFundingOpportunity]:
     """
-    Use Claude API to extract grant opportunities from HTML.
+    Use OpenAI API to extract grant opportunities from HTML.
     Includes retry logic for API failures.
     """
-    if not settings.anthropic_api_key:
-        raise ClaudeExtractionError("Anthropic API key not configured")
+    if not settings.openai_api_key:
+        raise LLMExtractionError("OpenAI API key not configured")
 
-    client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    client = openai.OpenAI(api_key=settings.openai_api_key)
 
     # Truncate HTML if needed
     truncated_html = truncate_for_claude(html)
@@ -252,19 +252,19 @@ async def extract_opportunities_with_claude(html: str) -> list[NIHFundingOpportu
     prompt = EXTRACTION_PROMPT + truncated_html
 
     logger.info(
-        "calling_claude_api",
+        "calling_openai_api",
         html_length=len(truncated_html),
         estimated_tokens=estimate_tokens(prompt),
     )
 
     try:
-        message = client.messages.create(
+        response = client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=settings.llm_max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
 
-        response_text = message.content[0].text.strip()
+        response_text = response.choices[0].message.content.strip()
 
         # Parse JSON response
         # Handle potential markdown code blocks
@@ -277,7 +277,7 @@ async def extract_opportunities_with_claude(html: str) -> list[NIHFundingOpportu
         opportunities_data = json.loads(response_text)
 
         if not isinstance(opportunities_data, list):
-            raise ClaudeExtractionError(f"Expected JSON array, got {type(opportunities_data)}")
+            raise LLMExtractionError(f"Expected JSON array, got {type(opportunities_data)}")
 
         # Validate and parse opportunities
         opportunities = []
@@ -293,19 +293,19 @@ async def extract_opportunities_with_claude(html: str) -> list[NIHFundingOpportu
                 )
 
         logger.info(
-            "claude_extraction_complete",
+            "llm_extraction_complete",
             total_extracted=len(opportunities_data),
             valid_opportunities=len(opportunities),
         )
 
         return opportunities
 
-    except anthropic.APIError as e:
-        logger.error("claude_api_error", error=str(e))
-        raise ClaudeExtractionError(f"Claude API error: {e}")
+    except openai.APIError as e:
+        logger.error("openai_api_error", error=str(e))
+        raise LLMExtractionError(f"OpenAI API error: {e}")
     except json.JSONDecodeError as e:
-        logger.error("claude_json_parse_error", error=str(e), response=response_text[:500])
-        raise ClaudeExtractionError(f"Failed to parse Claude response as JSON: {e}")
+        logger.error("llm_json_parse_error", error=str(e), response=response_text[:500])
+        raise LLMExtractionError(f"Failed to parse LLM response as JSON: {e}")
 
 
 def extract_opportunities_with_beautifulsoup(html: str) -> list[NIHFundingOpportunity]:
@@ -502,11 +502,11 @@ async def run_nih_scraper() -> dict[str, Any]:
         logger.info("content_change_detected")
         result["change_detected"] = True
 
-        # Try Claude first, fall back to BeautifulSoup
+        # Try LLM first, fall back to BeautifulSoup
         try:
-            opportunities = await extract_opportunities_with_claude(html_content)
-        except ClaudeExtractionError as e:
-            logger.warning("claude_extraction_failed_using_fallback", error=str(e))
+            opportunities = await extract_opportunities_with_llm(html_content)
+        except LLMExtractionError as e:
+            logger.warning("llm_extraction_failed_using_fallback", error=str(e))
             opportunities = extract_opportunities_with_beautifulsoup(html_content)
 
         result["opportunities_found"] = len(opportunities)

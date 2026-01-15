@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-import anthropic
 import openai
 import redis
 import structlog
@@ -131,7 +130,6 @@ class CurationValidator:
         """Initialize the curation validator."""
         self.logger = logger.bind(validator="curation")
         self._redis_client: Optional[redis.Redis] = None
-        self._anthropic_client: Optional[anthropic.Anthropic] = None
         self._openai_client: Optional[openai.OpenAI] = None
 
     @property
@@ -142,20 +140,11 @@ class CurationValidator:
         return self._redis_client
 
     @property
-    def anthropic_client(self) -> anthropic.Anthropic:
-        """Lazy-loaded Anthropic client."""
-        if self._anthropic_client is None:
-            if not settings.anthropic_api_key:
-                raise ValueError("ANTHROPIC_API_KEY is required for validation")
-            self._anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        return self._anthropic_client
-
-    @property
     def openai_client(self) -> openai.OpenAI:
         """Lazy-loaded OpenAI client."""
         if self._openai_client is None:
             if not settings.openai_api_key:
-                raise ValueError("OPENAI_API_KEY is required for embeddings")
+                raise ValueError("OPENAI_API_KEY is required for validation and embeddings")
             self._openai_client = openai.OpenAI(api_key=settings.openai_api_key)
         return self._openai_client
 
@@ -222,13 +211,13 @@ The quality_score should reflect:
 - 0-49: Poor - significant issues or not a research grant"""
 
         try:
-            response = self.anthropic_client.messages.create(
+            response = self.openai_client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=500,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = response.content[0].text.strip()
+            response_text = response.choices[0].message.content.strip()
             # Extract JSON from response
             if "{" in response_text:
                 json_start = response_text.index("{")
@@ -293,13 +282,13 @@ Return an array of 2-5 categories from this list ONLY: [{categories_str}]
 Return ONLY a JSON array, e.g.: ["Computer Science", "Engineering"]"""
 
         try:
-            response = self.anthropic_client.messages.create(
+            response = self.openai_client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=200,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = response.content[0].text.strip()
+            response_text = response.choices[0].message.content.strip()
             # Extract JSON array from response
             if "[" in response_text:
                 json_start = response_text.index("[")
@@ -451,13 +440,13 @@ Grant 2:
 Return ONLY "true" if these are the same grant, or "false" if they are different grants."""
 
         try:
-            response = self.anthropic_client.messages.create(
+            response = self.openai_client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=50,
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = response.content[0].text.strip().lower()
+            response_text = response.choices[0].message.content.strip().lower()
             return response_text == "true" or "true" in response_text
         except Exception as e:
             self.logger.error("duplicate_check_llm_error", error=str(e))

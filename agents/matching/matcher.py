@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-import anthropic
+import openai
 import redis
 import structlog
 from sqlalchemy import text
@@ -67,7 +67,7 @@ class GrantMatcher:
             db_engine: SQLAlchemy engine for database operations.
         """
         self.db_engine = db_engine
-        self.anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        self.openai_client = openai.OpenAI(api_key=settings.openai_api_key)
         self._redis_client: Optional[redis.Redis] = None
 
     @property
@@ -278,7 +278,7 @@ Return ONLY the JSON array, no additional text."""
 
     def evaluate_matches_batch(self, request: BatchMatchRequest) -> BatchMatchResponse:
         """
-        Evaluate multiple profile matches using Claude.
+        Evaluate multiple profile matches using OpenAI.
 
         Args:
             request: Batch match request with grant and profiles.
@@ -291,7 +291,7 @@ Return ONLY the JSON array, no additional text."""
         prompt = self._build_llm_prompt(request.grant, request.profiles)
 
         try:
-            response = self.anthropic_client.messages.create(
+            response = self.openai_client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=settings.llm_max_tokens,
                 messages=[
@@ -300,7 +300,7 @@ Return ONLY the JSON array, no additional text."""
             )
 
             # Parse response
-            response_text = response.content[0].text
+            response_text = response.choices[0].message.content
             results_json = json.loads(response_text)
 
             results = []
@@ -330,7 +330,7 @@ Return ONLY the JSON array, no additional text."""
                 error=str(e),
             )
             raise
-        except anthropic.APIError as e:
+        except openai.APIError as e:
             logger.error(
                 "llm_api_error",
                 grant_id=str(request.grant.grant_id),

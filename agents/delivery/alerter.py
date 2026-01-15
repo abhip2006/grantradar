@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
-import anthropic
+import openai
 import redis
 import structlog
 from celery import Celery
@@ -85,7 +85,7 @@ class AlertDeliveryAgent:
     def __init__(self):
         self.logger = structlog.get_logger().bind(agent="alerter")
         self._redis_client: Optional[redis.Redis] = None
-        self._anthropic_client: Optional[anthropic.Anthropic] = None
+        self._openai_client: Optional[openai.OpenAI] = None
 
     @property
     def redis_client(self) -> redis.Redis:
@@ -95,13 +95,13 @@ class AlertDeliveryAgent:
         return self._redis_client
 
     @property
-    def anthropic_client(self) -> anthropic.Anthropic:
-        """Lazy-loaded Anthropic client for content generation."""
-        if self._anthropic_client is None:
-            if not settings.anthropic_api_key:
-                raise ValueError("Anthropic API key not configured")
-            self._anthropic_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        return self._anthropic_client
+    def openai_client(self) -> openai.OpenAI:
+        """Lazy-loaded OpenAI client for content generation."""
+        if self._openai_client is None:
+            if not settings.openai_api_key:
+                raise ValueError("OpenAI API key not configured")
+            self._openai_client = openai.OpenAI(api_key=settings.openai_api_key)
+        return self._openai_client
 
     def _ensure_consumer_group(self) -> None:
         """Create consumer group if it doesn't exist."""
@@ -219,12 +219,12 @@ Deadline: {grant.deadline.strftime("%B %d, %Y") if grant.deadline else "Open"}
 
 Return ONLY the subject line, no quotes or explanation."""
 
-        subject_response = self.anthropic_client.messages.create(
+        subject_response = self.openai_client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=100,
             messages=[{"role": "user", "content": subject_prompt}],
         )
-        subject = subject_response.content[0].text.strip()[:100]
+        subject = subject_response.choices[0].message.content.strip()[:100]
 
         # Generate body content
         body_prompt = f"""Write a personalized alert email for {user.name} about this grant:
@@ -247,12 +247,12 @@ Requirements:
 
 Return the email body only, no subject line or signature."""
 
-        body_response = self.anthropic_client.messages.create(
+        body_response = self.openai_client.chat.completions.create(
             model=settings.llm_model,
             max_tokens=1000,
             messages=[{"role": "user", "content": body_prompt}],
         )
-        body_html = body_response.content[0].text.strip()
+        body_html = body_response.choices[0].message.content.strip()
 
         # Convert to plain text (simple version)
         body_text = body_html.replace("<p>", "").replace("</p>", "\n\n")
@@ -544,12 +544,12 @@ Top matches: {"; ".join(grant_summaries[:3])}
 Keep it professional but warm. Don't list the grants, just intro the digest."""
 
         try:
-            intro_response = self.anthropic_client.messages.create(
+            intro_response = self.openai_client.chat.completions.create(
                 model=settings.llm_model,
                 max_tokens=200,
                 messages=[{"role": "user", "content": intro_prompt}],
             )
-            intro_text = intro_response.content[0].text.strip()
+            intro_text = intro_response.choices[0].message.content.strip()
         except Exception as e:
             self.logger.warning("digest_intro_generation_failed", error=str(e))
             intro_text = f"Hi {user.name}, we found {len(alerts)} new grant{'s' if len(alerts) > 1 else ''} that match your research profile."
