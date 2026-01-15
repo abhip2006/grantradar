@@ -232,7 +232,9 @@ class RAGChatService:
         """Retrieve relevant context using vector similarity search."""
         sources = []
         context_parts = []
+        similar_grants = []
 
+        # Try vector similarity search with savepoint to isolate potential failures
         try:
             # Generate embedding for query
             embedding_response = self.openai.embeddings.create(
@@ -241,49 +243,55 @@ class RAGChatService:
             )
             query_embedding = embedding_response.data[0].embedding
 
-            # Search grants using pgvector
-            # Query grants table for similar content
-            # Convert embedding list to pgvector format string
-            embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
-            grants_query = text("""
-                SELECT id, title, description, agency, eligibility, categories,
-                       amount_min, amount_max, deadline,
-                       1 - (embedding <=> CAST(:embedding AS vector)) as similarity
-                FROM grants
-                WHERE embedding IS NOT NULL
-                ORDER BY embedding <=> CAST(:embedding AS vector)
-                LIMIT 5
-            """)
+            # Search grants using pgvector inside a savepoint
+            # This allows us to rollback just this query if it fails
+            # without affecting the rest of the transaction
+            async with db.begin_nested():
+                # Convert embedding list to pgvector format string
+                embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
+                grants_query = text("""
+                    SELECT id, title, description, agency, eligibility, categories,
+                           amount_min, amount_max, deadline,
+                           1 - (embedding <=> CAST(:embedding AS vector)) as similarity
+                    FROM grants
+                    WHERE embedding IS NOT NULL
+                    ORDER BY embedding <=> CAST(:embedding AS vector)
+                    LIMIT 5
+                """)
 
-            result = await db.execute(grants_query, {"embedding": embedding_str})
-            similar_grants = result.fetchall()
+                result = await db.execute(grants_query, {"embedding": embedding_str})
+                similar_grants = result.fetchall()
+        except Exception as e:
+            logger.warning("Vector search failed, continuing without RAG context", error=str(e))
+            similar_grants = []
 
-            for grant_row in similar_grants:
-                if grant_row.similarity > 0.5:  # Relevance threshold
-                    excerpt = (grant_row.description or "")[:500]
+        # Process similar grants (no DB access needed here)
+        for grant_row in similar_grants:
+            if grant_row.similarity > 0.5:  # Relevance threshold
+                excerpt = (grant_row.description or "")[:500]
 
-                    # Format eligibility as text if it's a dict
-                    eligibility_text = ""
-                    if grant_row.eligibility:
-                        if isinstance(grant_row.eligibility, dict):
-                            eligibility_text = json.dumps(grant_row.eligibility, indent=2)[:300]
-                        else:
-                            eligibility_text = str(grant_row.eligibility)[:300]
+                # Format eligibility as text if it's a dict
+                eligibility_text = ""
+                if grant_row.eligibility:
+                    if isinstance(grant_row.eligibility, dict):
+                        eligibility_text = json.dumps(grant_row.eligibility, indent=2)[:300]
+                    else:
+                        eligibility_text = str(grant_row.eligibility)[:300]
 
-                    if eligibility_text:
-                        excerpt += f"\n\nEligibility: {eligibility_text}"
+                if eligibility_text:
+                    excerpt += f"\n\nEligibility: {eligibility_text}"
 
-                    sources.append(
-                        ChatSource(
-                            document_type="grant",
-                            document_id=str(grant_row.id),
-                            title=grant_row.title,
-                            excerpt=excerpt,
-                            relevance_score=float(grant_row.similarity),
-                        )
+                sources.append(
+                    ChatSource(
+                        document_type="grant",
+                        document_id=str(grant_row.id),
+                        title=grant_row.title,
+                        excerpt=excerpt,
+                        relevance_score=float(grant_row.similarity),
                     )
+                )
 
-                    context_parts.append(f"""
+                context_parts.append(f"""
 Grant: {grant_row.title}
 Agency: {grant_row.agency or "Unknown"}
 Categories: {", ".join(grant_row.categories) if grant_row.categories else "N/A"}
@@ -293,9 +301,12 @@ Amount: ${grant_row.amount_min or 0:,} - ${grant_row.amount_max or 0:,}
 Deadline: {grant_row.deadline or "Not specified"}
 ---""")
 
-            # If session has a context grant, always include it
-            if session.context_grant_id:
-                context_grant = await db.get(Grant, session.context_grant_id)
+        # If session has a context grant, always include it
+        # Use savepoint to isolate potential DB failures
+        if session.context_grant_id:
+            try:
+                async with db.begin_nested():
+                    context_grant = await db.get(Grant, session.context_grant_id)
                 if context_grant:
                     eligibility_text = ""
                     if context_grant.eligibility:
@@ -317,10 +328,15 @@ Deadline: {context_grant.deadline}
 Award Amount: ${context_grant.amount_min or 0:,} - ${context_grant.amount_max or 0:,}
 ---""",
                     )
+            except Exception as e:
+                logger.warning("Failed to fetch context grant", error=str(e))
 
-            # Get user's lab profile for context
-            profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
-            profile = profile_result.scalar_one_or_none()
+        # Get user's lab profile for context
+        # Use savepoint to isolate potential DB failures
+        try:
+            async with db.begin_nested():
+                profile_result = await db.execute(select(LabProfile).where(LabProfile.user_id == user.id))
+                profile = profile_result.scalar_one_or_none()
             if profile:
                 context_parts.append(f"""
 RESEARCHER PROFILE:
@@ -328,10 +344,8 @@ Research Areas: {", ".join(profile.research_areas or [])}
 Institution: {profile.institution or "Unknown"}
 Career Stage: {profile.career_stage or "Unknown"}
 ---""")
-
         except Exception as e:
-            logger.error("RAG retrieval failed", error=str(e))
-            # Continue without RAG context
+            logger.warning("Failed to fetch user profile", error=str(e))
 
         context = "\n".join(context_parts) if context_parts else ""
         return sources[:5], context  # Limit sources
