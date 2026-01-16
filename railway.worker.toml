@@ -7,5 +7,8 @@ dockerfilePath = "Dockerfile.worker"
 
 [deploy]
 # No healthcheck - Celery workers don't expose HTTP endpoints
+# Explicitly override healthcheck settings from main railway.toml
+healthcheckPath = ""
+healthcheckTimeout = 0
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
