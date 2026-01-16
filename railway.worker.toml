@@ -1,0 +1,11 @@
+# GrantRadar Worker Service Railway Configuration
+# Celery worker for background task processing - NO HTTP healthcheck needed
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.worker"
+
+[deploy]
+# No healthcheck - Celery workers don't expose HTTP endpoints
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

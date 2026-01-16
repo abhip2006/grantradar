@@ -1,0 +1,11 @@
+# GrantRadar Beat Service Railway Configuration
+# Celery beat scheduler for periodic tasks - NO HTTP healthcheck needed
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.beat"
+
+[deploy]
+# No healthcheck - Celery beat doesn't expose HTTP endpoints
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
