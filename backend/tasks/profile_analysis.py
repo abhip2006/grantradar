@@ -315,7 +315,7 @@ def search_lab_info(institution: str, lab_name: Optional[str] = None) -> dict[st
 
 @celery_app.task(
     bind=True,
-    queue="default",
+    queue="normal",
     priority=5,
     soft_time_limit=180,  # 3 minutes soft limit
     time_limit=240,  # 4 minutes hard limit
@@ -485,7 +485,7 @@ def analyze_user_profile(self, user_id: str) -> dict[str, Any]:
 
 @celery_app.task(
     bind=True,
-    queue="default",
+    queue="normal",
     priority=3,
 )
 def analyze_cv_content(self, user_id: str) -> dict[str, Any]:
