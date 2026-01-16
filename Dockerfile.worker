@@ -82,5 +82,5 @@ ENV PYTHONUNBUFFERED=1 \
 # Workers don't expose HTTP endpoints - they process background tasks
 
 # Default command for running the Celery worker
-# Consume from all priority queues: critical, high, normal
-CMD ["celery", "-A", "backend.celery_app", "worker", "-Q", "critical,high,normal", "--loglevel=info"]
+# Consume from all queues: default, critical, high, normal
+CMD ["celery", "-A", "backend.celery_app", "worker", "-Q", "default,critical,high,normal", "--loglevel=info"]
